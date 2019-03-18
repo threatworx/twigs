@@ -23,9 +23,8 @@ ThreatWatch Information Gathering Script
 Features
 --------
 
-* twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, open source and more).
+twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, open source and more).
 
-  ```
 $ python twigs.py --help
 usage: twigs.py [-h] --handle HANDLE --token TOKEN [--instance INSTANCE]
                    {aws,opensource,host,docker} ...
@@ -105,8 +104,6 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
-
-```
 
 
 Credits
