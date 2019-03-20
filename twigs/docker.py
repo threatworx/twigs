@@ -231,6 +231,7 @@ def discover(args, atype):
 
 
 def inventory(args):
+    global docker_cli
     docker_cli = docker_available()
     if not docker_cli:
         sys.exit(1)
