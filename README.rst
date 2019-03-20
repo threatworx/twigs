@@ -25,6 +25,8 @@ Features
 
 twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, open source and more).
 
+Note - it is recommended to use virtual environments to create isolated Python environments and reduce dependency conflicts.
+
 $ python twigs.py --help
 usage: twigs.py [-h] --handle HANDLE --token TOKEN [--instance INSTANCE]
                    {aws,opensource,host,docker} ...
@@ -105,6 +107,7 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
 
+Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
 
 Credits
 -------

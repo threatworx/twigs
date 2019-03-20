@@ -52,7 +52,6 @@ class EC2Impl(AWS):
         #print "S3_relevant_bucket_objecgt: %s" % (self.bucket_object_list)
 
     def windows_patch_inventory(self, host):
-        logging.info("Retrieving patch details for [%s]", host)
         for obj in self.bucket_object_list:
             if 'AWS:WindowsUpdate' in obj.key and host in obj.key:
                 splits = obj.key.rsplit('/')
@@ -83,7 +82,6 @@ class EC2Impl(AWS):
         return None
 
     def product_inventory(self, host, host_type):
-        logging.info("Retrieving product details for [%s]", host)
         for obj in self.bucket_object_list:
             if 'AWS:Application' in obj.key and host in obj.key:
                 splits = obj.key.rsplit('/')
@@ -106,9 +104,10 @@ class EC2Impl(AWS):
                             pname = data[i]['Name']
                             pver = data[i]['Version']
                             prpm = data[i]['PackageId']
+                            parch = data[i]['Architecture']
                             index = prpm.rfind('-')
                             temp = prpm[index:-8]
-                            product_name = pname+' '+pver+temp
+                            product_name = pname+' '+pver+temp+"."+parch
                             #print "[%s][%s] ==> [%s]" % (pname, prpm, product_name)
                             products.append(product_name)
                     return products
@@ -137,15 +136,17 @@ class EC2Impl(AWS):
                         data.append(json.loads(s))
                     asset = {}
                     asset['id'] = data[0]['resourceId']
-                    logging.info("Found asset [%s]", asset['id'])
                     asset['name'] = data[0]['ComputerName']
+                    logging.info("Found asset [%s] in AWS inventory", asset['name'])
                     asset['type'] = data[0]['PlatformName']
                     asset['owner'] = email
                     if 'Linux' in asset['type']:
                         asset['tags'] = [ 'Linux' ]
                     elif 'Windows' in asset['type']:
                         asset['tags'] = [ 'Windows' ]
+                    logging.info("Retrieving product details for [%s]", asset['name'])
                     asset['products'] = self.product_inventory(asset['id'], asset['type'])
+                    logging.info("Retrieving patch details for [%s]", asset['name'])
                     asset['patches'] = self.windows_patch_inventory(asset['id'])
                     assets.append(asset)
                 except ValueError:
@@ -176,13 +177,13 @@ def inventory(args):
             # asset does not exist so create one with POST
             resp = requests.post(asset_url + auth_data, json=asset)
             if resp.status_code == 200:
-                logging.info("Successfully created asset with id [%s]...", asset['id'])
+                logging.info("Successfully created asset [%s]...", asset['name'])
             else:
                 logging.error("Failed to create new asset: %s", json.dumps(asset))
         else:
             # asset exists so update it with PUT
             resp = requests.put(asset_url + asset['id'] + "/" + auth_data, json=asset)
             if resp.status_code == 200:
-                logging.info("Successfully updated asset with id [%s]...", asset['id'])
+                logging.info("Successfully updated asset [%s]...", asset['name'])
             else:
-                logging.error("Failed to updated existing asset with id [%s]...", asset['id'])
+                logging.error("Failed to updated existing asset [%s]...", asset['name'])

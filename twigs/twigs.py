@@ -22,52 +22,56 @@ import linux
 import opensource
 import docker
 
-logfilename = "twigs.log"
-logging_level = logging.INFO
+def main(args=None):
+    
+    if args is None:
+        args = sys.argv[1:]
 
-parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects')
-subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
-# Required arguments
-parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user', required=True)
-parser.add_argument('--token', help='The ThreatWatch API token of the user', required=True)
-parser.add_argument('--instance', help='The ThreatWatch instance. Defaults to ThreatWatch Cloud SaaS.', default='api.threatwatch.io')
+    logfilename = "twigs.log"
+    logging_level = logging.INFO
 
-# Arguments required for AWS discovery
-parser_aws = subparsers.add_parser ("aws", help = "Discover AWS instances")
-parser_aws.add_argument('--aws_account', help='AWS account ID', required=True)
-parser_aws.add_argument('--aws_access_key', help='AWS access key', required=True)
-parser_aws.add_argument('--aws_secret_key', help='AWS secret key', required=True)
-parser_aws.add_argument('--aws_region', help='AWS region', required=True)
-parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
+    parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects')
+    subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
+    # Required arguments
+    parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user', required=True)
+    parser.add_argument('--token', help='The ThreatWatch API token of the user', required=True)
+    parser.add_argument('--instance', help='The ThreatWatch instance. Defaults to ThreatWatch Cloud SaaS.', default='api.threatwatch.io')
 
-# Arguments required for open source discovery
-parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
-parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
-parser_opensource.add_argument('--type', choices=['python', 'ruby', 'nodejs', 'dotnet', 'yarn'], help='Type of open source component to scan for', required=True)
-parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    # Arguments required for AWS discovery
+    parser_aws = subparsers.add_parser ("aws", help = "Discover AWS instances")
+    parser_aws.add_argument('--aws_account', help='AWS account ID', required=True)
+    parser_aws.add_argument('--aws_access_key', help='AWS access key', required=True)
+    parser_aws.add_argument('--aws_secret_key', help='AWS secret key', required=True)
+    parser_aws.add_argument('--aws_region', help='AWS region', required=True)
+    parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
 
-# Arguments required for linux host discovery 
-parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
-parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    # Arguments required for open source discovery
+    parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
+    parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
+    parser_opensource.add_argument('--type', choices=['python', 'ruby', 'nodejs', 'dotnet', 'yarn'], help='Type of open source component to scan for', required=True)
+    parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
-# Arguments required for docker discovery 
-parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
-parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
-parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-args = parser.parse_args()
+    # Arguments required for linux host discovery 
+    parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
+    parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
+    # Arguments required for docker discovery 
+    parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
+    parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
+    parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    args = parser.parse_args()
 
 
-# Setup the logger
-logging.basicConfig(filename=logfilename, level=logging_level, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-console = logging.StreamHandler()
-console.setLevel(logging_level)
-console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
-logging.getLogger('').addHandler(console)
+    # Setup the logger
+    logging.basicConfig(filename=logfilename, level=logging_level, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    console = logging.StreamHandler()
+    console.setLevel(logging_level)
+    console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
+    logging.getLogger('').addHandler(console)
 
-if __name__ == '__main__':
     logging.info('Started new run...')
     logging.debug('Arguments: %s', str(args))
     if args.mode == 'aws':
@@ -81,3 +85,5 @@ if __name__ == '__main__':
 
     logging.info('Run completed...')
 
+if __name__ == '__main__':
+    main()
