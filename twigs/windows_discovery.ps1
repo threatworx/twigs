@@ -105,6 +105,9 @@ foreach ($row in $temp_array) { $product_details = $row.Name.Trim() + ' ' + $row
 Write-Host 'Number of products found (using wmic):', $temp_array.Count
 Write-Host 'Total number of unique products found:', $product_json_array.Count
 
+$tags_json_array = New-Object System.Collections.Generic.List[string]
+$tags_json_array.Add('Windows')
+
 $url = ''
 $http_method = ''
 if ($asset_exists -eq 0) {
@@ -127,6 +130,7 @@ $payload = @{
 	owner=$tw_handle
 	patches=$patch_json_array
 	products=$product_json_array
+	tags=$tags_json_array
 }
 $body = (ConvertTo-Json $payload)
 

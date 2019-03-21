@@ -180,6 +180,7 @@ def inventory(args):
                 logging.info("Successfully created asset [%s]...", asset['name'])
             else:
                 logging.error("Failed to create new asset: %s", json.dumps(asset))
+                logging.error("Response details: %s", resp.content)
         else:
             # asset exists so update it with PUT
             resp = requests.put(asset_url + asset['id'] + "/" + auth_data, json=asset)
@@ -187,3 +188,4 @@ def inventory(args):
                 logging.info("Successfully updated asset [%s]...", asset['name'])
             else:
                 logging.error("Failed to updated existing asset [%s]...", asset['name'])
+                logging.error("Response details: %s", resp.content)
