@@ -108,7 +108,9 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
 
 Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
-usage: .\windows_discovery.ps1 -?
+
+usage: .\\windows_discovery.ps1 -?
+
 windows_discovery.ps1 [-tw_handle] <string> [-tw_api_key] <string> [[-tw_instance] <string>] [-asset_id] <string> [<CommonParameters>]
 
 Credits
