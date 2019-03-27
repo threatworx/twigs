@@ -69,12 +69,12 @@ def discover_rh(args):
             ver = lsplit[1]
         else:
             ver = ''
-        pkg = pkg.replace('.noarch','')
-        pkg = pkg.replace('.i686','')
-        pkg = pkg.replace('.x86_64','')
-        ver = ver.replace('_','-')
+        pkgsp = pkg.split(".")
+        pkg = pkgsp[0]
+        arch = pkgsp[1]
         if ':' in ver:
             ver = ver.split(':')[1]
+        ver = ver + "." + arch
         logging.debug("Found product [%s %s]", pkg, ver)
         plist.append(pkg+' '+ver)
     logging.info("Completed retrieval of product details")
