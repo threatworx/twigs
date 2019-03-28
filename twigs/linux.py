@@ -22,17 +22,20 @@ def get_ip():
 
 def get_asset_type():
     os_type = platform.dist()[0]
+    os_release = get_os_release()
     if "centos" in os_type:
         return "CentOS"
     elif "redhat" in os_type:
         return "Red Hat"
     elif "Ubuntu" in os_type:
         return "Ubuntu"
+    elif "Amazon Linux AMI" in os_release:
+        return "Amazon Linux"
     else:
         logging.error('Not a supported os type')
         return None
 
-def get_os_release(args):
+def get_os_release():
     cmdarr = ["/bin/cat /etc/os-release"]
     out = ''
     try:
@@ -133,7 +136,7 @@ def discover(args, atype):
     auth_data = "?handle=" + handle + "&token=" + token + "&format=json"
 
     plist = None
-    if atype == 'CentOS':
+    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux':
         plist = discover_rh(args)
     elif atype == 'Ubuntu' or atype == 'Debian':
         plist = discover_ubuntu(args)
@@ -149,7 +152,7 @@ def discover(args, atype):
     asset_data['owner'] = handle
     asset_data['products'] = plist
     asset_tags = []
-    os = get_os_release(args)
+    os = get_os_release()
     asset_tags.append('OS_RELEASE:' + os)
     asset_tags.append('Linux')
     asset_tags.append(atype)
