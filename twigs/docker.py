@@ -16,8 +16,30 @@ def docker_available():
         return "/usr/local/bin/docker"
     return None 
 
-def get_asset_type(args):
-    cmdarr = [docker_cli+' run -i -t '+args.image+' /bin/sh -c "/bin/cat /etc/os-release"']
+def start_docker_container(args):
+    cmdarr = [docker_cli+' run -d -i -t '+args.image]
+    out = ''
+    try:
+        out = subprocess.check_output(cmdarr, shell=True)
+    except subprocess.CalledProcessError:
+        logging.error("Error starting docker container: "+args.image)
+        sys.exit(1)
+    container_id = out[:12]
+    logging.info("Started container with ID ["+container_id+"] from image ["+args.image+"] for discovery")
+    return container_id
+
+def stop_docker_container(args, container_id):
+    cmdarr = [docker_cli+' stop '+container_id]
+    out = ''
+    try:
+        out = subprocess.check_output(cmdarr, shell=True)
+    except subprocess.CalledProcessError:
+        logging.error("Error stopping docker container with image ["+args.image+"] and ID ["+container_id+"]")
+        sys.exit(1)
+    logging.info("Stopped container with ID ["+container_id+"]")
+
+def get_asset_type(args, container_id):
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/bin/cat /etc/os-release"']
     out = ''
     try:
         out = subprocess.check_output(cmdarr, shell=True)
@@ -34,8 +56,8 @@ def get_asset_type(args):
         logging.error('Not a supported os type')
         return None
 
-def get_os_release(args):
-    cmdarr = [docker_cli+' run -i -t '+args.image+' /bin/sh -c "/bin/cat /etc/os-release"']
+def get_os_release(args, container_id):
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/bin/cat /etc/os-release"']
     out = ''
     try:
         out = subprocess.check_output(cmdarr, shell=True)
@@ -72,9 +94,9 @@ def get_image_id(args):
         break
     return imageid
 
-def discover_rh(args):
+def discover_rh(args, container_id):
     plist = []
-    cmdarr = [docker_cli+' run -i -t '+args.image+' /bin/sh -c "/usr/bin/yum list installed"']
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/bin/yum list installed"']
     logging.info("Retrieving product details from image")
     yumout = ''
     try:
@@ -112,9 +134,9 @@ def discover_rh(args):
     logging.info("Completed retrieval of product details from image")
     return plist
 
-def discover_ubuntu(args):
+def discover_ubuntu(args, container_id):
     plist = []
-    cmdarr = [docker_cli+' run -i -t '+args.image+' /bin/sh -c "/usr/bin/apt list --installed"']
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/bin/apt list --installed"']
     logging.info("Retrieving product details from image")
     yumout = ''
     try:
@@ -142,7 +164,7 @@ def discover_ubuntu(args):
     logging.info("Completed retrieval of product details from image")
     return plist
 
-def discover(args, atype):
+def discover(args, atype, container_id):
     handle = args.handle
     token = args.token
     instance = args.instance
@@ -165,12 +187,13 @@ def discover(args, atype):
 
     plist = None
     if atype == 'CentOS':
-        plist = discover_rh(args)
+        plist = discover_rh(args, container_id)
     elif atype == 'Ubuntu' or atype == 'Debian':
-        plist = discover_ubuntu(args)
+        plist = discover_ubuntu(args, container_id)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory image: "+args.image)
+        stop_docker_container(args, container_id)
         sys.exit(1) 
 
     asset_data = {}
@@ -180,7 +203,7 @@ def discover(args, atype):
     asset_data['owner'] = handle
     asset_data['products'] = plist
     asset_tags = []
-    os = get_os_release(args)
+    os = get_os_release(args, container_id)
     asset_tags.append('OS_RELEASE:' + os)
     asset_tags.append('Docker')
     asset_tags.append('Container')
@@ -217,8 +240,11 @@ def inventory(args):
         if not pull_image(args):
             sys.exit(1)
 
-    atype = get_asset_type(args)
+    container_id = start_docker_container(args)
+    atype = get_asset_type(args, container_id)
     if not atype:
+        stop_docker_container(args, container_id)
         sys.exit(1)
 
-    discover(args, atype)
+    discover(args, atype, container_id)
+    stop_docker_container(args, container_id)
