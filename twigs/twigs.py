@@ -22,6 +22,17 @@ import linux
 import opensource
 import docker
 
+def validate_impact_refresh_days(impact_refresh_days):
+    if impact_refresh_days is not None:
+        if impact_refresh_days.isdigit():
+            impact_refresh_days = int(impact_refresh_days)
+            if impact_refresh_days < 0 or impact_refresh_days > 365:
+                logging.error("[impact_refresh_days] parameter not valid. Valid range is 0 - 365 days.")
+                sys.exit(1)
+        else:
+            logging.error("[impact_refresh_days] parameter is not valid number.")
+            sys.exit(1)
+
 def main(args=None):
     
     if args is None:
@@ -51,17 +62,20 @@ def main(args=None):
     parser_opensource.add_argument('--type', choices=['python', 'ruby', 'nodejs', 'dotnet', 'yarn'], help='Type of open source component to scan for', required=True)
     parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_opensource.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
 
     # Arguments required for linux host discovery 
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
     parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_linux.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
 
     # Arguments required for docker discovery 
     parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
     parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
     parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_docker.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
     args = parser.parse_args()
 
 
@@ -77,10 +91,13 @@ def main(args=None):
     if args.mode == 'aws':
         aws.inventory(args)
     elif args.mode == 'opensource':
+        validate_impact_refresh_days(args.impact_refresh_days)
         opensource.inventory(args)
     elif args.mode == 'host':
+        validate_impact_refresh_days(args.impact_refresh_days)
         linux.inventory(args)
     elif args.mode == 'docker':
+        validate_impact_refresh_days(args.impact_refresh_days)
         docker.inventory(args)
 
     logging.info('Run completed...')
