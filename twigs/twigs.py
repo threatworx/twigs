@@ -59,7 +59,7 @@ def main(args=None):
     # Arguments required for open source discovery
     parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
     parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
-    parser_opensource.add_argument('--type', choices=['python', 'ruby', 'nodejs', 'dotnet', 'yarn'], help='Type of open source component to scan for', required=True)
+    parser_opensource.add_argument('--type', choices=['python', 'ruby', 'nodejs', 'dotnet', 'yarn', 'pom'], help='Type of open source component to scan for', required=True)
     parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     parser_opensource.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')

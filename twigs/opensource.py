@@ -25,7 +25,32 @@ def find_files(localpath, filename):
                 ret_files.append(file_path)
     return ret_files
 
-def discover_package_json(f):
+def discover_pom_xml(args, localpath):
+    plist = []
+    files = find_files(localpath, 'pom.xml')
+    for file_path in files:
+        fp = open(file_path, 'r')
+        if fp == None:
+            continue
+        contents = fp.read()
+        xmldoc = None
+        try:
+            xmldoc = minidom.parseString(contents)
+        except Exception:
+            print "Error parsing pom.xml contents"
+            return None
+        dlist = xmldoc.getElementsByTagName('dependency')
+        for d in dlist:
+            aid = d.getElementsByTagName('artifactId')[0]
+            ver = d.getElementsByTagName('version')[0]
+            libname = aid.childNodes[0].data
+            libver = ver.childNodes[0].data
+            pname = libname + ' ' + libver
+            if pname not in plist:
+                plist.append(pname)
+    return plist 
+
+def discover_package_json(args, localpath):
     plist = []
     files = find_files(localpath, 'package.json')
     for file_path in files:
@@ -49,8 +74,8 @@ def discover_package_json(f):
                 pname = pname.replace('<','')
                 pname = pname.replace('>','')
                 pname = pname.replace('=','')
-                if pname not in assetinfo:
-                    assetinfo.append(pname)
+                if pname not in plist:
+                    plist.append(pname)
         if 'devDependencies' in cjson:
             ddict = cjson['devDependencies']
             for d in ddict:
@@ -60,8 +85,8 @@ def discover_package_json(f):
                 pname = pname.replace('<','')
                 pname = pname.replace('>','')
                 pname = pname.replace('=','')
-                if pname not in assetinfo:
-                    assetinfo.append(pname)
+                if pname not in plist:
+                    plist.append(pname)
         if 'optionalDependencies' in cjson:
             ddict = cjson['optionalDependencies']
             for d in ddict:
@@ -71,11 +96,11 @@ def discover_package_json(f):
                 pname = pname.replace('>','')
                 pname = pname.replace('=','')
                 pname = d + ' ' + ddict[d]
-                if pname not in assetinfo:
+                if pname not in plist:
                     plist.append(pname)
         return plist 
 
-def discover_packages_config(f):
+def discover_packages_config(args, localpath):
     plist = []
     files = find_files(localpath, 'packages.config')
     for file_path in files:
@@ -94,11 +119,11 @@ def discover_packages_config(f):
             libname = p.getAttribute('id')
             libver = p.getAttribute('version')
             pname = libname + ' ' + libver
-            if pname not in assetinfo:
+            if pname not in plist:
                 plist.append(pname)
     return plist 
 
-def discover_yarn(f):
+def discover_yarn(args, localpath):
     plist = []
     files = find_files(localpath, 'yarn.lock')
     for file_path in files:
@@ -115,8 +140,8 @@ def discover_yarn(f):
                 vline = cline[index+1]
                 libver = vline.split()[1].replace('"','')
                 pname = libname+' '+libver
-                if pname not in assetinfo:
-                    assetinfo.append(pname)
+                if pname not in plist:
+                    plist.append(pname)
             if l.endswith(':') and 'dependencies' in l:
                 dparse = True
                 continue
@@ -127,11 +152,11 @@ def discover_yarn(f):
                 if pname == '':
                     dparse = False
                     continue
-                if pname not in assetinfo:
+                if pname not in plist:
                     plist.append(pname)
     return plist 
 
-def discover_ruby(f):
+def discover_ruby(args, localpath):
     plist = []
     files = find_files(localpath, 'gemfile.lock')
     for file_path in files:
@@ -161,7 +186,7 @@ def discover_ruby(f):
                         gver = ''
                 pname = gname + ' ' + gver
                 pname = pname.strip()
-                if pname not in assetinfo:
+                if pname not in plist:
                     plist.append(pname)
     return plist 
 
@@ -214,6 +239,8 @@ def discover(args, localpath):
         plist = discover_packages_config(args, localpath)
     elif args.type == 'nodejs':
         plist = discover_package_json(args, localpath)
+    elif args.type == 'pom':
+        plist = discover_pom_xml(args, localpath)
     else:
         logging.error("Type not supported")
         sys.exit(1) 
