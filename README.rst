@@ -29,8 +29,7 @@ Note - twigs requires python 2.7 It is recommended to use virtual environments t
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 
 $ python twigs.py --help
-usage: twigs.py [-h] --handle HANDLE --token TOKEN [--instance INSTANCE]
-                   {aws,opensource,host,docker} ...
+usage: twigs.py [-h] --handle HANDLE --token TOKEN [--instance INSTANCE] {aws,azure,opensource,host,docker} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -44,17 +43,16 @@ optional arguments:
 modes:
   Discovery modes supported
 
-  {aws,opensource,host,docker}
+  {aws,azure,opensource,host,docker}
     aws                 Discover AWS instances
+    azure               Discover Azure instances
     opensource          Discover open source assets
     host                Discover linux host assets
     docker              Discover docker instances
 
 Mode: aws
 $ python twigs.py aws --help
-usage: twigs.py aws [-h] --aws_account AWS_ACCOUNT --aws_access_key
-                       AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY
-                       --aws_region AWS_REGION --aws_s3_bucket AWS_S3_BUCKET
+usage: twigs.py aws [-h] --aws_account AWS_ACCOUNT --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --aws_region AWS_REGION --aws_s3_bucket AWS_S3_BUCKET
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -69,20 +67,39 @@ optional arguments:
   --aws_s3_bucket AWS_S3_BUCKET
                         AWS S3 inventory bucket
 
+Mode: azure
+$ python twigs.py azure --help
+usage: twigs.py azure [-h]  --azure_tenant_id AZURE_TENANT_ID --azure_application_id AZURE_APPLICATION_ID --azure_application_key AZURE_APPLICATION_KEY [--azure_subscription AZURE_SUBSCRIPTION] [--azure_resource_group AZURE_RESOURCE_GROUP] [--azure_workspace AZURE_WORKSPACE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --azure_tenant_id AZURE_TENANT_ID
+                        Azure Tenant ID
+  --azure_application_id AZURE_APPLICATION_ID
+                        Azure Application ID
+  --azure_application_key AZURE_APPLICATION_KEY
+                        Azure Application Key
+  --azure_subscription AZURE_SUBSCRIPTION
+                        Azure Subscription. If not specified, then available
+                        values will be displayed
+  --azure_resource_group AZURE_RESOURCE_GROUP
+                        Azure Resource Group. If not specified, then available
+                        values will be displayed
+  --azure_workspace AZURE_WORKSPACE
+                        Azure Workspace. If not specified, then available
+                        values will be displayed
+
 Mode: opensource
 $ python twigs.py opensource --help
-usage: twigs.py opensource [-h] --repo REPO --type
-                              {python,ruby,nodejs,dotnet,yarn}
-                              [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py opensource [-h] --repo REPO --type {python,ruby,nodejs,dotnet,yarn} [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
   --repo REPO           Local path or git repo url for project
-  --type {python,ruby,nodejs,dotnet,yarn}
-                        Type of open source component to scan for
+  --type TYPE           Type of open source component to scan for {python,ruby,nodejs,dotnet,yarn}
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset
+  --assetname ASSETNAME 
+                        A name to be assigned to the discovered asset
 
 Mode: host
 $ python twigs.py host --help
@@ -96,8 +113,7 @@ optional arguments:
 
 Mode: docker
 $ python twigs.py docker --help
-usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID]
-                          [--assetname ASSETNAME]
+usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit

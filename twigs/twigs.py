@@ -21,6 +21,7 @@ import aws
 import linux
 import opensource
 import docker
+import azure
 
 def validate_impact_refresh_days(impact_refresh_days):
     if impact_refresh_days is not None:
@@ -56,6 +57,15 @@ def main(args=None):
     parser_aws.add_argument('--aws_region', help='AWS region', required=True)
     parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
 
+    # Arguments required for Azure discovery
+    parser_aws = subparsers.add_parser ("azure", help = "Discover Azure instances")
+    parser_aws.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
+    parser_aws.add_argument('--azure_application_id', help='Azure Application ID', required=True)
+    parser_aws.add_argument('--azure_application_key', help='Azure Application Key', required=True)
+    parser_aws.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
+    parser_aws.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
+    parser_aws.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
+
     # Arguments required for open source discovery
     parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
     parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
@@ -90,6 +100,8 @@ def main(args=None):
     logging.debug('Arguments: %s', str(args))
     if args.mode == 'aws':
         aws.inventory(args)
+    elif args.mode == 'azure':
+        azure.inventory(args)
     elif args.mode == 'opensource':
         validate_impact_refresh_days(args.impact_refresh_days)
         opensource.inventory(args)
