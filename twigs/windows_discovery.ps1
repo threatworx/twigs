@@ -39,6 +39,8 @@ else {
 # Check if asset exists
 $asset_exists = 1
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 $url = $tw_assets_url + $asset_id + '/?handle=' + $tw_handle + '&token=' + $tw_api_key + '&format=json'
 $http_method = 'Get'
 Write-Host 'Validating credentials...'

@@ -68,7 +68,7 @@ def inventory(args):
                 logging.error("Failed to updated existing asset [%s]...", asset['name'])
                 logging.error("Response details: %s", resp.content)    
 
-def parse_inventory(email,data):
+def parse_inventory(email,data,params):
     logging.info("Processing inventory retrieved from Azure...")
     hosts = []
     assets = []
@@ -97,6 +97,10 @@ def parse_inventory(email,data):
                 products.append(pname+' ' + pversion)
             asset_map['products'] = products
             asset_map['patches'] = patches
+            if asset_map['type'] == 'Windows':
+                windows_os = get_os_name(host,params)
+                if windows_os is not None:
+                    asset_map['products'].append(windows_os)
             assets.append(asset_map)
             hosts.append(host)
         else:
@@ -158,7 +162,7 @@ def get_inventory(params):
     response = json.loads(output)
     if response.get('Tables'):
         tables = response['Tables']
-        return parse_inventory(email,tables[0]['Rows'])
+        return parse_inventory(email,tables[0]['Rows'],params)
 
 #Get access token using  an AAD, an app id associted with that AAD and the API key/secret for that app
 def get_access_token(params):         
@@ -191,6 +195,25 @@ def get_access_token(params):
         print error
         return None
     return token
+
+# Try to get OS details for given VM
+def get_os_name(host,params):
+    CURL = '/usr/bin/curl --silent -H "Content-Type:application/json" -H "Authorization:Bearer %s" ' % params['access_token']
+    URL = "-X GET \"https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines/%s/instanceView?api-version=2018-06-01\"" % (params['subscription'], params['resource_group'],host)
+    cmd = CURL + URL
+
+    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
+    (output, err) = p.communicate()
+    pstat = p.wait()
+
+    if output == "Error":
+        return None
+
+    if output == "Kill":
+        return None
+
+    response = json.loads(output)
+    return response.get('osName')
 
 # Get a list of subscriptions for current AAD/Tenant
 def get_all_subscriptions(token):
