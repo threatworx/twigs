@@ -87,20 +87,24 @@ def parse_inventory(email,data,params):
             asset_map['host'] = host
             asset_map['id'] = host
             asset_map['name'] = host
-            asset_map['type'] = get_os_type(publisher)
-            asset_map['tags'] = [ asset_map['type'] ]
+            asset_map['tags'] = [ ]
+            asset_map['patch_tracker'] = { } # To help remove duplicate patches
             if data[i][1] == 'Update': #ApplicationType for MS patches
-                patches.append(parse_patch(data[i]))
+                patch = parse_patch(data[i])
+                patches.append(patch)
+                asset_map['patch_tracker'][patch['id']] = patch['id']
             if data[i][1] == 'Package' or data[i][1] == 'Application': #ApplicationType for Linux packages
                 pname = data[i][0]
                 pversion =  data[i][3]
                 products.append(pname+' ' + pversion)
             asset_map['products'] = products
             asset_map['patches'] = patches
+            os = get_os_name(host,params)
+            asset_map['type'] = get_os_type(os)
+            if len(asset_map['type']) > 0:
+                asset_map['tags'].append(asset_map['type'])
             if asset_map['type'] == 'Windows':
-                windows_os = get_os_name(host,params)
-                if windows_os is not None:
-                    asset_map['tags'].append('OS_RELEASE:' + windows_os)
+                asset_map['tags'].append('OS_RELEASE:' + os)
             assets.append(asset_map)
             hosts.append(host)
         else:
@@ -109,13 +113,19 @@ def parse_inventory(email,data,params):
                     products = asset['products']
                     patches = asset['patches']
                     if data[i][1] == 'Update': #ApplicationType for MS patches
-                        patches.append(parse_patch(data[i]))
-                        asset['patches'] = patches
+                        patch = parse_patch(data[i])
+                        if asset['patch_tracker'].get(patch['id']) is None:
+                            patches.append(patch)
+                            asset['patches'] = patches
+                            asset['patch_tracker'][patch['id']] = patch['id']
                     if data[i][1] == 'Package' or data[i][1] == 'Application': #ApplicationType for Linux packages
                         pname = data[i][0]
                         pversion =  data[i][3]
                         products.append(pname+' ' + pversion)
                         asset['products'] = products
+    # Remove the additional field 'patch_tracker' (added to avoid duplicate patches)
+    for asset in assets:
+        asset.pop('patch_tracker', None)
     return assets
 
 def parse_patch(data):
@@ -128,9 +138,11 @@ def parse_patch(data):
     return patch
             
 def get_os_type(ostype):
-    if 'Microsoft' in  ostype:
+    if ostype is None:
+        return ''
+    if 'Microsoft' in  ostype or 'Windows' in ostype:
         return 'Windows'
-    if 'Red Hat' in ostype:
+    if 'Red Hat' in ostype or 'redhat' in ostype:
         return 'Red Hat'
     return ''
 
