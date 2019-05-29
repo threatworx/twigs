@@ -100,7 +100,7 @@ def parse_inventory(email,data,params):
             if asset_map['type'] == 'Windows':
                 windows_os = get_os_name(host,params)
                 if windows_os is not None:
-                    asset_map['products'].append(windows_os)
+                    asset_map['tags'].append('OS_RELEASE:' + windows_os)
             assets.append(asset_map)
             hosts.append(host)
         else:

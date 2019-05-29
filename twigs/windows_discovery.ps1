@@ -90,7 +90,6 @@ Write-Host ''
 Write-Host 'Extracting products (using registry key)...'
 $unique_products = New-Object System.Collections.Generic.List[string]
 $product_json_array = New-Object System.Collections.Generic.List[string]
-$product_json_array.Add($base_os + ' ' + $os_sp)
 $temp_array = Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object Publisher, DisplayName, DisplayVersion
 $temp_array | foreach { $var = $_ ; $product = $var.'DisplayName'; $vendor = $var.'Publisher'; $version = $var.'DisplayVersion'; if ($product -and $version) { $product_details = $product.Trim() + ' ' + $version.Trim(); $product_json_array.add($product_details); }}
 Write-Host 'Number of products found (using registry key):', $temp_array.Length
@@ -108,6 +107,7 @@ Write-Host 'Number of products found (using wmic):', $temp_array.Count
 Write-Host 'Total number of unique products found:', $product_json_array.Count
 
 $tags_json_array = New-Object System.Collections.Generic.List[string]
+$tags_json_array.Add('OS_RELEASE:' + $base_os + ' ' + $os_sp)
 $tags_json_array.Add('Windows')
 
 $url = ''
