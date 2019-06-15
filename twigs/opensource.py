@@ -15,6 +15,7 @@ import requirements
 from xml.dom import minidom
 
 GIT_PATH = '/usr/bin/git'
+SUPPORTED_TYPES = ['python', 'ruby', 'yarn', 'dotnet', 'nodejs', 'pom']
 
 def find_files(localpath, filename):
     ret_files = []
@@ -206,10 +207,35 @@ def discover_python(args, localpath):
                     plist.append(prod)
     return plist
 
-def discover(args, localpath):
-    handle = args.handle
-    token = args.token
-    instance = args.instance
+def discover_specified_type(opensource_type, args, localpath):
+    if opensource_type not in SUPPORTED_TYPES:
+        logging.error("Type not supported")
+        sys.exit(1) 
+
+    plist = []
+    if opensource_type == 'python':
+        plist = discover_python(args, localpath)
+    elif opensource_type == 'ruby':
+        plist = discover_ruby(args, localpath)
+    elif opensource_type == 'yarn':
+        plist = discover_yarn(args, localpath)
+    elif opensource_type == 'dotnet':
+        plist = discover_packages_config(args, localpath)
+    elif opensource_type == 'nodejs':
+        plist = discover_package_json(args, localpath)
+    elif opensource_type == 'pom':
+        plist = discover_pom_xml(args, localpath)
+
+    return plist
+
+def get_last_component(repo_path):
+    if repo_path.startswith('http:') or repo_path.startswith('https:'):
+        return repo_path.rsplit('/',1)[-1]
+    else:
+        return os.path.basename(os.path.normpath(repo_path))
+
+def discover_inventory(args, localpath):
+    default_id_name = get_last_component(args.repo)
     asset_id = None
     if args.assetid == None:
         asset_id = args.type
@@ -220,30 +246,28 @@ def discover(args, localpath):
         asset_name = args.type
     else:
         asset_name = args.assetname
+    if asset_id is None:
+        asset_id = default_id_name
+    if asset_name is None:
+        asset_name = default_id_name
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
     asset_name = asset_name.replace('/','-')
     asset_name = asset_name.replace(':','-')
-    asset_url = "https://" + instance + "/api/v2/assets/"
-    auth_data = "?handle=" + handle + "&token=" + token + "&format=json"
 
     atype = 'Open Source' 
-    plist = None
-    if args.type == 'python':
-        plist = discover_python(args, localpath)
-    elif args.type == 'ruby':
-        plist = discover_ruby(args, localpath)
-    elif args.type == 'yarn':
-        plist = discover_yarn(args, localpath)
-    elif args.type == 'dotnet':
-        plist = discover_packages_config(args, localpath)
-    elif args.type == 'nodejs':
-        plist = discover_package_json(args, localpath)
-    elif args.type == 'pom':
-        plist = discover_pom_xml(args, localpath)
+    plist = []
+    asset_tags = []
+    if args.type is None:
+        # If no type is specified, then process all supported types
+        for opensource_type in SUPPORTED_TYPES:
+            temp_list = discover_specified_type(opensource_type, args, localpath)
+            if temp_list is not None and len(temp_list) > 0:
+                plist.extend(temp_list)
+                asset_tags.append(opensource_type)
     else:
-        logging.error("Type not supported")
-        sys.exit(1) 
+        plist = discover_specified_type(args.type, args, localpath)
+        asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory repo "+args.repo)
@@ -253,36 +277,13 @@ def discover(args, localpath):
     asset_data['id'] = asset_id
     asset_data['name'] = asset_name
     asset_data['type'] = atype
-    asset_data['owner'] = handle
+    asset_data['owner'] = args.handle
     asset_data['products'] = plist
-    asset_tags = []
-    asset_tags.append(args.type)
     asset_data['tags'] = asset_tags
+    
+    return [ asset_data ]
 
-    resp = requests.get(asset_url + asset_id + "/" + auth_data)
-    if args.impact_refresh_days is not None:
-        auth_data = auth_data + "&impact_refresh_days=" + args.impact_refresh_days
-    if resp.status_code != 200:
-        # Asset does not exist so create one with POST
-        resp = requests.post(asset_url + auth_data, json=asset_data)
-        if resp.status_code == 200:
-            logging.info("Successfully created new asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content)
-        else:
-            logging.error("Failed to create new asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content)
-            return
-    else:
-        # asset exists so update it with PUT
-        resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset_data)
-        if resp.status_code == 200:
-            logging.info("Successfully updated asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content)
-        else:
-            logging.error("Failed to update existing asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content)
-
-def inventory(args):
+def get_inventory(args):
     path = None
     if args.repo.startswith('http'):
         path = tempfile.mkdtemp()
@@ -300,7 +301,9 @@ def inventory(args):
         logging.error('Not a valid repo')
         sys.exit(1) 
 
-    discover(args, path)
+    assets = discover_inventory(args, path)
 
     if args.repo.startswith('http'):
         shutil.rmtree(path)
+
+    return assets

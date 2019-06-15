@@ -29,9 +29,7 @@ def print_details(token):
     print ""
 
 # Main entry point
-def inventory(args):
-    asset_url = "https://" + args.instance + "/api/v2/assets/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+def get_inventory(args):
     params =  {}
     params['handle'] = args.handle
     params['tenant_id'] = args.azure_tenant_id
@@ -47,26 +45,8 @@ def inventory(args):
     if args.azure_subscription is None or args.azure_resource_group is None or args.azure_workspace is None:
         print_details(token)
         return
-    assets = get_inventory(params)
-    logging.info("Importing inventory...")
-    for asset in assets:
-        resp = requests.get(asset_url + asset['id'] + "/" + auth_data)
-        if resp.status_code != 200:
-            # asset does not exist so create one with POST
-            resp = requests.post(asset_url + auth_data, json=asset)
-            if resp.status_code == 200:
-                logging.info("Successfully created asset [%s]...", asset['name'])
-            else:
-                logging.error("Failed to create new asset: %s", json.dumps(asset))
-                logging.error("Response details: %s", resp.content)
-        else:
-            # asset exists so update it with PUT
-            resp = requests.put(asset_url + asset['id'] + "/" + auth_data, json=asset)
-            if resp.status_code == 200:
-                logging.info("Successfully updated asset [%s]...", asset['name'])
-            else:
-                logging.error("Failed to updated existing asset [%s]...", asset['name'])
-                logging.error("Response details: %s", resp.content)    
+    assets = retrieve_inventory(params)
+    return assets
 
 def parse_inventory(email,data,params):
     logging.info("Processing inventory retrieved from Azure...")
@@ -146,7 +126,7 @@ def get_os_type(ostype):
         return 'Red Hat'
     return ''
 
-def get_inventory(params):
+def retrieve_inventory(params):
     email = params['handle']
     sub_id = params['subscription']
     resource_group = params['resource_group']

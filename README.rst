@@ -39,6 +39,8 @@ optional arguments:
   --token TOKEN         The ThreatWatch API token of the user
   --instance INSTANCE   The ThreatWatch instance. Defaults to ThreatWatch
                         Cloud SaaS.
+  --csv_file CSV_FILE   Specify name of the CSV file to hold the exported
+                        asset information. Defaults to out.csv
 
 modes:
   Discovery modes supported
@@ -91,29 +93,35 @@ optional arguments:
 
 Mode: opensource
 $ python twigs.py opensource --help
-usage: twigs.py opensource [-h] --repo REPO --type {python,ruby,nodejs,dotnet,yarn} [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py opensource [-h] --repo REPO [--type {python,ruby,nodejs,dotnet,yarn}] [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
 
 optional arguments:
   -h, --help            show this help message and exit
   --repo REPO           Local path or git repo url for project
-  --type TYPE           Type of open source component to scan for {python,ruby,nodejs,dotnet,yarn}
+  --type TYPE           Type of open source component to scan for {python,ruby,nodejs,dotnet,yarn}. Defaults to all supported types if not specified
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME 
                         A name to be assigned to the discovered asset
+  --impact_refresh_days IMPACT_REFRESH_DAYS
+                        Request impact refresh for this asset for number of
+                        days (range 1 - 365 days)
 
 Mode: host
 $ python twigs.py host --help
-usage: twigs.py host [-h] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py host [-h] [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
 
 optional arguments:
   -h, --help            show this help message and exit
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+  --impact_refresh_days IMPACT_REFRESH_DAYS
+                        Request impact refresh for this asset for number of
+                        days (range 1 - 365 days)
 
 Mode: docker
 $ python twigs.py docker --help
-usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -123,6 +131,9 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+  --impact_refresh_days IMPACT_REFRESH_DAYS
+                        Request impact refresh for this asset for number of
+                        days (range 1 - 365 days)
 
 Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
 

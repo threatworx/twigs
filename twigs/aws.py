@@ -158,9 +158,7 @@ class EC2Impl(AWS):
         logging.info("Total %s assets found in inventory...",str(len(assets)))
         return assets
          
-def inventory(args):
-    asset_url = "https://" + args.instance + "/api/v2/assets/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+def get_inventory(args):
     params =  {}
     params['account_id'] = args.aws_account
     params['access_key'] = args.aws_access_key
@@ -169,23 +167,4 @@ def inventory(args):
     params['bucket'] = args.aws_s3_bucket
     aws =  EC2Impl(params)
     assets = aws.asset_inventory(args.handle)
-    logging.info("Processing assets...")
-    for asset in assets:
-        #print asset
-        resp = requests.get(asset_url + asset['id'] + "/" + auth_data)
-        if resp.status_code != 200:
-            # asset does not exist so create one with POST
-            resp = requests.post(asset_url + auth_data, json=asset)
-            if resp.status_code == 200:
-                logging.info("Successfully created asset [%s]...", asset['name'])
-            else:
-                logging.error("Failed to create new asset: %s", json.dumps(asset))
-                logging.error("Response details: %s", resp.content)
-        else:
-            # asset exists so update it with PUT
-            resp = requests.put(asset_url + asset['id'] + "/" + auth_data, json=asset)
-            if resp.status_code == 200:
-                logging.info("Successfully updated asset [%s]...", asset['name'])
-            else:
-                logging.error("Failed to updated existing asset [%s]...", asset['name'])
-                logging.error("Response details: %s", resp.content)
+    return assets

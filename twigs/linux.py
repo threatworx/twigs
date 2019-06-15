@@ -132,8 +132,6 @@ def discover(args, atype):
     asset_id = asset_id.replace(':','-')
     asset_name = asset_name.replace('/','-')
     asset_name = asset_name.replace(':','-')
-    asset_url = "https://" + instance + "/api/v2/assets/"
-    auth_data = "?handle=" + handle + "&token=" + token + "&format=json"
 
     plist = None
     if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux':
@@ -158,32 +156,11 @@ def discover(args, atype):
     asset_tags.append(atype)
     asset_data['tags'] = asset_tags
 
-    resp = requests.get(asset_url + asset_id + "/" + auth_data)
-    if args.impact_refresh_days is not None:
-        auth_data = auth_data + "&impact_refresh_days=" + args.impact_refresh_days
-    if resp.status_code != 200:
-        # Asset does not exist so create one with POST
-        resp = requests.post(asset_url + auth_data, json=asset_data)
-        if resp.status_code == 200:
-            logging.info("Successfully created new asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content)
-        else:
-            logging.error("Failed to create new asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content)
-            return
-    else:
-        # asset exists so update it with PUT
-        resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset_data)
-        if resp.status_code == 200:
-            logging.info("Successfully updated asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content)
-        else:
-            logging.error("Failed to update existing asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content)
+    return [ asset_data ]
 
-def inventory(args):
+def get_inventory(args):
     atype = get_asset_type()
     if not atype:
         sys.exit(1)
 
-    discover(args, atype)
+    return discover(args, atype)

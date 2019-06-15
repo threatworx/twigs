@@ -16,6 +16,7 @@ import sys
 import os
 import logging
 import argparse
+import requests
 
 import aws
 import linux
@@ -34,6 +35,59 @@ def validate_impact_refresh_days(impact_refresh_days):
             logging.error("[impact_refresh_days] parameter is not valid number.")
             sys.exit(1)
 
+def export_assets_to_csv(assets, csv_file):
+    logging.info("Exporting assets to CSV file [%s]", csv_file)
+    with open(csv_file, "w") as file:
+        for asset in assets:
+            file.write(asset['id'])
+            file.write(",")
+            file.write(asset['name'])
+            file.write(",")
+            file.write(asset['type'])
+            file.write(",")
+            file.write(":OWNER:" + asset['owner'])
+            if asset.get('tags') is not None:
+                for tag in asset['tags']:
+                    file.write(",")
+                    file.write(":TAG:" + tag)
+            for product in asset['products']:
+                file.write(",")
+                file.write(product)
+            file.write("\n")
+    logging.info("Successfully exported assets to CSV file!")
+
+def push_asset_to_TW(asset, args):
+    asset_url = "https://" + args.instance + "/api/v2/assets/"
+    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    asset_id = asset['id']
+
+    resp = requests.get(asset_url + asset_id + "/" + auth_data)
+    if args.mode != "aws" and args.mode != "azure" and args.impact_refresh_days is not None:
+        auth_data = auth_data + "&impact_refresh_days=" + args.impact_refresh_days
+    if resp.status_code != 200:
+        # Asset does not exist so create one with POST
+        resp = requests.post(asset_url + auth_data, json=asset)
+        if resp.status_code == 200:
+            logging.info("Successfully created new asset [%s]", asset_id)
+            logging.info("Response content: %s", resp.content)
+        else:
+            logging.error("Failed to create new asset [%s]", asset_id)
+            logging.error("Response details: %s", resp.content)
+            return
+    else:
+        # asset exists so update it with PUT
+        resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset)
+        if resp.status_code == 200:
+            logging.info("Successfully updated asset [%s]", asset_id)
+            logging.info("Response content: %s", resp.content)
+        else:
+            logging.error("Failed to update existing asset [%s]", asset_id)
+            logging.error("Response details: %s", resp.content)
+
+def push_assets_to_TW(assets, args):
+    for asset in assets:
+        push_asset_to_TW(asset, args)
+
 def main(args=None):
     
     if args is None:
@@ -46,8 +100,9 @@ def main(args=None):
     subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
     # Required arguments
     parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user', required=True)
-    parser.add_argument('--token', help='The ThreatWatch API token of the user', required=True)
+    parser.add_argument('--token', help='The ThreatWatch API token of the user', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Defaults to ThreatWatch Cloud SaaS.', default='api.threatwatch.io')
+    parser.add_argument('--csv_file', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
 
     # Arguments required for AWS discovery
     parser_aws = subparsers.add_parser ("aws", help = "Discover AWS instances")
@@ -69,7 +124,7 @@ def main(args=None):
     # Arguments required for open source discovery
     parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
     parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
-    parser_opensource.add_argument('--type', choices=['python', 'ruby', 'nodejs', 'dotnet', 'yarn', 'pom'], help='Type of open source component to scan for', required=True)
+    parser_opensource.add_argument('--type', choices=opensource.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
     parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     parser_opensource.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
@@ -98,19 +153,29 @@ def main(args=None):
 
     logging.info('Started new run...')
     logging.debug('Arguments: %s', str(args))
+
+    if args.token is None or len(args.token) == 0:
+        logging.debug('[token] argument is not specified. Asset information will be exported to CSV file [%s]', args.csv_file)
+
+    assets = []
     if args.mode == 'aws':
-        aws.inventory(args)
+        assets = aws.get_inventory(args)
     elif args.mode == 'azure':
-        azure.inventory(args)
+        assets = azure.get_inventory(args)
     elif args.mode == 'opensource':
         validate_impact_refresh_days(args.impact_refresh_days)
-        opensource.inventory(args)
+        assets = opensource.get_inventory(args)
     elif args.mode == 'host':
         validate_impact_refresh_days(args.impact_refresh_days)
-        linux.inventory(args)
+        assets = linux.get_inventory(args)
     elif args.mode == 'docker':
         validate_impact_refresh_days(args.impact_refresh_days)
-        docker.inventory(args)
+        assets = docker.get_inventory(args)
+
+    export_assets_to_csv(assets, args.csv_file)
+
+    if args.token is not None and len(args.token) > 0:
+        push_assets_to_TW(assets, args)
 
     logging.info('Run completed...')
 
