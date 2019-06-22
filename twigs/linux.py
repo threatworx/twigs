@@ -8,6 +8,7 @@ import requests
 import json
 import socket
 import csv
+import ipaddress
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -150,8 +151,18 @@ def discover(args):
             csv_reader = csv.DictReader(csv_file, quoting=csv.QUOTE_NONE, escapechar='\\')
             remote_hosts = []
             for row in csv_reader:
-                remote_hosts.append(row)
-                remote_hosts[-1]['remote'] = True
+                if '/' in row['hostname']: # CIDR is specified, then expand it
+                    logging.info("Enumerating IPs based on specified CIDR [%s]", row['hostname'])
+                    net = ipaddress.ip_network(unicode(row['hostname'],"ascii"))
+                    for a in net:
+                        trow = row.copy()
+                        trow['hostname'] = str(a)
+                        remote_hosts.append(trow)
+                        remote_hosts[-1]['remote'] = True
+                        logging.info("Enumerated IP: %s", a)
+                else:
+                    remote_hosts.append(row)
+                    remote_hosts[-1]['remote'] = True
         return discover_hosts(args, remote_hosts)
     else:
         host = { }

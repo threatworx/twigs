@@ -131,7 +131,7 @@ def main(args=None):
 
     # Arguments required for linux host discovery 
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
-    parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname')
+    parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
     parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     parser_linux.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')

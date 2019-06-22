@@ -115,7 +115,8 @@ optional arguments:
   --remote_hosts_csv REMOTE_HOSTS_CSV
                         CSV file containing details of remote hosts. CSV file
                         column header [1st row] should be: hostname,userlogin,
-                        userpwd,privatekey,assetid,assetname
+                        userpwd,privatekey,assetid,assetname. Note "hostname"
+                        column can contain hostname, IP address, CIDR range.
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
