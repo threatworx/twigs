@@ -108,10 +108,14 @@ optional arguments:
 
 Mode: host
 $ python twigs.py host --help
-usage: twigs.py host [-h] [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
+usage: twigs.py host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
 
 optional arguments:
   -h, --help            show this help message and exit
+  --remote_hosts_csv REMOTE_HOSTS_CSV
+                        CSV file containing details of remote hosts. CSV file
+                        column header [1st row] should be: hostname,userlogin,
+                        userpwd,privatekey,assetid,assetname
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
