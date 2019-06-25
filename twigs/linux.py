@@ -166,7 +166,7 @@ def discover(args):
         return discover_hosts(args, remote_hosts)
     else:
         host = { }
-        host['assetid'] = get_ip() if args.asset_id is None else args.assetid
+        host['assetid'] = get_ip() if args.assetid is None else args.assetid
         host['assetname'] = host['assetid'] if args.assetname is None else args.assetname
         host['remote'] = False
         hosts = [ host ]
