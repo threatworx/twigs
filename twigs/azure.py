@@ -85,6 +85,7 @@ def parse_inventory(email,data,params):
                 asset_map['tags'].append(asset_map['type'])
             if asset_map['type'] == 'Windows':
                 asset_map['tags'].append('OS_RELEASE:' + os)
+            asset_map['tags'].append("SOURCE:Azure:" + params['tenant_id'])
             assets.append(asset_map)
             hosts.append(host)
         else:

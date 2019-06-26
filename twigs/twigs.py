@@ -23,6 +23,7 @@ import linux
 import opensource
 import docker
 import azure
+import servicenow
 
 def validate_impact_refresh_days(impact_refresh_days):
     if impact_refresh_days is not None:
@@ -62,7 +63,7 @@ def push_asset_to_TW(asset, args):
     asset_id = asset['id']
 
     resp = requests.get(asset_url + asset_id + "/" + auth_data)
-    if args.mode != "aws" and args.mode != "azure" and args.impact_refresh_days is not None:
+    if args.mode not in ["aws", "azure", "servicenow"] and args.impact_refresh_days is not None:
         auth_data = auth_data + "&impact_refresh_days=" + args.impact_refresh_days
     if resp.status_code != 200:
         # Asset does not exist so create one with POST
@@ -121,6 +122,12 @@ def main(args=None):
     parser_aws.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
     parser_aws.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
 
+    # Arguments required for ServiceNow discovery
+    parser_aws = subparsers.add_parser ("servicenow", help = "Discover inventory from ServiceNow instance")
+    parser_aws.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
+    parser_aws.add_argument('--snow_user_pwd', help='User password of ServiceNow account', required=True)
+    parser_aws.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
+
     # Arguments required for open source discovery
     parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
     parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
@@ -163,6 +170,8 @@ def main(args=None):
         assets = aws.get_inventory(args)
     elif args.mode == 'azure':
         assets = azure.get_inventory(args)
+    elif args.mode == 'servicenow':
+        assets = servicenow.get_inventory(args)
     elif args.mode == 'opensource':
         validate_impact_refresh_days(args.impact_refresh_days)
         assets = opensource.get_inventory(args)

@@ -144,6 +144,7 @@ class EC2Impl(AWS):
                         asset['tags'] = [ 'Linux' ]
                     elif 'Windows' in asset['type']:
                         asset['tags'] = [ 'Windows' ]
+                    asset['tags'].append("SOURCE:AWS:"+self.account_id)
                     logging.info("Retrieving product details for [%s]", asset['name'])
                     asset['products'] = self.product_inventory(asset['id'], asset['type'])
                     logging.info("Retrieving patch details for [%s]", asset['name'])
