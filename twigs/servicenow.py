@@ -38,9 +38,9 @@ def build_host_cache(all_hosts):
         host_count = host_count + 1 
     return host_cache
 
-def get_asset_inventory(snow_username, snow_password, snow_instance, handle):
+def get_asset_inventory(args):
     logging.info("Getting asset inventory from ServiceNow (this may take some time) ...")
-    client = pysnow.Client(instance=snow_instance, user=snow_username, password=snow_password)
+    client = pysnow.Client(instance=args.snow_instance, user=args.snow_user, password=args.snow_user_pwd)
 
     snow_base_api_path = '/table/'
     hosts = {}
@@ -72,19 +72,22 @@ def get_asset_inventory(snow_username, snow_password, snow_instance, handle):
             # create new host entry and add it to the dictionary
             host = {}
             host['id'] = host_id
-            host['name'] = snow_host['ip_address'] if len(snow_host['ip_address'])>0 else snow_host['asset_tag']
+            host['name'] = snow_host['ip_address']
             host['type'] = get_asset_type(snow_host['os'])
-            host['owner'] = handle
+            host['owner'] = args.handle
             products = []
             products.append(snow_host['os'])
             products.append(product_version)
             host['products'] = products
             asset_tags = []
-            asset_tags.append('SOURCE:ServiceNow:' + snow_instance)
+            if args.enable_tracking_tags == True:
+                asset_tags.append('SOURCE:ServiceNow:' + args.snow_instance)
+                asset_tags.append("SERVICENOW_ASSET_TAG:" + snow_host['asset_tag'])
+            else:
+                asset_tags.append('SOURCE:ServiceNow')
             asset_tags.append('OS_RELEASE:' + snow_host['os'])
             if host['type'] != 'Other':
                 asset_tags.append(host['type'])
-            asset_tags.append("SERVICENOW_ASSET_TAG:" + snow_host['asset_tag'])
             host['tags'] = asset_tags
             hosts[host_id] = host
         else:
@@ -99,7 +102,7 @@ def get_inventory(args):
     password = args.snow_user_pwd
     snow_instance = args.snow_instance
 
-    assets = get_asset_inventory(login, password, snow_instance, args.handle)
+    assets = get_asset_inventory(args)
     logging.info("Total %s assets found in inventory...",str(len(assets)))
     return assets
 

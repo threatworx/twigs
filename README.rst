@@ -55,7 +55,7 @@ modes:
 
 Mode: aws
 $ python twigs.py aws --help
-usage: twigs.py aws [-h] --aws_account AWS_ACCOUNT --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --aws_region AWS_REGION --aws_s3_bucket AWS_S3_BUCKET
+usage: twigs.py aws [-h] --aws_account AWS_ACCOUNT --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --aws_region AWS_REGION --aws_s3_bucket AWS_S3_BUCKET [--enable_tracking_tags]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -69,10 +69,13 @@ optional arguments:
                         AWS region
   --aws_s3_bucket AWS_S3_BUCKET
                         AWS S3 inventory bucket
+  --enable_tracking_tags
+                        Enable recording AWS specific information (like AWS
+                        Account ID, etc.) as asset tags
 
 Mode: azure
 $ python twigs.py azure --help
-usage: twigs.py azure [-h]  --azure_tenant_id AZURE_TENANT_ID --azure_application_id AZURE_APPLICATION_ID --azure_application_key AZURE_APPLICATION_KEY [--azure_subscription AZURE_SUBSCRIPTION] [--azure_resource_group AZURE_RESOURCE_GROUP] [--azure_workspace AZURE_WORKSPACE]
+usage: twigs.py azure [-h]  --azure_tenant_id AZURE_TENANT_ID --azure_application_id AZURE_APPLICATION_ID --azure_application_key AZURE_APPLICATION_KEY [--azure_subscription AZURE_SUBSCRIPTION] [--azure_resource_group AZURE_RESOURCE_GROUP] [--azure_workspace AZURE_WORKSPACE] [--enable_tracking_tags]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -91,10 +94,13 @@ optional arguments:
   --azure_workspace AZURE_WORKSPACE
                         Azure Workspace. If not specified, then available
                         values will be displayed
+  --enable_tracking_tags
+                        Enable recording Azure specific information (like
+                        Azure Tenant ID, etc.) as asset tags
 
 Mode: servicenow
 $ python twigs.py servicenow --help
-usage: twigs.py servicenow [-h] --snow_user SNOW_USER --snow_user_pwd SNOW_USER_PWD --snow_instance SNOW_INSTANCE
+usage: twigs.py servicenow [-h] --snow_user SNOW_USER --snow_user_pwd SNOW_USER_PWD --snow_instance SNOW_INSTANCE [--enable_tracking_tags]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -104,6 +110,9 @@ optional arguments:
                         User password of ServiceNow account
   --snow_instance SNOW_INSTANCE
                         ServiceNow Instance name
+  --enable_tracking_tags
+                        Enable recording ServiceNow specific information (like
+                        ServiceNow instance name, etc.) as asset tags
 
 Mode: opensource
 $ python twigs.py opensource --help

@@ -38,6 +38,7 @@ def get_inventory(args):
     params['subscription'] = args.azure_subscription
     params['resource_group'] = args.azure_resource_group
     params['workspace'] = args.azure_workspace
+    params['enable_tracking_tags'] = args.enable_tracking_tags
     token = get_access_token(params)
     if token is None:
         return
@@ -85,7 +86,10 @@ def parse_inventory(email,data,params):
                 asset_map['tags'].append(asset_map['type'])
             if asset_map['type'] == 'Windows':
                 asset_map['tags'].append('OS_RELEASE:' + os)
-            asset_map['tags'].append("SOURCE:Azure:" + params['tenant_id'])
+            if params['enable_tracking_tags'] == True:
+                asset_map['tags'].append("SOURCE:Azure:" + params['tenant_id'])
+            else:
+                asset_map['tags'].append("SOURCE:Azure")
             assets.append(asset_map)
             hosts.append(host)
         else:

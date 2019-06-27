@@ -16,6 +16,7 @@ class AWS(object):
         self.access_key = params['access_key']
         self.secret_key = params['secret_key']
         self.region = params['region']
+        self.enable_tracking_tags = params['enable_tracking_tags']
 
     def auth(self, url, user, passwd):
         raise NotImplementedError("Subclass must implement abstract method")
@@ -144,7 +145,10 @@ class EC2Impl(AWS):
                         asset['tags'] = [ 'Linux' ]
                     elif 'Windows' in asset['type']:
                         asset['tags'] = [ 'Windows' ]
-                    asset['tags'].append("SOURCE:AWS:"+self.account_id)
+                    if self.enable_tracking_tags == True:
+                        asset['tags'].append("SOURCE:AWS:"+self.account_id)
+                    else:
+                        asset['tags'].append("SOURCE:AWS")
                     logging.info("Retrieving product details for [%s]", asset['name'])
                     asset['products'] = self.product_inventory(asset['id'], asset['type'])
                     logging.info("Retrieving patch details for [%s]", asset['name'])
@@ -166,6 +170,7 @@ def get_inventory(args):
     params['secret_key'] = args.aws_secret_key
     params['region'] = args.aws_region
     params['bucket'] = args.aws_s3_bucket
+    params['enable_tracking_tags'] = args.enable_tracking_tags
     aws =  EC2Impl(params)
     assets = aws.asset_inventory(args.handle)
     return assets

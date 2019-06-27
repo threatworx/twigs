@@ -112,21 +112,24 @@ def main(args=None):
     parser_aws.add_argument('--aws_secret_key', help='AWS secret key', required=True)
     parser_aws.add_argument('--aws_region', help='AWS region', required=True)
     parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
+    parser_aws.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording AWS specific information (like AWS Account ID, etc.) as asset tags', required=False)
 
     # Arguments required for Azure discovery
-    parser_aws = subparsers.add_parser ("azure", help = "Discover Azure instances")
-    parser_aws.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
-    parser_aws.add_argument('--azure_application_id', help='Azure Application ID', required=True)
-    parser_aws.add_argument('--azure_application_key', help='Azure Application Key', required=True)
-    parser_aws.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
-    parser_aws.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
-    parser_aws.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
+    parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
+    parser_azure.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
+    parser_azure.add_argument('--azure_application_id', help='Azure Application ID', required=True)
+    parser_azure.add_argument('--azure_application_key', help='Azure Application Key', required=True)
+    parser_azure.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
+    parser_azure.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
+    parser_azure.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
+    parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
     # Arguments required for ServiceNow discovery
-    parser_aws = subparsers.add_parser ("servicenow", help = "Discover inventory from ServiceNow instance")
-    parser_aws.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
-    parser_aws.add_argument('--snow_user_pwd', help='User password of ServiceNow account', required=True)
-    parser_aws.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
+    parser_snow = subparsers.add_parser ("servicenow", help = "Discover inventory from ServiceNow instance")
+    parser_snow.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
+    parser_snow.add_argument('--snow_user_pwd', help='User password of ServiceNow account', required=True)
+    parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
+    parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
     # Arguments required for open source discovery
     parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
