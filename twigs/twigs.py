@@ -25,17 +25,6 @@ import docker
 import azure
 import servicenow
 
-def validate_impact_refresh_days(impact_refresh_days):
-    if impact_refresh_days is not None:
-        if impact_refresh_days.isdigit():
-            impact_refresh_days = int(impact_refresh_days)
-            if impact_refresh_days < 0 or impact_refresh_days > 365:
-                logging.error("[impact_refresh_days] parameter not valid. Valid range is 0 - 365 days.")
-                sys.exit(1)
-        else:
-            logging.error("[impact_refresh_days] parameter is not valid number.")
-            sys.exit(1)
-
 def export_assets_to_csv(assets, csv_file):
     logging.info("Exporting assets to CSV file [%s]", csv_file)
     with open(csv_file, "w") as file:
@@ -63,31 +52,51 @@ def push_asset_to_TW(asset, args):
     asset_id = asset['id']
 
     resp = requests.get(asset_url + asset_id + "/" + auth_data)
-    if args.mode not in ["aws", "azure", "servicenow"] and args.impact_refresh_days is not None:
-        auth_data = auth_data + "&impact_refresh_days=" + args.impact_refresh_days
     if resp.status_code != 200:
         # Asset does not exist so create one with POST
         resp = requests.post(asset_url + auth_data, json=asset)
         if resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content)
+            return asset_id
         else:
             logging.error("Failed to create new asset [%s]", asset_id)
             logging.error("Response details: %s", resp.content)
-            return
+            return None
     else:
         # asset exists so update it with PUT
         resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset)
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content)
+            return asset_id
         else:
             logging.error("Failed to update existing asset [%s]", asset_id)
             logging.error("Response details: %s", resp.content)
+            return None
 
 def push_assets_to_TW(assets, args):
+    asset_id_list = []
     for asset in assets:
-        push_asset_to_TW(asset, args)
+        asset_id = push_asset_to_TW(asset, args)
+        if asset_id is not None:
+            asset_id_list.append(asset_id)
+
+    if args.scan_type is not None:
+        if len(asset_id_list) == 0:
+            logging.info("No assets to scan...")
+            return 
+        logging.info("Starting impact refresh for assets %s", str(asset_id_list))
+        scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
+        scan_payload = { }
+        scan_payload['scan_type'] = args.scan_type
+        scan_payload['assets'] = asset_id_list
+        resp = requests.post(scan_api_url, json=scan_payload)
+        if resp.status_code == 200:
+            logging.info("Started impact refresh...")
+        else:
+            logging.error("Failed to start impact refresh")
+            logging.error("Response details: %s", resp.content)
 
 def main(args=None):
     
@@ -104,6 +113,7 @@ def main(args=None):
     parser.add_argument('--token', help='The ThreatWatch API token of the user', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Defaults to ThreatWatch Cloud SaaS.', default='api.threatwatch.io')
     parser.add_argument('--csv_file', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
+    parser.add_argument('--scan_type', choices=["quick", "regular", "full"], help='Perform impact refresh for asset(s)')
 
     # Arguments required for AWS discovery
     parser_aws = subparsers.add_parser ("aws", help = "Discover AWS instances")
@@ -137,21 +147,18 @@ def main(args=None):
     parser_opensource.add_argument('--type', choices=opensource.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
     parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-    parser_opensource.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
 
     # Arguments required for linux host discovery 
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
     parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
     parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-    parser_linux.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
 
     # Arguments required for docker discovery 
     parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
     parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
     parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-    parser_docker.add_argument('--impact_refresh_days', help='Request impact refresh for this asset for number of days (range 1 - 365 days)')
     args = parser.parse_args()
 
 
@@ -176,13 +183,10 @@ def main(args=None):
     elif args.mode == 'servicenow':
         assets = servicenow.get_inventory(args)
     elif args.mode == 'opensource':
-        validate_impact_refresh_days(args.impact_refresh_days)
         assets = opensource.get_inventory(args)
     elif args.mode == 'host':
-        validate_impact_refresh_days(args.impact_refresh_days)
         assets = linux.get_inventory(args)
     elif args.mode == 'docker':
-        validate_impact_refresh_days(args.impact_refresh_days)
         assets = docker.get_inventory(args)
 
     export_assets_to_csv(assets, args.csv_file)

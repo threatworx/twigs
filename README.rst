@@ -29,7 +29,7 @@ Note - twigs requires python 2.7 It is recommended to use virtual environments t
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 
 $ python twigs.py --help
-usage: twigs.py [-h] --handle HANDLE [--token TOKEN] [--instance INSTANCE] [--csv_file CSV_FILE] {aws,azure,servicenow,opensource,host,docker} ...
+usage: twigs.py [-h] --handle HANDLE [--token TOKEN] [--instance INSTANCE] [--csv_file CSV_FILE] [--scan_type {quick,regular,full}] {aws,azure,servicenow,opensource,host,docker} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -41,6 +41,8 @@ optional arguments:
                         Cloud SaaS.
   --csv_file CSV_FILE   Specify name of the CSV file to hold the exported
                         asset information. Defaults to out.csv
+  --scan_type {quick,regular,full}
+                        Perform impact refresh for asset(s)
 
 modes:
   Discovery modes supported
@@ -116,7 +118,7 @@ optional arguments:
 
 Mode: opensource
 $ python twigs.py opensource --help
-usage: twigs.py opensource [-h] --repo REPO [--type {python,ruby,nodejs,dotnet,yarn}] [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
+usage: twigs.py opensource [-h] --repo REPO [--type {python,ruby,nodejs,dotnet,yarn}] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -125,13 +127,10 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME 
                         A name to be assigned to the discovered asset
-  --impact_refresh_days IMPACT_REFRESH_DAYS
-                        Request impact refresh for this asset for number of
-                        days (range 1 - 365 days)
 
 Mode: host
 $ python twigs.py host --help
-usage: twigs.py host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
+usage: twigs.py host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -143,13 +142,10 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
-  --impact_refresh_days IMPACT_REFRESH_DAYS
-                        Request impact refresh for this asset for number of
-                        days (range 1 - 365 days)
 
 Mode: docker
 $ python twigs.py docker --help
-usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME] [--impact_refresh_days IMPACT_REFRESH_DAYS]
+usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -159,9 +155,6 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
-  --impact_refresh_days IMPACT_REFRESH_DAYS
-                        Request impact refresh for this asset for number of
-                        days (range 1 - 365 days)
 
 Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
 
