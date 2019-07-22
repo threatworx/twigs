@@ -82,15 +82,19 @@ def push_assets_to_TW(assets, args):
         if asset_id is not None:
             asset_id_list.append(asset_id)
 
-    if args.scan_type is not None:
+    if args.scan is not None:
         if len(asset_id_list) == 0:
             logging.info("No assets to scan...")
             return 
         logging.info("Starting impact refresh for assets %s", str(asset_id_list))
         scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
         scan_payload = { }
-        scan_payload['scan_type'] = args.scan_type
+        scan_payload['scan_type'] = args.scan
         scan_payload['assets'] = asset_id_list
+        if args.purge_assets:
+            scan_payload['mode'] = 'email-purge'
+        elif args.email_report:
+            scan_payload['mode'] = 'email'
         resp = requests.post(scan_api_url, json=scan_payload)
         if resp.status_code == 200:
             logging.info("Started impact refresh...")
@@ -109,11 +113,13 @@ def main(args=None):
     parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects')
     subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
     # Required arguments
-    parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user', required=True)
-    parser.add_argument('--token', help='The ThreatWatch API token of the user', required=False)
-    parser.add_argument('--instance', help='The ThreatWatch instance. Defaults to ThreatWatch Cloud SaaS.', default='api.threatwatch.io')
-    parser.add_argument('--csv_file', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
-    parser.add_argument('--scan_type', choices=["quick", "regular", "full"], help='Perform impact refresh for asset(s)')
+    parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
+    parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
+    parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
+    parser.add_argument('--out', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
+    parser.add_argument('--scan', choices=["quick", "regular", "full"], help='Perform impact refresh for asset(s)')
+    parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
+    parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
     # Arguments required for AWS discovery
     parser_aws = subparsers.add_parser ("aws", help = "Discover AWS instances")
@@ -161,7 +167,6 @@ def main(args=None):
     parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     args = parser.parse_args()
 
-
     # Setup the logger
     logging.basicConfig(filename=logfilename, level=logging_level, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     console = logging.StreamHandler()
@@ -172,8 +177,35 @@ def main(args=None):
     logging.info('Started new run...')
     logging.debug('Arguments: %s', str(args))
 
+    if args.handle is None:
+        temp = os.environ.get('TW_HANDLE')
+        if temp is None:
+            logging.error('Error: Missing "--handle" argument and "TW_HANDLE" environment variable is not set as well')
+            return
+        args.handle = temp
+
+    if args.token is None:
+        temp = os.environ.get('TW_TOKEN')
+        if temp is not None:
+            logging.info('Using token specified in "TW_TOKEN" environment variable...')
+            args.token = temp
+
+    if args.instance is None:
+        temp = os.environ.get('TW_INSTANCE')
+        if temp is not None:
+            logging.info('Using instance specified in "TW_INSTANCE" environment variable...')
+            args.instance = temp
+
+    if args.purge_assets == True and (args.scan is None or args.email_report == False):
+        logging.error('Purge assets option (--purge_assets) is used with Scan option (--scan) and Email report (--email_report)')
+        return
+
+    if args.token is None and args.scan is not None:
+        logging.error('Scan is performed on ThreatWatch instance. Please specify connection details i.e. "--token" and "--instance" arguments.')
+        return 
+
     if args.token is None or len(args.token) == 0:
-        logging.debug('[token] argument is not specified. Asset information will be exported to CSV file [%s]', args.csv_file)
+        logging.debug('[token] argument is not specified. Asset information will be exported to CSV file [%s]', args.out)
 
     assets = []
     if args.mode == 'aws':
@@ -189,7 +221,7 @@ def main(args=None):
     elif args.mode == 'docker':
         assets = docker.get_inventory(args)
 
-    export_assets_to_csv(assets, args.csv_file)
+    export_assets_to_csv(assets, args.out)
 
     if args.token is not None and len(args.token) > 0:
         push_assets_to_TW(assets, args)

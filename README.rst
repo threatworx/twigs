@@ -29,20 +29,28 @@ Note - twigs requires python 2.7 It is recommended to use virtual environments t
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 
 $ python twigs.py --help
-usage: twigs.py [-h] --handle HANDLE [--token TOKEN] [--instance INSTANCE] [--csv_file CSV_FILE] [--scan_type {quick,regular,full}] {aws,azure,servicenow,opensource,host,docker} ...
+usage: twigs.py [-h] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--scan {quick,regular,full}] [--email_report] [--purge_assets] {aws,azure,servicenow,opensource,host,docker} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
 optional arguments:
   -h, --help            show this help message and exit
-  --handle HANDLE       The ThreatWatch registered email id/handle of the user
-  --token TOKEN         The ThreatWatch API token of the user
-  --instance INSTANCE   The ThreatWatch instance. Defaults to ThreatWatch
-                        Cloud SaaS.
-  --csv_file CSV_FILE   Specify name of the CSV file to hold the exported
+  --handle HANDLE       The ThreatWatch registered email id/handle of the
+                        user. Note this can set as "TW_HANDLE" environment
+                        variable
+  --token TOKEN         The ThreatWatch API token of the user. Note this can
+                        be set as "TW_TOKEN" environment variable
+  --instance INSTANCE   The ThreatWatch instance. Note this can be set as 
+                        "TW_INSTANCE" environment variable
+  --out OUT             Specify name of the CSV file to hold the exported
                         asset information. Defaults to out.csv
-  --scan_type {quick,regular,full}
+  --scan SCAN           Perform impact refresh for asset(s) by specifying one
+                        of the scan options {quick,regular,full}
                         Perform impact refresh for asset(s)
+  --email_report        After impact refresh is complete email scan report to
+                        self
+  --purge_assets        Purge the asset(s) after impact refresh is complete
+                        and scan report is emailed to self
 
 modes:
   Discovery modes supported
