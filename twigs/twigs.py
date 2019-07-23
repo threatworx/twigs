@@ -182,6 +182,7 @@ def main(args=None):
         if temp is None:
             logging.error('Error: Missing "--handle" argument and "TW_HANDLE" environment variable is not set as well')
             return
+        logging.info('Using handle specified in "TW_HANDLE" environment variable...')
         args.handle = temp
 
     if args.token is None:

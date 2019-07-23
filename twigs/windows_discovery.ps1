@@ -2,19 +2,24 @@
 param(
     [parameter(Mandatory=$true, HelpMessage='Enter the email handle for ThreatWatch instance')]
     [String]
-    $tw_handle,
+    $handle,
 
     [parameter(Mandatory=$true, HelpMessage='Enter the API key for the specified email handle for ThreatWatch instance')]
     [String]
-    $tw_api_key,
+    $token,
 
-    [parameter()]
+    [parameter(Mandatory=$true, HelpMessage='Specify the ThreatWatch instance')]
     [String]
-    $tw_instance,
+    $instance,
 
-    [parameter(Mandatory=$true, HelpMessage='Enter the Asset ID')]
+    [parameter(Mandatory=$false, HelpMessage='Enter the Asset ID')]
     [String]
-    $asset_id
+    $assetid,
+
+    [parameter(Mandatory=$false, HelpMessage='Enter the Asset Name')]
+    [String]
+    $assetname
+
 )
 
 if ($PSVersionTable) {
@@ -29,19 +34,26 @@ else {
     exit
 }
 
-if ( $tw_instance ) {
-    $tw_assets_url = 'https://' + $tw_instance+ '/api/v2/assets/'
+$ip_address = (get-netadapter | get-netipaddress | ? addressfamily -eq 'IPv4').ipaddress
+if (!$assetid) {
+    $assetid = $ip_address
 }
-else {
-    $tw_assets_url = 'https://threatwatch.io/api/v2/assets/'
+if (!$assetname) {
+    $assetname = $assetid
 }
+$assetid = $assetid.Replace("/","-")
+$assetid = $assetid.Replace(":","-")
+$assetname = $assetname.Replace("/","-")
+$assetname = $assetname.Replace(":","-")
+
+$tw_assets_url = 'https://' + $instance+ '/api/v2/assets/'
 
 # Check if asset exists
 $asset_exists = 1
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$url = $tw_assets_url + $asset_id + '/?handle=' + $tw_handle + '&token=' + $tw_api_key + '&format=json'
+$url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
 $http_method = 'Get'
 Write-Host 'Validating credentials...'
 try {
@@ -115,21 +127,21 @@ $http_method = ''
 if ($asset_exists -eq 0) {
     # If asset does not exist, then create one
     $http_method = 'Post'
-    $url = $tw_assets_url + '?handle=' + $tw_handle + '&token=' + $tw_api_key + '&format=json'
+    $url = $tw_assets_url + '?handle=' + $handle + '&token=' + $token + '&format=json'
 }
 else {
     # If asset exists, then update it
     $http_method = 'Put'
-    $url = $tw_assets_url + $asset_id + '/?handle=' + $tw_handle + '&token=' + $tw_api_key + '&format=json'
+    $url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
 }
 
 
 $payload = @{
-	id=$asset_id
-	name=$asset_id
+	id=$assetid
+	name=$assetname
 	type='Windows'
 	description=''
-	owner=$tw_handle
+	owner=$handle
 	patches=$patch_json_array
 	products=$product_json_array
 	tags=$tags_json_array
