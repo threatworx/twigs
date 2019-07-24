@@ -168,7 +168,7 @@ Note: For Windows hosts, you can use provided PowerShell script (windows_discove
 
 usage: .\\windows_discovery.ps1 -?
 
-windows_discovery.ps1 [-tw_handle] <string> [-tw_api_key] <string> [[-tw_instance] <string>] [-asset_id] <string> [<CommonParameters>]
+windows_discovery.ps1 [-handle] <string> [-token] <string> [-instance] <string> [[-assetid] <string>] [[-assetname] <string>] [<CommonParamete rs>]
 
 Credits
 -------
