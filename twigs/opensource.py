@@ -2,6 +2,7 @@ import sys
 import re
 import os
 import shutil
+import stat
 import subprocess
 import argparse
 import logging
@@ -15,6 +16,8 @@ import requirements
 from xml.dom import minidom
 
 GIT_PATH = '/usr/bin/git'
+if os.name == 'nt':
+    GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
 SUPPORTED_TYPES = ['python', 'ruby', 'yarn', 'dotnet', 'nodejs', 'pom']
 
 def find_files(localpath, filename):
@@ -283,6 +286,11 @@ def discover_inventory(args, localpath):
     
     return [ asset_data ]
 
+# Note this error routine assumes that the file was read-only and hence could not be deleted
+def on_rm_error( func, path, exc_info):
+    os.chmod( path, stat.S_IWRITE )
+    os.unlink( path )
+
 def get_inventory(args):
     path = None
     if args.repo.startswith('http'):
@@ -304,6 +312,6 @@ def get_inventory(args):
     assets = discover_inventory(args, path)
 
     if args.repo.startswith('http'):
-        shutil.rmtree(path)
+        shutil.rmtree(path, onerror = on_rm_error)
 
     return assets

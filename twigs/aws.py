@@ -6,6 +6,7 @@ import os
 import logging
 import argparse
 import requests
+import tempfile
 
 RELEVANT_BUCKET_OBJECT_KEYS = ['AWS:WindowsUpdate', 'AWS:Application', 'AWS:InstanceInformation']
 
@@ -57,7 +58,7 @@ class EC2Impl(AWS):
             if 'AWS:WindowsUpdate' in obj.key and host in obj.key:
                 splits = obj.key.rsplit('/')
                 prefix = splits[0].split(':')[1]
-                fname = '/tmp/' + prefix + '-' +  splits[-1]
+                fname = tempfile.gettempdir() + prefix + '-' +  splits[-1]
                 if os.path.isfile(fname) == False:
                     self.s3_bucket.download_file(obj.key,fname)
                 try:
@@ -87,7 +88,7 @@ class EC2Impl(AWS):
             if 'AWS:Application' in obj.key and host in obj.key:
                 splits = obj.key.rsplit('/')
                 prefix = splits[0].split(':')[1]
-                fname = '/tmp/' + prefix + '-' +  splits[-1]
+                fname = tempfile.gettempdir() + prefix + '-' +  splits[-1]
                 if os.path.isfile(fname) == False:
                     self.s3_bucket.download_file(obj.key,fname)
                 try:
@@ -127,7 +128,7 @@ class EC2Impl(AWS):
             if 'AWS:InstanceInformation' in obj.key:
                 splits = obj.key.rsplit('/')
                 prefix = splits[0].split(':')[1]
-                fname = '/tmp/' + prefix + '-' +  splits[-1]
+                fname = tempfile.gettempdir() + prefix + '-' +  splits[-1]
                 self.s3_bucket.download_file(obj.key,fname)
                 try:
                     data = []
