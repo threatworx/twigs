@@ -20,7 +20,7 @@ import requests
 
 import aws
 import linux
-import opensource
+import repo
 import docker
 import azure
 import servicenow
@@ -110,7 +110,7 @@ def main(args=None):
     logfilename = "twigs.log"
     logging_level = logging.INFO
 
-    parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects')
+    parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and project repositories')
     subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
     # Required arguments
     parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
@@ -147,12 +147,12 @@ def main(args=None):
     parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
     parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
-    # Arguments required for open source discovery
-    parser_opensource = subparsers.add_parser ("opensource", help = "Discover open source assets")
-    parser_opensource.add_argument('--repo', help='Local path or git repo url for project', required=True)
-    parser_opensource.add_argument('--type', choices=opensource.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
-    parser_opensource.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-    parser_opensource.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    # Arguments required for repo discovery
+    parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")
+    parser_repo.add_argument('--repo', help='Local path or git repo url for project', required=True)
+    parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
+    parser_repo.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
     # Arguments required for linux host discovery 
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
@@ -215,8 +215,8 @@ def main(args=None):
         assets = azure.get_inventory(args)
     elif args.mode == 'servicenow':
         assets = servicenow.get_inventory(args)
-    elif args.mode == 'opensource':
-        assets = opensource.get_inventory(args)
+    elif args.mode == 'repo':
+        assets = repo.get_inventory(args)
     elif args.mode == 'host':
         assets = linux.get_inventory(args)
     elif args.mode == 'docker':

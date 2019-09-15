@@ -10,6 +10,7 @@ import requests
 import json
 import shutil
 import tempfile
+import pefile
 import glob
 import traceback
 import requirements
@@ -18,7 +19,7 @@ from xml.dom import minidom
 GIT_PATH = '/usr/bin/git'
 if os.name == 'nt':
     GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
-SUPPORTED_TYPES = ['python', 'ruby', 'yarn', 'dotnet', 'nodejs', 'pom']
+SUPPORTED_TYPES = ['python', 'ruby', 'yarn', 'dotnet', 'nodejs', 'pom', 'dll']
 
 def find_files(localpath, filename):
     ret_files = []
@@ -210,24 +211,53 @@ def discover_python(args, localpath):
                     plist.append(prod)
     return plist
 
-def discover_specified_type(opensource_type, args, localpath):
-    if opensource_type not in SUPPORTED_TYPES:
+def LOWORD(dword):
+    return dword & 0x0000ffff
+
+def HIWORD(dword): 
+    return dword >> 16
+
+def get_dll_version(path):
+
+    pe = pefile.PE(path)
+    if hasattr(pe, 'VS_FIXEDFILEINFO'):
+        ms = pe.VS_FIXEDFILEINFO[0].FileVersionMS
+        ls = pe.VS_FIXEDFILEINFO[0].FileVersionLS
+        return "%d.%d.%d.%d" % (HIWORD (ms), LOWORD (ms), HIWORD (ls), LOWORD (ls))
+    else:
+        return None
+
+def discover_dll(args, localpath):
+    plist = []
+    files = find_files(localpath, '.dll')
+    for file_path in files:
+        dll_version = get_dll_version(file_path)
+        if dll_version is None:
+            continue
+        dll_details = os.path.basename(file_path) + " " + dll_version
+        plist.append(dll_details)
+    return plist
+
+def discover_specified_type(repo_type, args, localpath):
+    if repo_type not in SUPPORTED_TYPES:
         logging.error("Type not supported")
         sys.exit(1) 
 
     plist = []
-    if opensource_type == 'python':
+    if repo_type == 'python':
         plist = discover_python(args, localpath)
-    elif opensource_type == 'ruby':
+    elif repo_type == 'ruby':
         plist = discover_ruby(args, localpath)
-    elif opensource_type == 'yarn':
+    elif repo_type == 'yarn':
         plist = discover_yarn(args, localpath)
-    elif opensource_type == 'dotnet':
+    elif repo_type == 'dotnet':
         plist = discover_packages_config(args, localpath)
-    elif opensource_type == 'nodejs':
+    elif repo_type == 'nodejs':
         plist = discover_package_json(args, localpath)
-    elif opensource_type == 'pom':
+    elif repo_type == 'pom':
         plist = discover_pom_xml(args, localpath)
+    elif repo_type == 'dll':
+        plist = discover_dll(args, localpath)
 
     return plist
 
@@ -263,11 +293,11 @@ def discover_inventory(args, localpath):
     asset_tags = []
     if args.type is None:
         # If no type is specified, then process all supported types
-        for opensource_type in SUPPORTED_TYPES:
-            temp_list = discover_specified_type(opensource_type, args, localpath)
+        for repo_type in SUPPORTED_TYPES:
+            temp_list = discover_specified_type(repo_type, args, localpath)
             if temp_list is not None and len(temp_list) > 0:
                 plist.extend(temp_list)
-                asset_tags.append(opensource_type)
+                asset_tags.append(repo_type)
     else:
         plist = discover_specified_type(args.type, args, localpath)
         asset_tags.append(args.type)
