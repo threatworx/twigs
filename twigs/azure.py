@@ -1,14 +1,9 @@
 import sys
 import json
-import boto3
-import difflib
-import codecs
 import os
 import subprocess
 import re
 import logging
-import argparse
-import requests
 
 # Prints details about subscriptions, resource groups and workspaces
 def print_details(token):

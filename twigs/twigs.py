@@ -24,26 +24,28 @@ import repo
 import docker
 import azure
 import servicenow
+import inv_file
+from __init__ import __version__
 
 def export_assets_to_csv(assets, csv_file):
     logging.info("Exporting assets to CSV file [%s]", csv_file)
-    with open(csv_file, "w") as file:
+    with open(csv_file, "w") as fd:
         for asset in assets:
-            file.write(asset['id'])
-            file.write(",")
-            file.write(asset['name'])
-            file.write(",")
-            file.write(asset['type'])
-            file.write(",")
-            file.write(":OWNER:" + asset['owner'])
+            fd.write(asset['id'])
+            fd.write(",")
+            fd.write(asset['name'])
+            fd.write(",")
+            fd.write(asset['type'])
+            fd.write(",")
+            fd.write(":OWNER:" + asset['owner'])
             if asset.get('tags') is not None:
                 for tag in asset['tags']:
-                    file.write(",")
-                    file.write(":TAG:" + tag)
+                    fd.write(",")
+                    fd.write(":TAG:" + tag)
             for product in asset['products']:
-                file.write(",")
-                file.write(product)
-            file.write("\n")
+                fd.write(",")
+                fd.write(product)
+            fd.write("\n")
     logging.info("Successfully exported assets to CSV file!")
 
 def push_asset_to_TW(asset, args):
@@ -113,6 +115,7 @@ def main(args=None):
     parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and project repositories')
     subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
     # Required arguments
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
     parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
     parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
@@ -140,6 +143,32 @@ def main(args=None):
     parser_azure.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
     parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
+    # Arguments required for docker discovery 
+    parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
+    parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
+    parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
+    # Arguments required for File-based discovery
+    parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
+    parser_file.add_argument('--in', help='Absolute path to input inventory file. Supported file format is: PDF', required=True)
+    parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified')
+    parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified')
+    parser_file.add_argument('--type', choices=['OpenSource'], help='Type of asset. Defaults to OpenSource if not specified', required=False, default='OpenSource')
+
+    # Arguments required for Host discovery on Linux
+    parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
+    parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
+    parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
+    # Arguments required for Repo discovery
+    parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")
+    parser_repo.add_argument('--repo', help='Local path or git repo url for project', required=True)
+    parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
+    parser_repo.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
     # Arguments required for ServiceNow discovery
     parser_snow = subparsers.add_parser ("servicenow", help = "Discover inventory from ServiceNow instance")
     parser_snow.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
@@ -147,24 +176,6 @@ def main(args=None):
     parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
     parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
-    # Arguments required for repo discovery
-    parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")
-    parser_repo.add_argument('--repo', help='Local path or git repo url for project', required=True)
-    parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
-    parser_repo.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-    parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-
-    # Arguments required for linux host discovery 
-    parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
-    parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
-    parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-    parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-
-    # Arguments required for docker discovery 
-    parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
-    parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
-    parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-    parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     args = parser.parse_args()
 
     # Setup the logger
@@ -221,6 +232,8 @@ def main(args=None):
         assets = linux.get_inventory(args)
     elif args.mode == 'docker':
         assets = docker.get_inventory(args)
+    elif args.mode == 'file':
+        assets = inv_file.get_inventory(args)
 
     export_assets_to_csv(assets, args.out)
 

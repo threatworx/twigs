@@ -23,18 +23,19 @@ ThreatWatch Information Gathering Script
 Features
 --------
 
-twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, open source and more).
+twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, repositories and more).
 
 Note - twigs requires python 2.7 It is recommended to use virtual environments to create isolated Python environments and reduce dependency conflicts. Please use the following command:
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 
 $ python twigs.py --help
-usage: twigs.py [-h] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--scan {quick,regular,full}] [--email_report] [--purge_assets] {aws,azure,servicenow,opensource,host,docker} ...
+usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--scan {quick,regular,full}] [--email_report] [--purge_assets] {aws,azure,docker,file,host,opensource,servicenow} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
   --handle HANDLE       The ThreatWatch registered email id/handle of the
                         user. Note this can set as "TW_HANDLE" environment
                         variable
@@ -55,13 +56,14 @@ optional arguments:
 modes:
   Discovery modes supported
 
-  {aws,azure,servicenow,opensource,host,docker}
+  {aws,azure,docker,file,host,repo,servicenow}
     aws                 Discover AWS instances
     azure               Discover Azure instances
-    servicenow          Discover inventory from ServiceNow instance
-    opensource          Discover open source assets
-    host                Discover linux host assets
     docker              Discover docker instances
+    file                Discover inventory from file
+    host                Discover linux host assets
+    repo                Discover project repository as asset
+    servicenow          Discover inventory from ServiceNow instance
 
 Mode: aws
 $ python twigs.py aws --help
@@ -108,33 +110,33 @@ optional arguments:
                         Enable recording Azure specific information (like
                         Azure Tenant ID, etc.) as asset tags
 
-Mode: servicenow
-$ python twigs.py servicenow --help
-usage: twigs.py servicenow [-h] --snow_user SNOW_USER --snow_user_pwd SNOW_USER_PWD --snow_instance SNOW_INSTANCE [--enable_tracking_tags]
+Mode: docker
+$ python twigs.py docker --help
+usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --snow_user SNOW_USER
-                        User name of ServiceNow account
-  --snow_user_pwd SNOW_USER_PWD
-                        User password of ServiceNow account
-  --snow_instance SNOW_INSTANCE
-                        ServiceNow Instance name
-  --enable_tracking_tags
-                        Enable recording ServiceNow specific information (like
-                        ServiceNow instance name, etc.) as asset tags
-
-Mode: opensource
-$ python twigs.py opensource --help
-usage: twigs.py opensource [-h] --repo REPO [--type {python,ruby,nodejs,dotnet,yarn}] [--assetid ASSETID] [--assetname ASSETNAME]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --repo REPO           Local path or git repo url for project
-  --type TYPE           Type of open source component to scan for {python,ruby,nodejs,dotnet,yarn}. Defaults to all supported types if not specified
+  --image IMAGE         The docker image (repo:tag) which needs to be
+                        inspected. If tag is not given, "latest" will be
+                        assumed.
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME 
-                        A name to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+
+Mode: file
+$ python twigs.py file --help
+usage: twigs.py file [-h] --in IN [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --in IN               Absolute path to input inventory file. Supported file
+                        format is: PDF
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset.
+                        Defaults to input filename if not specified
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset.
+                        Defaults to assetid is not specified
+  --type TYPE           Type of asset. Defaults to OpenSource if not specified
 
 Mode: host
 $ python twigs.py host --help
@@ -151,18 +153,33 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
 
-Mode: docker
-$ python twigs.py docker --help
-usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME]
+Mode: repo
+$ python twigs.py repo --help
+usage: twigs.py repo [-h] --repo REPO [--type {python,ruby,yarn,dotnet,nodejs,pom,dll}] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --image IMAGE         The docker image (repo:tag) which needs to be
-                        inspected. If tag is not given, "latest" will be
-                        assumed.
+  --repo REPO           Local path or git repo url for project
+  --type TYPE           Type of open source component to scan for {python,ruby,yarn,dotnet,nodejs,pom,dll}. Defaults to all supported types if not specified
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+
+Mode: servicenow
+$ python twigs.py servicenow --help
+usage: twigs.py servicenow [-h] --snow_user SNOW_USER --snow_user_pwd SNOW_USER_PWD --snow_instance SNOW_INSTANCE [--enable_tracking_tags]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --snow_user SNOW_USER
+                        User name of ServiceNow account
+  --snow_user_pwd SNOW_USER_PWD
+                        User password of ServiceNow account
+  --snow_instance SNOW_INSTANCE
+                        ServiceNow Instance name
+  --enable_tracking_tags
+                        Enable recording ServiceNow specific information (like
+                        ServiceNow instance name, etc.) as asset tags
 
 Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
 

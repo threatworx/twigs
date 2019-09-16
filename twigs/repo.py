@@ -4,11 +4,8 @@ import os
 import shutil
 import stat
 import subprocess
-import argparse
 import logging
-import requests
 import json
-import shutil
 import tempfile
 import pefile
 import glob

@@ -2,10 +2,7 @@ import sys
 import platform
 import os
 import subprocess
-import argparse
 import logging
-import requests
-import json
 import socket
 import csv
 import ipaddress

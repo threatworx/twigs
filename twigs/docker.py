@@ -1,11 +1,7 @@
 import sys
-import re
 import os
 import subprocess
-import argparse
 import logging
-import requests
-import json
 
 docker_cli = ""
 

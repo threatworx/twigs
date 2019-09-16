@@ -4,8 +4,6 @@ import boto3
 import codecs
 import os
 import logging
-import argparse
-import requests
 import tempfile
 
 RELEVANT_BUCKET_OBJECT_KEYS = ['AWS:WindowsUpdate', 'AWS:Application', 'AWS:InstanceInformation']
