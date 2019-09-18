@@ -1,7 +1,7 @@
 import sys
 import json
 import os
-import subprocess
+import requests
 import re
 import logging
 
@@ -22,6 +22,7 @@ def print_details(token):
     print ""
     print "Please re-run twigs with appropriate values for subscription, resource group and workspace."
     print ""
+    sys.exit(1)
 
 # Main entry point
 def get_inventory(args):
@@ -132,153 +133,108 @@ def retrieve_inventory(params):
     resource_group = params['resource_group']
     workspace_id = params['workspace']
     token = params['access_token']
-    CURL = '/usr/bin/curl --silent -H "Content-Type:application/json" -H "Authorization:Bearer %s" -d ' % token
-    URL = '-X POST https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.OperationalInsights/workspaces/%s/api/query?api-version=2017-01-01-preview' %(sub_id,resource_group,workspace_id)
-    DATA = '{"query":"ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer"}' 
-    cmd = CURL + "'" + DATA + "'" + " " + URL
+    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
+    url = 'https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.OperationalInsights/workspaces/%s/api/query?api-version=2017-01-01-preview' % (sub_id,resource_group,workspace_id)
+    json_data = {"query":"ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer"}
 
     logging.info("Retrieving inventory details from Azure...") 
 
-    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
-    (output, err) = p.communicate()
-    pstat = p.wait()
-
-    if output == "Error":
-        print "Could not fetch threat updates"
+    resp = requests.post(url, headers=headers, json=json_data)
+    if resp.status_code == 200:
+        response = resp.json()
+        if response.get('Tables'):
+            tables = response['Tables']
+            return parse_inventory(email,tables[0]['Rows'],params)
+    else:
+        logging.error("Error could not get asset inventory details from Azure...")
+        logging.error("Response content: %s" % resp.text)
         sys.exit(1)
-
-    if output == "Kill":
-        print "Invalid tw instance...terminating"
-        sys.exit(1)
-
-    response = json.loads(output)
-    if response.get('Tables'):
-        tables = response['Tables']
-        return parse_inventory(email,tables[0]['Rows'],params)
 
 #Get access token using  an AAD, an app id associted with that AAD and the API key/secret for that app
 def get_access_token(params):         
     aad_id = params['tenant_id']
     aad_app_id = params['app_id']
     app_key = params['app_key']
-    CURL = '/usr/bin/curl --silent -d '
-    URL = "-X POST https://login.microsoftonline.com/" + aad_id + "/oauth2/token"
-    DATA = 'grant_type=client_credentials&client_id=%s&client_secret=%s&resource=https://management.azure.com/' % (aad_app_id,app_key)
-
-    cmd = CURL + "'" + DATA + "'"  + " " + URL
+    url = "https://login.microsoftonline.com/" + aad_id + "/oauth2/token"
 
     logging.info("Getting access token...") 
 
-    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
-    (output, err) = p.communicate()
-    pstat = p.wait()
-
-    if output == "Error":
-        print "Could not fetch threat updates"
-        return '' 
-
-    if output == "Kill":
-        return '' 
-    try:
-        response = json.loads(output)
+    resp = requests.post(url, data={"grant_type":"client_credentials", "client_id": aad_app_id, "client_secret": app_key, "resource":"https://management.azure.com/"})
+    if resp.status_code == 200:
+        response = resp.json()
         token = response['access_token']
-    except KeyError:
-        error = response['error_description']
-        print error
-        return None
+    else:
+        logging.error("Error unable to get access token for API calls")
+        logging.error("Response content: %s" % resp.text)
+        sys.exit(1)
+
     return token
 
 # Try to get OS details for given VM
 def get_os_name(host,params):
-    CURL = '/usr/bin/curl --silent -H "Content-Type:application/json" -H "Authorization:Bearer %s" ' % params['access_token']
-    URL = "-X GET \"https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines/%s/instanceView?api-version=2018-06-01\"" % (params['subscription'], params['resource_group'],host)
-    cmd = CURL + URL
+    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % params['access_token'] }
+    url = "https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines/%s/instanceView?api-version=2018-06-01" % (params['subscription'], params['resource_group'],host)
 
-    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
-    (output, err) = p.communicate()
-    pstat = p.wait()
-
-    if output == "Error":
+    resp = requests.get(url, headers=headers)
+    if resp.status_code == 200:
+        response = resp.json()
+        return response.get('osName')
+    else:
         return None
-
-    if output == "Kill":
-        return None
-
-    response = json.loads(output)
-    return response.get('osName')
 
 # Get a list of subscriptions for current AAD/Tenant
 def get_all_subscriptions(token):
     allsubs = []
-    CURL = '/usr/bin/curl --silent -H "Content-Type:application/json" -H "Authorization:Bearer %s" ' % token
-    URL = "-X GET https://management.azure.com/subscriptions?api-version=2018-01-01"
-    cmd = CURL + URL
+    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
+    url = "https://management.azure.com/subscriptions?api-version=2018-01-01"
 
-    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
-    (output, err) = p.communicate()
-    pstat = p.wait()
+    resp = requests.get(url, headers=headers)
 
-    if output == "Error":
-        print "Could not fetch threat updates"
+    if resp.status_code == 200:
+        subs = resp.json()
+        sublist = subs['value']
+        for sub in sublist:
+            allsubs.append(sub['subscriptionId'])
+    else:
+        logging.error("API call to get all subscriptions failed")
+        logging.error("Response content: %s" % resp.text)
         sys.exit(1)
-
-    if output == "Kill":
-        print "Invalid tw instance...terminating"
-        sys.exit(1)
-
-    subs = json.loads(output)
-    sublist = subs['value']
-    for sub in sublist:
-        allsubs.append(sub['subscriptionId'])
     return allsubs
 
 #Get all resource groups for a subscription
 def get_all_resourcegroups_for_subscription(subid,token):
     allresourcegroups = []
-    CURL = '/usr/bin/curl --silent -H "Content-Type:application/json" -H "Authorization:Bearer %s" ' % token
-    URL = '-X GET https://management.azure.com/subscriptions/%s/resourcegroups?api-version=2018-01-01' % subid
-    cmd = CURL + URL
+    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
+    url = 'https://management.azure.com/subscriptions/%s/resourcegroups?api-version=2018-01-01' % subid
+    resp = requests.get(url, headers=headers)
+    if resp.status_code == 200:
+        rgroups = resp.json()
+        rlist = rgroups['value']
+        for r in rlist:
+            allresourcegroups.append(r['name'])
+    else:
+        logging.error("API call to get all resource groups failed")
+        logging.error("Response content: %s" % resp.text)
+        sys.exit(1)
 
-    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
-    (output, err) = p.communicate()
-    pstat = p.wait()
-
-    if output == "Error":
-        print "Could not fetch resourcegroups"
-        return []
-       
-    if output == "Kill":
-        print "Could not fetch resourcegorups"
-        return []
-
-    rgroups = json.loads(output)
-    rlist = rgroups['value']
-    for r in rlist:
-        allresourcegroups.append(r['name'])
     return allresourcegroups
 
 #Get all workspaces for the subscription
 def get_all_workspaces_for_subscription(subid,token):
     allworkspaces = []
-    CURL = '/usr/bin/curl --silent -H "Content-Type:application/json" -H "Authorization:Bearer %s" ' % token
-    URL = '-X GET https://management.azure.com/subscriptions/%s/providers/Microsoft.OperationalInsights/workspaces?api-version=2017-01-01-preview' % subid
-    cmd = CURL + URL
+    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
+    url = 'https://management.azure.com/subscriptions/%s/providers/Microsoft.OperationalInsights/workspaces?api-version=2017-01-01-preview' % subid
 
-    p = subprocess.Popen(cmd, bufsize=8192, stdout=subprocess.PIPE, shell=True)
-    (output, err) = p.communicate()
-    pstat = p.wait()
+    resp = requests.get(url, headers=headers)
+    if resp.status_code == 200:
+        workspaces = resp.json()
+        wlist = workspaces['value']
+        for w in wlist:
+            allworkspaces.append(w['name'])
+    else:
+        logging.error("API call to get all workspaces failed")
+        logging.error("Response content: %s" % resp.text)
+        sys.exit(1)
 
-    if output == "Error":
-        print "Could not get workspaces"
-        return []
-
-    if output == "Kill":
-        print "Could not get workspaces"
-        return []
-
-    workspaces = json.loads(output)
-    wlist = workspaces['value']
-    for w in wlist:
-        allworkspaces.append(w['name'])
     return allworkspaces
 

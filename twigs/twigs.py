@@ -235,10 +235,12 @@ def main(args=None):
     elif args.mode == 'file':
         assets = inv_file.get_inventory(args)
 
-    export_assets_to_csv(assets, args.out)
-
-    if args.token is not None and len(args.token) > 0:
-        push_assets_to_TW(assets, args)
+    if assets is None or len(assets) == 0:
+        logging.info("No assets found!")
+    else:
+        export_assets_to_csv(assets, args.out)
+        if args.token is not None and len(args.token) > 0:
+            push_assets_to_TW(assets, args)
 
     logging.info('Run completed...')
 
