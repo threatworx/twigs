@@ -94,8 +94,13 @@ def discover_rh(args, host):
         else:
             ver = ''
         pkgsp = pkg.split(".")
-        pkg = pkgsp[0]
-        arch = pkgsp[1]
+        if len(pkgsp) > 1:
+            pkg = pkgsp[0]
+            arch = pkgsp[1]
+        else:
+            pkg = pkgsp[0]
+            arch = "noarch"
+
         if ':' in ver:
             ver = ver.split(':')[1]
         ver = ver + "." + arch
