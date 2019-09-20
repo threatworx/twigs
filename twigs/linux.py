@@ -6,6 +6,7 @@ import logging
 import socket
 import csv
 import ipaddress
+import paramiko
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -34,31 +35,35 @@ def get_asset_type(os):
         logging.error('Not a supported OS type')
         return None
 
-def build_ssh_command(args, host, command):
-    cmdarr = None
+def run_remote_ssh_command(args, host, command):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
     if host.get('userpwd') is not None and len(host['userpwd']) > 0:
-        cmdarr = ["sshpass -p"+host['userpwd']+" ssh "+host['userlogin']+"@"+host['hostname']+" -oStrictHostKeyChecking=no -oCheckHostIP=no \""+command+"\""]
+        client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
     elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
-        cmdarr = ["ssh "+host['userlogin']+"@"+host['hostname']+" -i "+host['privatekey']+" -oStrictHostKeyChecking=no -oCheckHostIP=no \""+command+"\""]
+        client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
     else:
-        cmdarr = ["ssh "+host['userlogin']+"@"+host['hostname']+" -oStrictHostKeyChecking=no -oCheckHostIP=no \""+command+"\""]
-    return cmdarr
+        client.connect(host['hostname'],username=host['userlogin'])
+    stdin, stdout, stderr = client.exec_command(command)
+    output = ''
+    for line in stdout:
+        output = output + line
+    client.close()
+    return output
 
 def get_os_release(args, host):
     cmdarr = ["/bin/cat /etc/os-release"]
     if host['remote']:
-        cmdarr = build_ssh_command(args, host, cmdarr[0])
-        if cmdarr is None:
+        out = run_remote_ssh_command(args, host, cmdarr[0])
+    else:
+        try:
+            out = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
             logging.error("Error determining OS release")
-            return None
+            return None 
 
-    out = ''
-    try:
-        out = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
-        logging.error("Error determining OS release")
-        return None 
-    for l in out.splitlines():
+    output_lines = out.splitlines()
+    for l in output_lines:
         if 'PRETTY_NAME' in l:
             return l.split('=')[1].replace('"','')
     return None
@@ -66,19 +71,15 @@ def get_os_release(args, host):
 def discover_rh(args, host):
     plist = []
     cmdarr = ["/usr/bin/yum list installed"]
-    if host['remote']:
-        cmdarr = build_ssh_command(args, host, cmdarr[0])
-        if cmdarr is None:
-            logging.error("Error running inventory")
-            return None
-
     logging.info("Retrieving product details")
-    yumout = ''
-    try:
-        yumout = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
-        logging.error("Error running inventory")
-        return None 
+    if host['remote']:
+        yumout = run_remote_ssh_command(args, host, cmdarr[0])
+    else:
+        try:
+            yumout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory")
+            return None 
 
     begin = False
     for l in yumout.splitlines():
@@ -112,19 +113,15 @@ def discover_rh(args, host):
 def discover_ubuntu(args, host):
     plist = []
     cmdarr = ["/usr/bin/apt list --installed"]
-    if host['remote']:
-        cmdarr = build_ssh_command(args, host, cmdarr[0])
-        if cmdarr is None:
-            logging.error("Error running inventory")
-            return None
-
     logging.info("Retrieving product details")
-    yumout = ''
-    try:
-        yumout = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
-        logging.error("Error running inventory")
-        return None 
+    if host['remote']:
+        yumout = run_remote_ssh_command(args, host, cmdarr[0])
+    else:
+        try:
+            yumout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory")
+            return None 
 
     begin = False
     for l in yumout.splitlines():

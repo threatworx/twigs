@@ -16,7 +16,7 @@ from xml.dom import minidom
 GIT_PATH = '/usr/bin/git'
 if os.name == 'nt':
     GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
-SUPPORTED_TYPES = ['python', 'ruby', 'yarn', 'dotnet', 'nodejs', 'pom', 'dll']
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'dll']
 
 def find_files(localpath, filename):
     ret_files = []
@@ -55,6 +55,8 @@ def discover_pom_xml(args, localpath):
 def discover_package_json(args, localpath):
     plist = []
     files = find_files(localpath, 'package.json')
+    more_files = find_files(localpath, 'package-lock.json')
+    files.extend(more_files)
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -67,17 +69,35 @@ def discover_package_json(args, localpath):
         except Exception:
             print "Error parsing package.json contents"
             return None
+        if 'name' in cjson:
+            pname = cjson['name'] + ' ' + cjson['version']
+            if pname not in plist:
+                plist.append(pname)
         if 'dependencies' in cjson:
             ddict = cjson['dependencies']
             for d in ddict:
-                pname = d + ' ' + ddict[d]
-                pname = pname.replace('^','')
-                pname = pname.replace('~','')
-                pname = pname.replace('<','')
-                pname = pname.replace('>','')
-                pname = pname.replace('=','')
-                if pname not in plist:
-                    plist.append(pname)
+                content = ddict[d]
+                if isinstance(content, dict):
+                    ver = content['version']
+                    pname = d + ' ' + ver
+                    if pname not in plist:
+                        plist.append(pname)
+                    req_dict = content.get('requires')
+                    if req_dict is None:
+                        continue
+                    for req_pname in req_dict:
+                        pname = req_pname + ' ' + req_dict[req_pname]
+                        if pname not in plist:
+                            plist.append(pname)
+                else:
+                    pname = d + ' ' + ddict[d]
+                    pname = pname.replace('^','')
+                    pname = pname.replace('~','')
+                    pname = pname.replace('<','')
+                    pname = pname.replace('>','')
+                    pname = pname.replace('=','')
+                    if pname not in plist:
+                        plist.append(pname)
         if 'devDependencies' in cjson:
             ddict = cjson['devDependencies']
             for d in ddict:
@@ -100,7 +120,7 @@ def discover_package_json(args, localpath):
                 pname = d + ' ' + ddict[d]
                 if pname not in plist:
                     plist.append(pname)
-        return plist 
+    return plist 
 
 def discover_packages_config(args, localpath):
     plist = []
@@ -116,8 +136,8 @@ def discover_packages_config(args, localpath):
         except Exception:
             print "Error parsing package config contents"
             return None
-        plist = xmldoc.getElementsByTagName('package')
-        for p in plist:
+        temp_plist = xmldoc.getElementsByTagName('package')
+        for p in temp_plist:
             libname = p.getAttribute('id')
             libver = p.getAttribute('version')
             pname = libname + ' ' + libver
@@ -241,18 +261,18 @@ def discover_specified_type(repo_type, args, localpath):
         sys.exit(1) 
 
     plist = []
-    if repo_type == 'python':
+    if repo_type == 'pip':
         plist = discover_python(args, localpath)
     elif repo_type == 'ruby':
         plist = discover_ruby(args, localpath)
     elif repo_type == 'yarn':
         plist = discover_yarn(args, localpath)
-    elif repo_type == 'dotnet':
+    elif repo_type == 'nuget':
         plist = discover_packages_config(args, localpath)
-    elif repo_type == 'nodejs':
+    elif repo_type == 'npm':
         plist = discover_package_json(args, localpath)
-    elif repo_type == 'pom':
-        plist = discover_pom_xml(args, localpath)
+    elif repo_type == 'maven':
+        plist = discover_pom_xm(args, localpath)
     elif repo_type == 'dll':
         plist = discover_dll(args, localpath)
 
