@@ -36,25 +36,45 @@ def get_asset_type(os):
         return None
 
 def run_remote_ssh_command(args, host, command):
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
-    if host.get('userpwd') is not None and len(host['userpwd']) > 0:
-        client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
-    elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
-        client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
-    else:
-        client.connect(host['hostname'],username=host['userlogin'])
-    stdin, stdout, stderr = client.exec_command(command)
+    assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
     output = ''
-    for line in stdout:
-        output = output + line
-    client.close()
-    return output
+    try:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
+        if host.get('userpwd') is not None and len(host['userpwd']) > 0:
+            client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
+        elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
+            client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
+        else:
+            client.connect(host['hostname'],username=host['userlogin'])
+        stdin, stdout, stderr = client.exec_command(command)
+        for line in stdout:
+            output = output + line
+        client.close()
+    except paramiko.ssh_exception.AuthenticationException as e:
+        logging.info("Authentication failed for asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+        output = None
+    except paramiko.ssh_exception.SSHException as e:
+        logging.info("SSHException while connecting to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+        output = None
+    except socket.error as e:
+        logging.info("Socket error while connection to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+        output = None
+    except:
+        logging.info("Unknown error running remote discovery for asset [%s], host [%s]: [%s]", assetid, host['hostname'], sys.exc_info()[0])
+        output = None
+    finally:
+        return output
 
 def get_os_release(args, host):
     cmdarr = ["/bin/cat /etc/os-release"]
     if host['remote']:
         out = run_remote_ssh_command(args, host, cmdarr[0])
+        if out is None:
+            return None
     else:
         try:
             out = subprocess.check_output(cmdarr, shell=True)
@@ -74,6 +94,8 @@ def discover_rh(args, host):
     logging.info("Retrieving product details")
     if host['remote']:
         yumout = run_remote_ssh_command(args, host, cmdarr[0])
+        if yumout is None:
+            return None
     else:
         try:
             yumout = subprocess.check_output(cmdarr, shell=True)
@@ -116,6 +138,8 @@ def discover_ubuntu(args, host):
     logging.info("Retrieving product details")
     if host['remote']:
         yumout = run_remote_ssh_command(args, host, cmdarr[0])
+        if yumout is None:
+            return None
     else:
         try:
             yumout = subprocess.check_output(cmdarr, shell=True)
