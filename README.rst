@@ -155,12 +155,12 @@ optional arguments:
 
 Mode: repo
 $ python twigs.py repo --help
-usage: twigs.py repo [-h] --repo REPO [--type {python,ruby,yarn,dotnet,nodejs,pom,dll}] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,dll}] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
   --repo REPO           Local path or git repo url for project
-  --type TYPE           Type of open source component to scan for {python,ruby,yarn,dotnet,nodejs,pom,dll}. Defaults to all supported types if not specified
+  --type TYPE           Type of open source component to scan for {pip,ruby,yarn,nuget,npm,maven,dll}. Defaults to all supported types if not specified
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
