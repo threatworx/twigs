@@ -16,7 +16,7 @@ from xml.dom import minidom
 GIT_PATH = '/usr/bin/git'
 if os.name == 'nt':
     GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
-SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'dll']
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll']
 
 def find_files(localpath, filename):
     ret_files = []
@@ -43,13 +43,41 @@ def discover_pom_xml(args, localpath):
             return None
         dlist = xmldoc.getElementsByTagName('dependency')
         for d in dlist:
+            gid = d.getElementsByTagName('groupId')[0]
             aid = d.getElementsByTagName('artifactId')[0]
-            ver = d.getElementsByTagName('version')[0]
+            ver = d.getElementsByTagName('version')
+            if len(ver) == 0:
+                ver = None 
+            else:
+                ver = ver[0]
+            libgname = gid.childNodes[0].data
             libname = aid.childNodes[0].data
-            libver = ver.childNodes[0].data
-            pname = libname + ' ' + libver
+            libver = ''
+            if ver != None:
+                libver = ver.childNodes[0].data
+            pname = libgname + ':' + libname + ' ' + libver
             if pname not in plist:
                 plist.append(pname)
+    return plist 
+
+def discover_gradle(args, localpath):
+    plist = []
+    files = find_files(localpath, 'dependencies.gradle')
+    for file_path in files:
+        fp = open(file_path, 'r')
+        if fp == None:
+            continue
+        contents = fp.read()
+        for l in contents.splitlines():
+            if 'group:' in l and 'name:' in l and 'version:' in l:
+                arr = l.split(',')
+                gname = arr[0].split('group:')[1].strip()
+                lname = arr[1].split('name:')[1].strip()
+                ver = arr[2].split('version:')[1].strip()
+                pname = gname + ':' + lname + ' ' + ver
+                pname = pname.replace("'","")
+                if pname not in plist:
+                    plist.append(pname)
     return plist 
 
 def discover_package_json(args, localpath):
@@ -272,7 +300,9 @@ def discover_specified_type(repo_type, args, localpath):
     elif repo_type == 'npm':
         plist = discover_package_json(args, localpath)
     elif repo_type == 'maven':
-        plist = discover_pom_xm(args, localpath)
+        plist = discover_pom_xml(args, localpath)
+    elif repo_type == 'gradle':
+        plist = discover_gradle(args, localpath)
     elif repo_type == 'dll':
         plist = discover_dll(args, localpath)
 
