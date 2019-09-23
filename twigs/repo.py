@@ -350,7 +350,10 @@ def discover_inventory(args, localpath):
         asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
-        logging.error("Could not inventory repo "+args.repo)
+        if args.type is not None:
+            logging.error("Unable to identify any dependencies of [%s] type in specified repo [%s]", args.type, args.repo)
+        else:
+            logging.error("Unable to identify any dependencies of all supported types in specified repo [%s]", args.repo)
         sys.exit(1)
 
     asset_data = {}
