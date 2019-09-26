@@ -46,7 +46,11 @@ def discover_pom_xml(args, localpath):
                 gid = None
             else:
                 gid = gid[0]
-            aid = d.getElementsByTagName('artifactId')[0]
+            aid = d.getElementsByTagName('artifactId')
+            if len(aid) == 0:
+                continue
+            else:
+                aid = aid[0]
             ver = d.getElementsByTagName('version')
             if len(ver) == 0:
                 ver = None 
