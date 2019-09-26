@@ -52,7 +52,7 @@ def discover_pom_xml(args, localpath):
                 ver = None 
             else:
                 ver = ver[0]
-            libgname = '':
+            libgname = ''
             if gid != None:
                 libgname = gid.childNodes[0].data
             libname = aid.childNodes[0].data
