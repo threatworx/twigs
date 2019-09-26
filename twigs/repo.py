@@ -389,6 +389,7 @@ def get_inventory(args):
         try:
             logging.info("Cloning repo to temporary local directory...")
             new_repo = clone_repository(args.repo, path)
+            new_repo.free()
         except:
             print traceback.format_exc()
         if new_repo is None:
