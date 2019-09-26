@@ -12,10 +12,8 @@ import glob
 import traceback
 import requirements
 from xml.dom import minidom
+from pygit2 import clone_repository
 
-GIT_PATH = '/usr/bin/git'
-if os.name == 'nt':
-    GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
 SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll']
 
 def find_files(localpath, filename):
@@ -43,19 +41,29 @@ def discover_pom_xml(args, localpath):
             return None
         dlist = xmldoc.getElementsByTagName('dependency')
         for d in dlist:
-            gid = d.getElementsByTagName('groupId')[0]
+            gid = d.getElementsByTagName('groupId')
+            if len(gid) == 0:
+                gid = None
+            else:
+                git = gid[0]
             aid = d.getElementsByTagName('artifactId')[0]
             ver = d.getElementsByTagName('version')
             if len(ver) == 0:
                 ver = None 
             else:
                 ver = ver[0]
-            libgname = gid.childNodes[0].data
+            libgname = '':
+            if gid != None:
+                libgname = gid.childNodes[0].data
             libname = aid.childNodes[0].data
             libver = ''
             if ver != None:
                 libver = ver.childNodes[0].data
-            pname = libgname + ':' + libname + ' ' + libver
+            if libgname == '':
+                pname = libname + ' ' + libver
+            else:
+                pname = libgname + ':' + libname + ' ' + libver
+            pname = pname.strip()
             if pname not in plist:
                 plist.append(pname)
     return plist 
@@ -97,7 +105,7 @@ def discover_package_json(args, localpath):
         except Exception:
             print "Error parsing package.json contents"
             return None
-        if 'name' in cjson:
+        if 'name' in cjson and 'version' in cjson:
             pname = cjson['name'] + ' ' + cjson['version']
             if pname not in plist:
                 plist.append(pname)
@@ -375,20 +383,23 @@ def get_inventory(args):
     path = None
     if args.repo.startswith('http'):
         path = tempfile.mkdtemp()
+        new_repo = None
         try:
-            cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
-            out = subprocess.check_output(cmdarr)
+            logging.info("Cloning repo to temporary local directory...")
+            new_repo = clone_repository(args.repo, path)
         except:
             print traceback.format_exc()
+        if new_repo is None:
             logging.error('Error cloning repo locally')
-            sys.exit(1) 
-            os.remove(path)
+            shutil.rmtree(path, onerror = on_rm_error)
+            sys.exit(1)
     elif os.path.isdir(args.repo):
         path = args.repo
     else:
         logging.error('Not a valid repo')
         sys.exit(1) 
 
+    logging.info("Performing asset discovery...")
     assets = discover_inventory(args, path)
 
     if args.repo.startswith('http'):
