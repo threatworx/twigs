@@ -338,8 +338,10 @@ def discover_inventory(args, localpath):
         asset_id = default_id_name
     if asset_name is None:
         asset_name = default_id_name
+    asset_id = asset_id.replace(' ','-')
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
+    asset_name = asset_name.replace(' ','-')
     asset_name = asset_name.replace('/','-')
     asset_name = asset_name.replace(':','-')
 
