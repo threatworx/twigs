@@ -135,12 +135,15 @@ def discover_package_json(args, localpath):
             continue
         contents = fp.read()
         contents = contents.strip()
+        if len(contents) == 0:
+            logging.error("Error empty file [%s]...skipping it!", file_path)
+            continue
         cjson = ''
         try:
             cjson = json.loads(contents)
         except Exception:
-            print "Error parsing package.json contents"
-            return None
+            logging.error("Error parsing package.json contents - %s", file_path)
+            continue
         if 'name' in cjson and 'version' in cjson:
             pname = cjson['name'] + ' ' + cjson['version']
             if pname not in plist:
@@ -230,7 +233,12 @@ def discover_yarn(args, localpath):
         for index, l in enumerate(cline):
             if l.endswith(':') and 'dependencies' not in l:
                 dparse = False
-                libname = l.split('@')[0]
+                if l.startswith('"'):
+                    l = l[1:]
+                if l.startswith('@'):
+                    libname = '@' + l.split('@')[1]
+                else:
+                    libname = l.split('@')[0]
                 vline = cline[index+1]
                 libver = vline.split()[1].replace('"','')
                 pname = libname+' '+libver
