@@ -28,6 +28,7 @@ def find_files(localpath, filename):
 def discover_pom_xml(args, localpath):
     plist = []
     files = find_files(localpath, 'pom.xml')
+    prop_dict = None
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -39,6 +40,33 @@ def discover_pom_xml(args, localpath):
         except Exception:
             print "Error parsing pom.xml contents"
             return None
+        if prop_dict is None:
+            prop_dict = { }
+            curr_prop_dict = prop_dict
+        else:
+            curr_prop_dict = prop_dict.copy()
+
+        version_elements = xmldoc.getElementsByTagName('version')
+        for ve in version_elements:
+            if ve.parentNode.nodeName == 'project':
+                curr_prop_dict['project.version'] = ve.childNodes[0].data
+                break
+
+        prop_list = xmldoc.getElementsByTagName('properties')
+        if len(prop_list) > 0:
+            for p in prop_list:
+                for item in p.childNodes:
+                    if item.nodeType == item.TEXT_NODE or item.nodeType == item.COMMENT_NODE:
+                        continue
+                    prop_name = item.nodeName
+                    prop_value = item.childNodes[0].data
+                    if prop_value.startswith('${'):
+                        # Try to look-up value from prop_dict
+                        lookup_prop = prop_value[2:-1]
+                        prop_value = prop_dict.get(lookup_prop)
+                    if prop_value is not None:
+                        curr_prop_dict[prop_name] = prop_value
+
         dlist = xmldoc.getElementsByTagName('dependency')
         for d in dlist:
             gid = d.getElementsByTagName('groupId')
@@ -63,6 +91,10 @@ def discover_pom_xml(args, localpath):
             libver = ''
             if ver != None:
                 libver = ver.childNodes[0].data
+                if libver.startswith('${'):
+                    prop_value = curr_prop_dict.get(libver[2:-1])
+                    if prop_value is not None:
+                        libver = prop_value
             if libgname == '':
                 pname = libname + ' ' + libver
             else:

@@ -3,9 +3,16 @@ import platform
 import os
 import logging
 import PyPDF4
+from pdfminer.pdfparser import PDFParser
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfpage import PDFTextExtractionNotAllowed
+from pdfminer.pdfinterp import PDFResourceManager
+from pdfminer.pdfinterp import PDFPageInterpreter
+from pdfminer.converter import PDFPageAggregator
+from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTText
 
-def get_products_from_pdf_file(in_file):
-    logging.info("Retriving products from PDF file [%s]" % in_file)
+def get_products_from_pdf_file_using_pypdf(in_file):
     pdf_fd = open(in_file, 'rb')
     pdfFileReader = PyPDF4.PdfFileReader(pdf_fd)
     complete_text = ''
@@ -29,7 +36,37 @@ def get_products_from_pdf_file(in_file):
                     products[-1] = products[-1] + 'ff'
                     continue
                 products.append(j)
-    logging.info("Done retriving products from PDF file")
+    return products
+
+def get_products_from_pdf_file_using_pdfminer(in_file):
+    logging.getLogger("pdfminer").setLevel(logging.WARNING)
+    products = []
+    fp = open(in_file, 'rb')
+    parser = PDFParser(fp)
+    password = ''
+    document = PDFDocument(parser, password)
+    # Check if the document allows text extraction. If not, abort.
+    if not document.is_extractable:
+        fp.close()
+        logging.error("PDF document [%s] does not allow Text Extraction", in_file)
+        return products
+    rsrcmgr = PDFResourceManager()
+    laparams = LAParams()
+    device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+
+    complete_text = ''
+    for page in PDFPage.create_pages(document):
+        interpreter.process_page(page)
+        layout = device.get_result()
+        for lt_obj in layout:
+            if isinstance(lt_obj, LTTextBox) or isinstance(lt_obj, LTTextLine):
+                complete_text = complete_text + lt_obj.get_text()
+
+    for i in complete_text.split('\n'):
+        for j in i.split(','):
+            j = j.strip()
+            products.append(j)
     return products
 
 def get_inventory(args):
@@ -46,7 +83,11 @@ def get_inventory(args):
         sys.exit(1)
     in_file_ext = in_file[temp+1:]
     if in_file_ext == 'pdf':
-        products = get_products_from_pdf_file(in_file)
+        logging.info("Retriving products from PDF file [%s]", in_file)
+        products = get_products_from_pdf_file_using_pypdf(in_file)
+        if len(products) == 0:
+            products = get_products_from_pdf_file_using_pdfminer(in_file)
+        logging.info("Done retriving products from PDF file")
     else:
         logging.error('Error unsupported input file type specified...')
         sys.exit(1)
@@ -57,6 +98,7 @@ def get_inventory(args):
         asset_id = asset_id[:temp] # remove the extension
     else:
         asset_id = args.assetid
+    asset_id = asset_id.replace(' ','-')
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
     if args.assetname is not None:
