@@ -180,6 +180,12 @@ def discover(args):
                     for a in net:
                         trow = row.copy()
                         trow['hostname'] = str(a)
+
+                        # Remove hard-coded asset ID and name for CIDR, as it will overwrite same asset
+                        # These will based on host IP address automatically
+                        trow['assetid'] = None
+                        trow['assetname'] = None
+                        
                         remote_hosts.append(trow)
                         remote_hosts[-1]['remote'] = True
                         logging.info("Enumerated IP: %s", a)
@@ -206,8 +212,8 @@ def discover_hosts(args, hosts):
 
 def discover_host(args, host):
 
-    asset_id = host['assetid'] if host.get('assetid') is not None else host['hostname']
-    asset_name = host['assetname'] if host.get('assetname') is not None else asset_id
+    asset_id = host['assetid'] if host.get('assetid') is not None and len(host['assetid']) > 0 else host['hostname']
+    asset_name = host['assetname'] if host.get('assetname') is not None and len(host['assetname']) > 0 else asset_id
 
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
