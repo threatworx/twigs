@@ -7,6 +7,12 @@ import socket
 import csv
 import ipaddress
 import paramiko
+import getpass
+import base64
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.fernet import Fernet
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -169,11 +175,40 @@ def discover(args):
     token = args.token
     instance = args.instance
 
-    if args.remote_hosts_csv is not None:
-        with open(args.remote_hosts_csv, mode='r') as csv_file:
+    host_list_file = args.remote_hosts_csv
+    if host_list_file == None:
+        host_list_file = args.host_list
+
+    if host_list_file is not None:
+        with open(host_list_file, mode='r') as csv_file:
             csv_reader = csv.DictReader(csv_file, quoting=csv.QUOTE_NONE, escapechar='\\')
+            password = None
             remote_hosts = []
             for row in csv_reader:
+                if not args.secure and row['userpwd'].startswith('__SECURE__:'):
+                    if args.password is None:
+                        if password is None:
+                            password = getpass.getpass(prompt="Enter password: ")
+                    else:
+                        password = args.password
+                    password = password.encode()
+                    salt = base64.b64encode(password)
+                    kdf = PBKDF2HMAC(
+                            algorithm=hashes.SHA256(),
+                            length=32,
+                            salt=salt,
+                            iterations=100000,
+                            backend=default_backend())
+                    key = base64.urlsafe_b64encode(kdf.derive(password))
+                    f = Fernet(key)
+                    try:
+                        epass = row['userpwd'].replace('__SECURE__:','')
+                        row['userpwd'] = f.decrypt(epass)
+                    except:
+                        logging.error("Failed to decrypt login details for "+row['hostname'])
+                        return None 
+                elif row['userpwd'] != '' and not args.secure:
+                    logging.warning('Unsecure login information in file. Use --secure to encrypt.')
                 if '/' in row['hostname']: # CIDR is specified, then expand it
                     logging.info("Enumerating IPs based on specified CIDR [%s]", row['hostname'])
                     net = ipaddress.ip_network(unicode(row['hostname'],"ascii"))
@@ -192,7 +227,53 @@ def discover(args):
                 else:
                     remote_hosts.append(row)
                     remote_hosts[-1]['remote'] = True
-        return discover_hosts(args, remote_hosts)
+        if args.secure:
+            # secure the host list
+            logging.info("Securing host list file")
+            if args.password is None:
+                pp1 = getpass.getpass(prompt="Enter password: ")
+                pp2 = getpass.getpass(prompt="Re-enter password: ")
+                if pp1 != pp2:
+                    logging.info("Passwords don't match. Try again.")
+                    return None
+            else:
+                pp1 = args.password
+            password = pp1.encode()
+            salt = base64.b64encode(password)
+            kdf = PBKDF2HMAC(
+                    algorithm=hashes.SHA256(),
+                    length=32,
+                    salt=salt,
+                    iterations=100000,
+                    backend=default_backend())
+            key = base64.urlsafe_b64encode(kdf.derive(password))
+            f = Fernet(key)
+            # verify the key if possible
+            with open(host_list_file, mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file, quoting=csv.QUOTE_NONE, escapechar='\\')
+                for row in csv_reader:
+                    try:
+                        if row['userpwd'] != '' and row['userpwd'].startswith('__SECURE__:'):
+                            epass = row['userpwd'].replace('__SECURE__:','')
+                            epass  = f.decrypt(epass)
+                    except:
+                        logging.error("Invalid password")
+                        logging.error("Please use the same password as was used previously to secure the file")
+                        return None
+            # secure the new rows in the file
+            with open(host_list_file, mode='w') as csvfile:
+                fieldnames = ['hostname','userlogin','userpwd','privatekey','assetid','assetname']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for h in remote_hosts:
+                    if h['userpwd'] != '' and not h['userpwd'].startswith('__SECURE__:'):
+                        h['userpwd'] = '__SECURE__:'+f.encrypt(h['userpwd'])
+                    del h['remote']
+                    writer.writerow(h)
+            logging.info("Host list file secured")
+            return None
+        else:
+            return discover_hosts(args, remote_hosts)
     else:
         host = { }
         host['assetid'] = get_ip() if args.assetid is None else args.assetid

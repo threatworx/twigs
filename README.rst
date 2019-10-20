@@ -140,7 +140,7 @@ optional arguments:
 
 Mode: host
 $ python twigs.py host --help
-usage: twigs.py host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -149,6 +149,17 @@ optional arguments:
                         column header [1st row] should be: hostname,userlogin,
                         userpwd,privatekey,assetid,assetname. Note "hostname"
                         column can contain hostname, IP address, CIDR range.
+  --host_list HOST_LIST
+                        Same as the option: remote_hosts_csv. A file
+                        (currently in CSV format) containing details of remote
+                        hosts. CSV file column header [1st row] should be: hos
+                        tname,userlogin,userpwd,privatekey,assetid,assetname.
+                        Note "hostname" column can contain hostname, IP
+                        address, CIDR range.
+  --secure              Use this option to encrypt clear text passwords in the
+                        host list file
+  --password PASSWORD   A password use to encrypt / decrypt login information
+                        from the host list file
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset

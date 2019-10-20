@@ -159,6 +159,9 @@ def main(args=None):
     # Arguments required for Host discovery on Linux
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
     parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
+    parser_linux.add_argument('--host_list', help='Same as the option: remote_hosts_csv. A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
+    parser_linux.add_argument('--secure', action='store_true', help='Use this option to encrypt clear text passwords in the host list file')
+    parser_linux.add_argument('--password', help='A password used to encrypt / decrypt login information from the host list file')
     parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
@@ -235,12 +238,13 @@ def main(args=None):
     elif args.mode == 'file':
         assets = inv_file.get_inventory(args)
 
-    if assets is None or len(assets) == 0:
-        logging.info("No assets found!")
-    else:
-        export_assets_to_csv(assets, args.out)
-        if args.token is not None and len(args.token) > 0:
-            push_assets_to_TW(assets, args)
+    if args.secure == False:
+        if assets is None or len(assets) == 0:
+            logging.info("No assets found!")
+        else:
+            export_assets_to_csv(assets, args.out)
+            if args.token is not None and len(args.token) > 0:
+                push_assets_to_TW(assets, args)
 
     logging.info('Run completed...')
 

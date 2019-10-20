@@ -11,7 +11,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow==0.7.4', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'PyPDF4==1.27.0', 'paramiko==2.6.0', 'pygit2==0.28.2', 'pdfminer==20140328']
+requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow==0.7.4', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'PyPDF4==1.27.0', 'paramiko==2.6.0', 'pygit2==0.28.2', 'pdfminer==20140328', 'cryptography==2.7']
 
 setup_requirements = [ ]
 
@@ -45,7 +45,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatwatch/twigs',
-    version='1.0.20',
+    version='1.0.21',
     zip_safe=False,
     entry_points={
         'console_scripts': [
