@@ -392,15 +392,19 @@ def discover_inventory(args, localpath):
     atype = 'Open Source' 
     plist = []
     asset_tags = []
+    tech2prod_dict = { }
     if args.type is None:
         # If no type is specified, then process all supported types
         for repo_type in SUPPORTED_TYPES:
             temp_list = discover_specified_type(repo_type, args, localpath)
             if temp_list is not None and len(temp_list) > 0:
+                tech2prod_dict[repo_type] = temp_list
                 plist.extend(temp_list)
                 asset_tags.append(repo_type)
     else:
         plist = discover_specified_type(args.type, args, localpath)
+        if plist is not None and len(plist) > 0:
+            tech2prod_dict[args.type] = plist
         asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
@@ -417,6 +421,7 @@ def discover_inventory(args, localpath):
     asset_data['owner'] = args.handle
     asset_data['products'] = plist
     asset_data['tags'] = asset_tags
+    asset_data['technology_products'] = tech2prod_dict
     
     return [ asset_data ]
 
