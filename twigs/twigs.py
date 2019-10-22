@@ -154,7 +154,7 @@ def main(args=None):
     parser_file.add_argument('--in', help='Absolute path to input inventory file. Supported file format is: PDF', required=True)
     parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified')
     parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified')
-    parser_file.add_argument('--type', choices=['OpenSource'], help='Type of asset. Defaults to OpenSource if not specified', required=False, default='OpenSource')
+    parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified', required=False, default='repo')
 
     # Arguments required for Host discovery on Linux
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")

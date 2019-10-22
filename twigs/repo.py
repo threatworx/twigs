@@ -389,7 +389,7 @@ def discover_inventory(args, localpath):
     asset_name = asset_name.replace('/','-')
     asset_name = asset_name.replace(':','-')
 
-    atype = 'Open Source' 
+    atype = 'Source Repository'
     plist = []
     asset_tags = []
     tech2prod_dict = { }

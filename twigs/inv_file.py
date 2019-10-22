@@ -110,8 +110,8 @@ def get_inventory(args):
     asset = { }
     asset['id'] = asset_id
     asset['name'] = asset_name
-    if args.type == 'OpenSource':
-        asset['type'] = 'Open Source'
+    if args.type == 'repo':
+        asset['type'] = 'Source Repository'
     else:
         asset['type'] = 'Other'
     asset['owner'] = args.handle
