@@ -421,7 +421,8 @@ def discover_inventory(args, localpath):
     asset_data['owner'] = args.handle
     asset_data['products'] = plist
     asset_data['tags'] = asset_tags
-    asset_data['technology_products'] = tech2prod_dict
+    if len(tech2prod_dict) > 0:
+        asset_data['compliance_metadata'] = {"source_metadata": {"technology_products":tech2prod_dict}}
     
     return [ asset_data ]
 

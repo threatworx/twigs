@@ -238,7 +238,7 @@ def main(args=None):
     elif args.mode == 'file':
         assets = inv_file.get_inventory(args)
 
-    if args.secure == False:
+    if args.mode != 'host' or args.secure == False:
         if assets is None or len(assets) == 0:
             logging.info("No assets found!")
         else:
