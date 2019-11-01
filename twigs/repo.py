@@ -231,7 +231,7 @@ def discover_yarn(args, localpath):
         cline = contents.splitlines()
         dparse = False
         for index, l in enumerate(cline):
-            if l.endswith(':') and 'dependencies' not in l:
+            if l.endswith(':') and 'dependencies' not in l.lower():
                 dparse = False
                 if l.startswith('"'):
                     l = l[1:]
@@ -244,7 +244,7 @@ def discover_yarn(args, localpath):
                 pname = libname+' '+libver
                 if pname not in plist:
                     plist.append(pname)
-            if l.endswith(':') and 'dependencies' in l:
+            if l.endswith(':') and 'dependencies' in l.lower():
                 dparse = True
                 continue
             if dparse:
