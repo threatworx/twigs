@@ -251,6 +251,10 @@ def discover_yarn(args, localpath):
                 pname = l.strip()
                 pname = pname.replace('"','')
                 pname = pname.replace('~','')
+                pname = pname.replace('^','')
+                pname = pname.replace('<','')
+                pname = pname.replace('>','')
+                pname = pname.replace('=','')
                 if pname == '':
                     dparse = False
                     continue
