@@ -25,6 +25,22 @@ def find_files(localpath, filename):
                 ret_files.append(file_path)
     return ret_files
 
+def cleanse_semver_version(pv):
+    pv = pv.replace('"','')
+    pv = pv.replace('~','')
+    pv = pv.replace('^','')
+    pv = pv.replace('<','')
+    pv = pv.replace('>','')
+    pv = pv.replace('=','')
+    temp_tokens = pv.split()
+    if len(temp_tokens) >= 1:
+        version = temp_tokens[1]
+        version = version.replace('X','0')
+        version = version.replace('x','0')
+        version = version.replace('*','0')
+        pv = temp_tokens[0] + ' ' + version
+    return pv
+
 def discover_pom_xml(args, localpath):
     plist = []
     files = find_files(localpath, 'pom.xml')
@@ -124,11 +140,8 @@ def discover_gradle(args, localpath):
                     plist.append(pname)
     return plist 
 
-def discover_package_json(args, localpath):
+def process_package_json_files(files):
     plist = []
-    files = find_files(localpath, 'package.json')
-    more_files = find_files(localpath, 'package-lock.json')
-    files.extend(more_files)
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -166,36 +179,34 @@ def discover_package_json(args, localpath):
                             plist.append(pname)
                 else:
                     pname = d + ' ' + ddict[d]
-                    pname = pname.replace('^','')
-                    pname = pname.replace('~','')
-                    pname = pname.replace('<','')
-                    pname = pname.replace('>','')
-                    pname = pname.replace('=','')
+                    pname = cleanse_semver_version(pname)
                     if pname not in plist:
                         plist.append(pname)
         if 'devDependencies' in cjson:
             ddict = cjson['devDependencies']
             for d in ddict:
                 pname = d + ' ' + ddict[d]
-                pname = pname.replace('^','')
-                pname = pname.replace('~','')
-                pname = pname.replace('<','')
-                pname = pname.replace('>','')
-                pname = pname.replace('=','')
+                pname = cleanse_semver_version(pname)
                 if pname not in plist:
                     plist.append(pname)
         if 'optionalDependencies' in cjson:
             ddict = cjson['optionalDependencies']
             for d in ddict:
-                pname = pname.replace('^','')
-                pname = pname.replace('~','')
-                pname = pname.replace('<','')
-                pname = pname.replace('>','')
-                pname = pname.replace('=','')
                 pname = d + ' ' + ddict[d]
+                pname = cleanse_semver_version(pname)
                 if pname not in plist:
                     plist.append(pname)
     return plist 
+
+def discover_package_json(args, localpath):
+    plist = []
+    files = find_files(localpath, 'package-lock.json')
+    if len(files) > 0:
+        plist = process_package_json_files(files)
+    else:
+        files = find_files(localpath, 'package.json')
+        plist = process_package_json_files(files)
+    return plist
 
 def discover_packages_config(args, localpath):
     plist = []
@@ -223,6 +234,11 @@ def discover_packages_config(args, localpath):
 def discover_yarn(args, localpath):
     plist = []
     files = find_files(localpath, 'yarn.lock')
+    if len(files) == 0:
+        files = find_files(localpath, 'package.json')
+        plist = process_package_json_files(files)
+        return plist
+
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -249,18 +265,13 @@ def discover_yarn(args, localpath):
                 continue
             if dparse:
                 pname = l.strip()
-                pname = pname.replace('"','')
-                pname = pname.replace('~','')
-                pname = pname.replace('^','')
-                pname = pname.replace('<','')
-                pname = pname.replace('>','')
-                pname = pname.replace('=','')
                 if pname == '':
                     dparse = False
                     continue
+                pname = cleanse_semver_version(pname)
                 if pname not in plist:
                     plist.append(pname)
-    return plist 
+    return plist
 
 def discover_ruby(args, localpath):
     plist = []
