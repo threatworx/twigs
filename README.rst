@@ -29,7 +29,7 @@ Note - twigs requires python 2.7 It is recommended to use virtual environments t
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 
 $ python twigs.py --help
-usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--scan {quick,regular,full}] [--email_report] [--purge_assets] {aws,azure,docker,file,host,opensource,servicenow} ...
+usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--email_report] [--purge_assets] [--noscan] {aws,azure,docker,file,host,opensource,servicenow} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -45,9 +45,7 @@ optional arguments:
                         "TW_INSTANCE" environment variable
   --out OUT             Specify name of the CSV file to hold the exported
                         asset information. Defaults to out.csv
-  --scan SCAN           Perform impact refresh for asset(s) by specifying one
-                        of the scan options {quick,regular,full}
-                        Perform impact refresh for asset(s)
+  --noscan              Do not initiate a baseline assessment
   --email_report        After impact refresh is complete email scan report to
                         self
   --purge_assets        Purge the asset(s) after impact refresh is complete

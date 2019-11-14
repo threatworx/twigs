@@ -84,14 +84,14 @@ def push_assets_to_TW(assets, args):
         if asset_id is not None:
             asset_id_list.append(asset_id)
 
-    if args.scan is not None:
+    if args.noscan is not True:
         if len(asset_id_list) == 0:
             logging.info("No assets to scan...")
             return 
         logging.info("Starting impact refresh for assets %s", str(asset_id_list))
         scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
         scan_payload = { }
-        scan_payload['scan_type'] = args.scan
+        scan_payload['scan_type'] = 'full' 
         scan_payload['assets'] = asset_id_list
         if args.purge_assets:
             scan_payload['mode'] = 'email-purge'
@@ -120,7 +120,7 @@ def main(args=None):
     parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
     parser.add_argument('--out', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
-    parser.add_argument('--scan', choices=["quick", "regular", "full"], help='Perform impact refresh for asset(s)')
+    parser.add_argument('--noscan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
     parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
@@ -211,13 +211,9 @@ def main(args=None):
             logging.info('Using instance specified in "TW_INSTANCE" environment variable...')
             args.instance = temp
 
-    if args.purge_assets == True and (args.scan is None or args.email_report == False):
-        logging.error('Purge assets option (--purge_assets) is used with Scan option (--scan) and Email report (--email_report)')
+    if args.purge_assets == True and args.email_report == False:
+        logging.error('Purge assets option (--purge_assets) is used with Email report (--email_report)')
         return
-
-    if args.token is None and args.scan is not None:
-        logging.error('Scan is performed on ThreatWatch instance. Please specify connection details i.e. "--token" and "--instance" arguments.')
-        return 
 
     if args.token is None or len(args.token) == 0:
         logging.debug('[token] argument is not specified. Asset information will be exported to CSV file [%s]', args.out)
