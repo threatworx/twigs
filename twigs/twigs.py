@@ -152,9 +152,9 @@ def main(args=None):
     # Arguments required for File-based discovery
     parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
     parser_file.add_argument('--in', help='Absolute path to input inventory file. Supported file formats are: PDF & CSV', required=True)
-    parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified')
-    parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified')
-    parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified for PDF files', required=False, default='repo')
+    parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
+    parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
+    parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
 
     # Arguments required for Host discovery on Linux
     parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")

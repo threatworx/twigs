@@ -128,13 +128,16 @@ usage: twigs.py file [-h] --in IN [--assetid ASSETID] [--assetname ASSETNAME] [-
 optional arguments:
   -h, --help            show this help message and exit
   --in IN               Absolute path to input inventory file. Supported file
-                        format is: PDF
+                        formats are: PDF & CSV
   --assetid ASSETID     A unique ID to be assigned to the discovered asset.
-                        Defaults to input filename if not specified
+                        Defaults to input filename if not specified. Applies
+                        only for PDF files.
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset.
-                        Defaults to assetid is not specified
-  --type TYPE           Type of asset. Defaults to OpenSource if not specified
+                        Defaults to assetid is not specified. Applies only for
+                        PDF files.
+  --type TYPE           Type of asset. Defaults to repo if not specified.
+                        Applies only for PDF files.
 
 Mode: host
 $ python twigs.py host --help
