@@ -69,6 +69,32 @@ def get_products_from_pdf_file_using_pdfminer(in_file):
             products.append(j)
     return products
 
+def get_assets_from_csv_file(in_file):
+    assets = []
+    with open(in_file, "r") as fd:
+        line  = fd.readline()
+        while line:
+            tokens = line.split(',')
+            asset = { }
+            asset['id'] = tokens[0]
+            asset['name'] = tokens[1]
+            asset['type'] = tokens[2]
+            for i in range(3, len(tokens)):
+                token = tokens[i]
+                if token.startswith(':OWNER:'):
+                    asset['owner'] = token[7:]
+                elif token.startswith(':TAG:'):
+                    if asset.get('tags') is None:
+                        asset['tags'] = []
+                    asset['tags'].append(token[5:])
+                else:
+                    if asset.get('products') is None:
+                        asset['products'] = []
+                    asset['products'].append(token)
+            assets.append(asset)
+            line = fd.readline()
+    return assets
+
 def get_inventory(args):
     # Note this is a workaround since 'in' is a reserved word and hence one cannot do args.in
     temp_dict = vars(args)
@@ -88,6 +114,10 @@ def get_inventory(args):
         if len(products) == 0:
             products = get_products_from_pdf_file_using_pdfminer(in_file)
         logging.info("Done retriving products from PDF file")
+    elif in_file_ext == 'csv':
+        logging.info("Retriving products from CSV file [%s]", in_file)
+        assets = get_assets_from_csv_file(in_file)
+        return assets
     else:
         logging.error('Error unsupported input file type specified...')
         sys.exit(1)
