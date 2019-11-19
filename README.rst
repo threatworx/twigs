@@ -127,8 +127,9 @@ usage: twigs.py file [-h] --in IN [--assetid ASSETID] [--assetname ASSETNAME] [-
 
 optional arguments:
   -h, --help            show this help message and exit
-  --in IN               Absolute path to input inventory file. Supported file
-                        formats are: PDF & CSV
+  --in IN               Absolute path to single input inventory file or a
+                        directory containing CSV files. Supported file formats
+                        are: PDF & CSV
   --assetid ASSETID     A unique ID to be assigned to the discovered asset.
                         Defaults to input filename if not specified. Applies
                         only for PDF files.

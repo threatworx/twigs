@@ -95,12 +95,30 @@ def get_assets_from_csv_file(in_file):
             line = fd.readline()
     return assets
 
+def enumerate_files(in_path, file_ext):
+    ret_files = []
+    for root, subdirs, files in os.walk(in_path):
+        for fname in files:
+            file_path = os.path.join(root, fname)
+            if file_path.endswith(file_ext):
+                ret_files.append(file_path)
+    return ret_files
+
 def get_inventory(args):
     # Note this is a workaround since 'in' is a reserved word and hence one cannot do args.in
     temp_dict = vars(args)
     in_file = temp_dict['in']
 
-    if os.path.isfile(in_file) == False:
+    if os.path.isdir(in_file):
+        logging.info("Processing CSV files in specified directory [%s]", in_file)
+        csv_files = enumerate_files(in_file, '.csv')
+        assets = []
+        for csv_file in csv_files:
+            logging.info("Retriving products from CSV file [%s]", csv_file)
+            temp_assets = get_assets_from_csv_file(csv_file)
+            assets.extend(temp_assets)
+        return assets
+    elif os.path.isfile(in_file) == False:
         logging.error("Error specified file [%s] not found...", in_file)
         sys.exit(1)
     temp = in_file.rfind('.')
