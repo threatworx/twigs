@@ -47,10 +47,13 @@ def run_remote_ssh_command(args, host, command):
     try:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
-        if host.get('userpwd') is not None and len(host['userpwd']) > 0:
+        if host.get('userpwd') is not None and len(host['userpwd']) > 0 and (host.get('privatekey') is None or len(host['privatekey'])==0):
             client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
         elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
-            client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
+            if host.get('userpwd') is not None and len(host['userpwd']) > 0:
+                client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'],passphrase=host['userpwd'])
+            else:
+                client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
         else:
             client.connect(host['hostname'],username=host['userlogin'])
         stdin, stdout, stderr = client.exec_command(command)
