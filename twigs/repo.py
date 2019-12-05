@@ -276,6 +276,8 @@ def discover_yarn(args, localpath):
 def discover_ruby(args, localpath):
     plist = []
     files = find_files(localpath, 'gemfile.lock')
+    if len(files) == 0:
+        files = find_files(localpath, 'Gemfile.lock')
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
