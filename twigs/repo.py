@@ -274,7 +274,7 @@ def discover_yarn(args, localpath):
     return plist
 
 def discover_ruby(args, localpath):
-    plist = []
+    pset = set() 
     files = find_files(localpath, 'gemfile.lock')
     if len(files) == 0:
         files = find_files(localpath, 'Gemfile.lock')
@@ -291,23 +291,26 @@ def discover_ruby(args, localpath):
                 specsfound = True
                 continue
             if l == '':
-                break
+                specsfound = False
+                continue
             if specsfound:
                 ls = l.split()
                 gname = ls[0]
                 gver = ''
                 if len(ls) > 1:
-                    gver = ls[1]
-                    gver = re.findall(r'([0-9]+[0-9a-z]*(\.[0-9a-z]+)+)', gver)
-                    if gver:
-                        gver = gver[0][0]
-                    else:
-                        gver = ''
+                    for i in range(1,len(ls)):
+                        gver = ls[i]
+                        gver = re.findall(r'([0-9]+[0-9a-z]*(\.[0-9a-z]+)+)', gver)
+                        if gver:
+                            gver = gver[0][0]
+                            break
+                        else:
+                            gver = ''
                 pname = gname + ' ' + gver
                 pname = pname.strip()
-                if pname not in plist:
-                    plist.append(pname)
-    return plist 
+                if pname not in pset:
+                    pset.add(pname)
+    return list(pset) 
 
 def discover_python(args, localpath):
     plist = []
