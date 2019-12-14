@@ -25,6 +25,7 @@ import docker
 import azure
 import servicenow
 import inv_file
+import fingerprint
 from __init__ import __version__
 
 def export_assets_to_csv(assets, csv_file):
@@ -165,6 +166,10 @@ def main(args=None):
     parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
+    # Arguments required for nmap discovery
+    parser_nmap = subparsers.add_parser ("nmap", help = "Fingerprint assets using nmap. Requires nmap to be installed.")
+    parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range', required=True)
+
     # Arguments required for Repo discovery
     parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")
     parser_repo.add_argument('--repo', help='Local path or git repo url for project', required=True)
@@ -229,6 +234,8 @@ def main(args=None):
         assets = repo.get_inventory(args)
     elif args.mode == 'host':
         assets = linux.get_inventory(args)
+    elif args.mode == 'nmap':
+        assets = fingerprint.get_inventory(args)
     elif args.mode == 'docker':
         assets = docker.get_inventory(args)
     elif args.mode == 'file':
