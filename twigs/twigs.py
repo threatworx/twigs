@@ -56,6 +56,7 @@ def push_asset_to_TW(asset, args):
 
     resp = requests.get(asset_url + asset_id + "/" + auth_data)
     if resp.status_code != 200:
+        logging.info("Creating new asset [%s]", asset_id)
         # Asset does not exist so create one with POST
         resp = requests.post(asset_url + auth_data, json=asset)
         if resp.status_code == 200:
@@ -67,6 +68,7 @@ def push_asset_to_TW(asset, args):
             logging.error("Response details: %s", resp.content)
             return None
     else:
+        logging.info("Updating asset [%s]", asset_id)
         # asset exists so update it with PUT
         resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset)
         if resp.status_code == 200:
@@ -89,6 +91,7 @@ def push_assets_to_TW(assets, args):
         if len(asset_id_list) == 0:
             logging.info("No assets to scan...")
             return 
+        # Start VA
         logging.info("Starting impact refresh for assets %s", str(asset_id_list))
         scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
         scan_payload = { }
@@ -104,6 +107,16 @@ def push_assets_to_TW(assets, args):
         else:
             logging.error("Failed to start impact refresh")
             logging.error("Response details: %s", resp.content)
+        if args.mode == "repo":
+            # Start license compliance assessment
+            logging.info("Starting license compliance assessment for assets %s", str(asset_id_list))
+            scan_payload = {"license_scan": True, "assets": asset_id_list }
+            resp = requests.post(scan_api_url, json=scan_payload)
+            if resp.status_code == 200:
+                logging.info("Started license compliance assessment...")
+            else:
+                logging.error("Failed to start license compliance assessment")
+                logging.error("Response details: %s", resp.content)
 
 def main(args=None):
     
@@ -176,6 +189,17 @@ def main(args=None):
     parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
     parser_repo.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    # Switches related to secrets scan for repo
+    parser_repo.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+    parser_repo.add_argument('--disable_entropy', action='store_true', help='Do not identify entropy based secrets')
+    parser_repo.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+    parser_repo.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+    parser_repo.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+    parser_repo.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+    parser_repo.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+    parser_repo.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+    parser_repo.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
+    parser_repo.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
 
     # Arguments required for ServiceNow discovery
     parser_snow = subparsers.add_parser ("servicenow", help = "Discover inventory from ServiceNow instance")

@@ -54,12 +54,13 @@ optional arguments:
 modes:
   Discovery modes supported
 
-  {aws,azure,docker,file,host,repo,servicenow}
+  {aws,azure,docker,file,host,nmap,repo,servicenow} 
     aws                 Discover AWS instances
     azure               Discover Azure instances
     docker              Discover docker instances
     file                Discover inventory from file
     host                Discover linux host assets
+    nmap                Fingerprint assets using nmap. Requires nmap to be installed.
     repo                Discover project repository as asset
     servicenow          Discover inventory from ServiceNow instance
 
@@ -166,9 +167,17 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
 
+Mode: nmap
+$ python twigs.py nmap --help
+usage: twigs.py nmap [-h] --hosts HOSTS
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --hosts HOSTS  A hostname, IP address or CIDR range
+
 Mode: repo
 $ python twigs.py repo --help
-usage: twigs.py repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll}] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--disable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -177,6 +186,22 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+  --secrets_scan        Perform a scan to look for secrets in the code
+  --disable_entropy     Do not identify entropy based secrets
+  --regex_rules_file REGEX_RULES_FILE
+                        Path to JSON file specifying regex rules
+  --check_common_passwords
+                        Look for top common passwords.
+  --include_patterns INCLUDE_PATTERNS
+                        Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.
+  --include_patterns_file INCLUDE_PATTERNS_FILE
+                        Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.
+  --exclude_patterns EXCLUDE_PATTERNS
+                        Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.
+  --exclude_patterns_file EXCLUDE_PATTERNS_FILE
+                        Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.
+  --mask_secret         Mask identified secret before storing for reference in ThreatWatch.
+  --no_code             Disable storing code for reference in ThreatWatch.
 
 Mode: servicenow
 $ python twigs.py servicenow --help

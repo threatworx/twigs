@@ -14,16 +14,10 @@ import requirements
 from xml.dom import minidom
 from pygit2 import clone_repository
 
-SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll']
+import utils as lib_utils
+import code_secrets as lib_code_secrets
 
-def find_files(localpath, filename):
-    ret_files = []
-    for root, subdirs, files in os.walk(localpath):
-        for fname in files:
-            file_path = os.path.join(root, fname)
-            if file_path.endswith(filename):
-                ret_files.append(file_path)
-    return ret_files
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll']
 
 def cleanse_semver_version(pv):
     pv = pv.replace('"','')
@@ -43,7 +37,7 @@ def cleanse_semver_version(pv):
 
 def discover_pom_xml(args, localpath):
     plist = []
-    files = find_files(localpath, 'pom.xml')
+    files = lib_utils.find_files(localpath, 'pom.xml')
     prop_dict = None
     for file_path in files:
         fp = open(file_path, 'r')
@@ -122,7 +116,7 @@ def discover_pom_xml(args, localpath):
 
 def discover_gradle(args, localpath):
     plist = []
-    files = find_files(localpath, 'dependencies.gradle')
+    files = lib_utils.find_files(localpath, 'dependencies.gradle')
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -200,17 +194,17 @@ def process_package_json_files(files):
 
 def discover_package_json(args, localpath):
     plist = []
-    files = find_files(localpath, 'package-lock.json')
+    files = lib_utils.find_files(localpath, 'package-lock.json')
     if len(files) > 0:
         plist = process_package_json_files(files)
     else:
-        files = find_files(localpath, 'package.json')
+        files = lib_utils.find_files(localpath, 'package.json')
         plist = process_package_json_files(files)
     return plist
 
 def discover_packages_config(args, localpath):
     plist = []
-    files = find_files(localpath, 'packages.config')
+    files = lib_utils.find_files(localpath, 'packages.config')
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -233,9 +227,9 @@ def discover_packages_config(args, localpath):
 
 def discover_yarn(args, localpath):
     plist = []
-    files = find_files(localpath, 'yarn.lock')
+    files = lib_utils.find_files(localpath, 'yarn.lock')
     if len(files) == 0:
-        files = find_files(localpath, 'package.json')
+        files = lib_utils.find_files(localpath, 'package.json')
         plist = process_package_json_files(files)
         return plist
 
@@ -275,9 +269,9 @@ def discover_yarn(args, localpath):
 
 def discover_ruby(args, localpath):
     pset = set() 
-    files = find_files(localpath, 'gemfile.lock')
+    files = lib_utils.find_files(localpath, 'gemfile.lock')
     if len(files) == 0:
-        files = find_files(localpath, 'Gemfile.lock')
+        files = lib_utils.find_files(localpath, 'Gemfile.lock')
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -314,7 +308,7 @@ def discover_ruby(args, localpath):
 
 def discover_python(args, localpath):
     plist = []
-    files = find_files(localpath, 'requirements.txt')
+    files = lib_utils.find_files(localpath, 'requirements.txt')
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -346,7 +340,7 @@ def get_dll_version(path):
 
 def discover_dll(args, localpath):
     plist = []
-    files = find_files(localpath, '.dll')
+    files = lib_utils.find_files(localpath, '.dll')
     for file_path in files:
         dll_version = get_dll_version(file_path)
         if dll_version is None:
@@ -430,9 +424,9 @@ def discover_inventory(args, localpath):
     if plist == None or len(plist) == 0:
         if args.type is not None:
             logging.error("Unable to identify any dependencies of [%s] type in specified repo [%s]", args.type, args.repo)
+            sys.exit(1)
         else:
-            logging.error("Unable to identify any dependencies of all supported types in specified repo [%s]", args.repo)
-        sys.exit(1)
+            logging.warn("Unable to identify any dependencies of all supported types in specified repo [%s]", args.repo)
 
     asset_data = {}
     asset_data['id'] = asset_id
@@ -474,6 +468,16 @@ def get_inventory(args):
 
     logging.info("Performing asset discovery...")
     assets = discover_inventory(args, path)
+    if args.secrets_scan:
+        logging.info("Discovering secrets in source code. This may take some time...")
+        secret_records = lib_code_secrets.scan_for_secrets(args, path)
+        logging.info("Secrets discovery complete.")
+        assets[0]['secrets'] = secret_records
+        secrets = json.dumps(secret_records, indent=4, sort_keys=True)
+        secrets_json_file = assets[0]['name']+'_source_secrets.json'
+        with open(secrets_json_file, 'w') as fd:
+            fd.write(secrets)
+        logging.info("Secrets are written to [%s]", secrets_json_file)
 
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)
