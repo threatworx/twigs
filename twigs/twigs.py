@@ -191,9 +191,10 @@ def main(args=None):
     parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     # Switches related to secrets scan for repo
     parser_repo.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
-    parser_repo.add_argument('--disable_entropy', action='store_true', help='Do not identify entropy based secrets')
+    parser_repo.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
     parser_repo.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
     parser_repo.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+    parser_repo.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
     parser_repo.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
     parser_repo.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
     parser_repo.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')

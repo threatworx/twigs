@@ -67,6 +67,29 @@ def hide_secrets(lines):
         ret_lines.append(line_content)
     return "\n".join(ret_lines)
 
+def truncate_code_snippet(secret_record):
+    max_line_length = 1000 # Column data type allows 65535 characters and there are 5 lines
+    truncated_indicator = '...truncated...'
+    if len(secret_record['line_content']) > max_line_length:
+        truncated = secret_record['line_content'][:max_line_length]
+        secret_record['line_content'] = truncated + truncated_indicator
+    truncated = ''
+    for line in secret_record['before_content'].split('\n'):
+        if len(truncated) > 0:
+            truncated = truncated + '\n'
+        if len(line) > max_line_length:
+            truncated = truncated + line[:max_line_length] + truncated_indicator
+        else:
+            truncated = truncated + line
+    secret_record['before_content'] = truncated
+    truncated = ''
+    for line in secret_record['after_content'].split('\n'):
+        if len(truncated) > 0:
+            truncated = truncated + '\n'
+        if len(line) > max_line_length:
+            truncated = truncated + line[:max_line_length] + truncated_indicator
+    secret_record['after_content'] = truncated
+
 def create_secret_record(filename, lines, line_no, record_type, line_content, secret, args):
     to_mask = args.mask_secret
     secret_record = { }
@@ -100,6 +123,7 @@ def create_secret_record(filename, lines, line_no, record_type, line_content, se
         secret_record['line_content'] = line_content
         secret_record['before_content'] = hide_secrets(before_content) if to_mask else before_content
         secret_record['after_content'] = hide_secrets(after_content) if to_mask else after_content
+        truncate_code_snippet(secret_record)
     return secret_record
 
 def check_entropy(this_file, lines, line, line_no, secret_records, args):
@@ -143,7 +167,7 @@ def scan_file_for_secrets(args, this_file, regex_rules):
         lines = mm_file.read(-1).split('\n')
         line_no = 0
         for line in lines:
-            if not args.disable_entropy:
+            if args.enable_entropy:
                 check_entropy(this_file, lines, line, line_no, secret_records, args)
             check_regex_rules(this_file, lines, line, line_no, secret_records, args)
             if args.check_common_passwords:
@@ -156,6 +180,9 @@ def read_patterns(patterns, patterns_file, msg):
     if patterns:
         temp_patterns = patterns.split(',')
     if patterns_file:
+        if os.path.isfile(patterns_file) == False:
+            logging.error("Error unable to read patterns file [%s]", patterns_file)
+            sys.exit(1)
         with open(patterns_file, 'r') as fd:
             data = fd.read()
             temp_patterns = data.split('\n')
@@ -198,8 +225,19 @@ def scan_for_secrets(args, local_path):
 
     global common_pwds
     if args.check_common_passwords:
-        for cp in cs_defaults.common_passwords:
-            common_pwds.append(re.compile("[^a-zA-Z0-9]"+cp+"[^a-zA-Z0-9]"))
+        if args.common_passwords_file:
+            if os.path.isfile(args.common_passwords_file) == False:
+                logging.error("Error unable to read common passwords file [%s]", args.common_passwords_file)
+                sys.exit(1)
+            with open(args.common_passwords_file, 'r') as fd:
+                buf = fd.read()
+            common_passwords_list = buf.split('\n')
+        else:
+            common_passwords_list = cs_defaults.common_passwords
+        for cp in common_passwords_list:
+            cp = cp.strip()
+            if len(cp) > 0: # Safety check
+                common_pwds.append(re.compile("[^a-zA-Z0-9]"+cp+"[^a-zA-Z0-9]"))
 
     secret_records = []
     for this_file in final_files:

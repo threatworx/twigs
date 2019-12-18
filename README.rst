@@ -177,7 +177,7 @@ optional arguments:
 
 Mode: repo
 $ python twigs.py repo --help
-usage: twigs.py repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--disable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code]
+usage: twigs.py repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -187,11 +187,13 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
   --secrets_scan        Perform a scan to look for secrets in the code
-  --disable_entropy     Do not identify entropy based secrets
+  --enable_entropy      Identify entropy based secrets
   --regex_rules_file REGEX_RULES_FILE
                         Path to JSON file specifying regex rules
   --check_common_passwords
                         Look for top common passwords.
+  --common_passwords_file COMMON_PASSWORDS_FILE
+                        Specify your own common passwords file. One password per line in file
   --include_patterns INCLUDE_PATTERNS
                         Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.
   --include_patterns_file INCLUDE_PATTERNS_FILE
