@@ -88,6 +88,8 @@ def truncate_code_snippet(secret_record):
             truncated = truncated + '\n'
         if len(line) > max_line_length:
             truncated = truncated + line[:max_line_length] + truncated_indicator
+        else:
+            truncated = truncated + line
     secret_record['after_content'] = truncated
 
 def create_secret_record(filename, lines, line_no, record_type, line_content, secret, args):
