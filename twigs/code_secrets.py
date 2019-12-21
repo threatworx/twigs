@@ -101,15 +101,15 @@ def create_secret_record(filename, lines, line_no, record_type, line_content, se
     if secret_record['discovered_using'] == 'REGEX':
         secret_record['regex'] = record_type[len(secret_record['discovered_using'])+1:]
     if line_no >= 2:
-        before_content = lines[line_no-2] + '\n' + lines[line_no-1]
+        before_content = lib_utils.ascii_string(lines[line_no-2]) + '\n' + lib_utils.ascii_string(lines[line_no-1])
     elif line_no == 1:
-        before_content = lines[line_no-1]
+        before_content = lib_utils.ascii_string(lines[line_no-1])
     else:
         before_content = ''
     if line_no < len(lines) - 2:
-        after_content = lines[line_no+1] + '\n' + lines[line_no+2]
+        after_content = lib_utils.ascii_string(lines[line_no+1]) + '\n' + lib_utils.ascii_string(lines[line_no+2])
     elif line_no == len(lines) - 2:
-        after_content = lines[line_no+1]
+        after_content = lib_utils.ascii_string(lines[line_no+1])
     else:
         after_content = ''
     if args.no_code:
@@ -118,8 +118,12 @@ def create_secret_record(filename, lines, line_no, record_type, line_content, se
         secret_record['after_content'] = ''
     else:
         secret_length = len(secret)
+        line_content = lib_utils.ascii_string(line_content)
         secret_record['column_start'] = line_content.find(secret)
-        secret_record['column_end'] = secret_record['column_start'] + secret_length - 1
+        if secret_record['column_start'] != -1:
+            secret_record['column_end'] = secret_record['column_start'] + secret_length - 1
+        else:
+            secret_record['column_end'] = -1
         if to_mask:
             line_content = line_content.replace(secret, "*" * secret_length)
         secret_record['line_content'] = line_content
