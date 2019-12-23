@@ -45,11 +45,9 @@ optional arguments:
                         "TW_INSTANCE" environment variable
   --out OUT             Specify name of the CSV file to hold the exported
                         asset information. Defaults to out.csv
-  --noscan              Do not initiate a baseline assessment
+  --no_scan             Do not initiate a baseline assessment
   --email_report        After impact refresh is complete email scan report to
                         self
-  --purge_assets        Purge the asset(s) after impact refresh is complete
-                        and scan report is emailed to self
 
 modes:
   Discovery modes supported
