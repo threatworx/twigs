@@ -29,7 +29,7 @@ Note - twigs requires python 2.7 It is recommended to use virtual environments t
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 
 $ python twigs.py --help
-usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--email_report] [--purge_assets] [--noscan] {aws,azure,docker,file,host,opensource,servicenow} ...
+usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
