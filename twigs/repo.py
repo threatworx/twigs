@@ -66,7 +66,7 @@ def discover_pom_xml(args, localpath):
         if len(prop_list) > 0:
             for p in prop_list:
                 for item in p.childNodes:
-                    if item.nodeType == item.TEXT_NODE or item.nodeType == item.COMMENT_NODE:
+                    if item.nodeType == item.TEXT_NODE or item.nodeType == item.COMMENT_NODE or len(item.childNodes) == 0:
                         continue
                     prop_name = item.nodeName
                     prop_value = item.childNodes[0].data
