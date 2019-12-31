@@ -27,7 +27,7 @@ def cleanse_semver_version(pv):
     pv = pv.replace('>','')
     pv = pv.replace('=','')
     temp_tokens = pv.split()
-    if len(temp_tokens) >= 1:
+    if len(temp_tokens) >= 2:
         version = temp_tokens[1]
         version = version.replace('X','0')
         version = version.replace('x','0')
@@ -314,12 +314,16 @@ def discover_python(args, localpath):
         if fp == None:
             continue
         req = requirements.parse(fp)
-        for r in req:
-            prod = r.name
-            if len(r.specs) > 0:
-                prod = prod + ' ' + r.specs[0][1]
-                if prod not in plist:
-                    plist.append(prod)
+        try:
+            for r in req:
+                prod = r.name
+                if len(r.specs) > 0:
+                    prod = prod + ' ' + r.specs[0][1]
+                    if prod not in plist:
+                        plist.append(prod)
+        except:
+            logging.error("Error parsing python dependencies (requirements.txt)")
+            continue
     return plist
 
 def LOWORD(dword):
