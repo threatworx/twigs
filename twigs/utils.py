@@ -15,3 +15,5 @@ def ascii_string(in_str):
     ascii_str = ''.join([c if ord(c) < 128 else ' ' for c in in_str.strip()])
     return ascii_str
 
+def get_indent(line):
+    return len(line) - len(line.lstrip(' '))

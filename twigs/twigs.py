@@ -190,6 +190,7 @@ def main(args=None):
     parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")
     parser_repo.add_argument('--repo', help='Local path or git repo url for project', required=True)
     parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
+    parser_repo.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shalllow')
     parser_repo.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     # Switches related to secrets scan for repo

@@ -134,7 +134,7 @@ def discover_gradle(args, localpath):
                     plist.append(pname)
     return plist 
 
-def process_package_json_files(files):
+def process_package_json_files(files, level):
     plist = []
     for file_path in files:
         fp = open(file_path, 'r')
@@ -165,7 +165,7 @@ def process_package_json_files(files):
                     if pname not in plist:
                         plist.append(pname)
                     req_dict = content.get('requires')
-                    if req_dict is None:
+                    if req_dict is None or level == 'shallow':
                         continue
                     for req_pname in req_dict:
                         pname = req_pname + ' ' + req_dict[req_pname]
@@ -196,10 +196,10 @@ def discover_package_json(args, localpath):
     plist = []
     files = lib_utils.find_files(localpath, 'package-lock.json')
     if len(files) > 0:
-        plist = process_package_json_files(files)
+        plist = process_package_json_files(files, args.level)
     else:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist = process_package_json_files(files)
+        plist = process_package_json_files(files, args.level)
     return plist
 
 def discover_packages_config(args, localpath):
@@ -228,9 +228,9 @@ def discover_packages_config(args, localpath):
 def discover_yarn(args, localpath):
     plist = []
     files = lib_utils.find_files(localpath, 'yarn.lock')
-    if len(files) == 0:
+    if len(files) == 0 and args.type is not None:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist = process_package_json_files(files)
+        plist = process_package_json_files(files, args.level)
         return plist
 
     for file_path in files:
@@ -263,7 +263,7 @@ def discover_yarn(args, localpath):
                     dparse = False
                     continue
                 pname = cleanse_semver_version(pname)
-                if pname not in plist:
+                if pname not in plist and args.type == 'deep':
                     plist.append(pname)
     return plist
 
@@ -280,14 +280,22 @@ def discover_ruby(args, localpath):
         cline = contents.splitlines()
         specsfound = False
         for index, l in enumerate(cline):
+            raw_line = l
             l = l.strip()
             if l.startswith('specs:'):
                 specsfound = True
+                first_line_indent = -1
                 continue
             if l == '':
                 specsfound = False
                 continue
             if specsfound:
+                current_line_indent = lib_utils.get_indent(raw_line)
+                if first_line_indent == -1:
+                    first_line_indent = current_line_indent
+                elif current_line_indent > first_line_indent and args.level == 'shallow':
+                    # skip 2nd level dependencies
+                    continue
                 ls = l.split()
                 gname = ls[0]
                 gver = ''
