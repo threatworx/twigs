@@ -25,8 +25,10 @@ Features
 
 twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, repositories and more).
 
-Note - twigs requires python 2.7 It is recommended to use virtual environments to create isolated Python environments and reduce dependency conflicts. Please use the following command:
+Note:
+1. twigs requires python 2.7 It is recommended to use virtual environments to create isolated Python environments and reduce dependency conflicts. Please use the following command:
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
+2. twigs requires pygit2 package. Mac OS X users will need to perform additional steps as mentioned here [https://www.pygit2.org/install.html#installing-on-os-x] since pygit2 is not available on Mac OS X as a binary wheels package.
 
 $ python twigs.py --help
 usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow} ...
