@@ -35,7 +35,7 @@ def get_asset_type(os):
         return "Ubuntu"
     elif "Debian" in os:
         return "Debian"
-    elif "Amazon Linux AMI" in os:
+    elif "Amazon Linux" in os:
         return "Amazon Linux"
     else:
         logging.error('Not a supported OS type')
