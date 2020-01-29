@@ -112,7 +112,7 @@ def discover_pom_xml(args, localpath):
             pname = pname.strip()
             if pname not in plist:
                 plist.append(pname)
-    return plist 
+    return plist, None
 
 def discover_gradle(args, localpath):
     plist = []
@@ -132,10 +132,11 @@ def discover_gradle(args, localpath):
                 pname = pname.replace("'","")
                 if pname not in plist:
                     plist.append(pname)
-    return plist 
+    return plist, None
 
-def process_package_json_files(files):
+def process_package_json_files(files, level):
     plist = []
+    p1list = [] # 1st level dependencies
     for file_path in files:
         fp = open(file_path, 'r')
         if fp == None:
@@ -155,6 +156,7 @@ def process_package_json_files(files):
             pname = cjson['name'] + ' ' + cjson['version']
             if pname not in plist:
                 plist.append(pname)
+                p1list.append(pname)
         if 'dependencies' in cjson:
             ddict = cjson['dependencies']
             for d in ddict:
@@ -164,8 +166,9 @@ def process_package_json_files(files):
                     pname = d + ' ' + ver
                     if pname not in plist:
                         plist.append(pname)
+                        p1list.append(pname)
                     req_dict = content.get('requires')
-                    if req_dict is None:
+                    if req_dict is None or level == 'shallow':
                         continue
                     for req_pname in req_dict:
                         pname = req_pname + ' ' + req_dict[req_pname]
@@ -176,6 +179,7 @@ def process_package_json_files(files):
                     pname = cleanse_semver_version(pname)
                     if pname not in plist:
                         plist.append(pname)
+                        p1list.append(pname)
         if 'devDependencies' in cjson:
             ddict = cjson['devDependencies']
             for d in ddict:
@@ -183,6 +187,7 @@ def process_package_json_files(files):
                 pname = cleanse_semver_version(pname)
                 if pname not in plist:
                     plist.append(pname)
+                    p1list.append(pname)
         if 'optionalDependencies' in cjson:
             ddict = cjson['optionalDependencies']
             for d in ddict:
@@ -190,17 +195,17 @@ def process_package_json_files(files):
                 pname = cleanse_semver_version(pname)
                 if pname not in plist:
                     plist.append(pname)
-    return plist 
+                    p1list.append(pname)
+    return plist, p1list 
 
 def discover_package_json(args, localpath):
-    plist = []
     files = lib_utils.find_files(localpath, 'package-lock.json')
     if len(files) > 0:
-        plist = process_package_json_files(files)
+        plist, p1list = process_package_json_files(files, args.level)
     else:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist = process_package_json_files(files)
-    return plist
+        plist, p1list = process_package_json_files(files, args.level)
+    return plist, p1list
 
 def discover_packages_config(args, localpath):
     plist = []
@@ -223,14 +228,15 @@ def discover_packages_config(args, localpath):
             pname = libname + ' ' + libver
             if pname not in plist:
                 plist.append(pname)
-    return plist 
+    return plist, None
 
 def discover_yarn(args, localpath):
     plist = []
+    p1list = []
     files = lib_utils.find_files(localpath, 'yarn.lock')
-    if len(files) == 0:
+    if len(files) == 0 and args.type is not None:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist = process_package_json_files(files)
+        plist = process_package_json_files(files, args.level)
         return plist
 
     for file_path in files:
@@ -254,6 +260,7 @@ def discover_yarn(args, localpath):
                 pname = libname+' '+libver
                 if pname not in plist:
                     plist.append(pname)
+                    p1list.append(pname)
             if l.endswith(':') and 'dependencies' in l.lower():
                 dparse = True
                 continue
@@ -263,12 +270,13 @@ def discover_yarn(args, localpath):
                     dparse = False
                     continue
                 pname = cleanse_semver_version(pname)
-                if pname not in plist:
+                if pname not in plist and args.type == 'deep':
                     plist.append(pname)
-    return plist
+    return plist, p1list
 
 def discover_ruby(args, localpath):
     pset = set() 
+    p1list = [] # 1st level dependencies
     files = lib_utils.find_files(localpath, 'gemfile.lock')
     if len(files) == 0:
         files = lib_utils.find_files(localpath, 'Gemfile.lock')
@@ -280,14 +288,22 @@ def discover_ruby(args, localpath):
         cline = contents.splitlines()
         specsfound = False
         for index, l in enumerate(cline):
+            raw_line = l
             l = l.strip()
             if l.startswith('specs:'):
                 specsfound = True
+                first_line_indent = -1
                 continue
             if l == '':
                 specsfound = False
                 continue
             if specsfound:
+                current_line_indent = lib_utils.get_indent(raw_line)
+                if first_line_indent == -1:
+                    first_line_indent = current_line_indent
+                elif current_line_indent > first_line_indent and args.level == 'shallow':
+                    # skip 2nd level dependencies
+                    continue
                 ls = l.split()
                 gname = ls[0]
                 gver = ''
@@ -304,7 +320,8 @@ def discover_ruby(args, localpath):
                 pname = pname.strip()
                 if pname not in pset:
                     pset.add(pname)
-    return list(pset) 
+                    p1list.append(pname)
+    return list(pset) , p1list
 
 def discover_python(args, localpath):
     plist = []
@@ -324,7 +341,7 @@ def discover_python(args, localpath):
         except:
             logging.error("Error parsing python dependencies (requirements.txt)")
             continue
-    return plist
+    return plist, None
 
 def LOWORD(dword):
     return dword & 0x0000ffff
@@ -351,7 +368,7 @@ def discover_dll(args, localpath):
             continue
         dll_details = os.path.basename(file_path) + " " + dll_version
         plist.append(dll_details)
-    return plist
+    return plist, None
 
 def discover_specified_type(repo_type, args, localpath):
     if repo_type not in SUPPORTED_TYPES:
@@ -360,23 +377,23 @@ def discover_specified_type(repo_type, args, localpath):
 
     plist = []
     if repo_type == 'pip':
-        plist = discover_python(args, localpath)
+        plist, p1list = discover_python(args, localpath)
     elif repo_type == 'ruby':
-        plist = discover_ruby(args, localpath)
+        plist, p1list = discover_ruby(args, localpath)
     elif repo_type == 'yarn':
-        plist = discover_yarn(args, localpath)
+        plist, p1list = discover_yarn(args, localpath)
     elif repo_type == 'nuget':
-        plist = discover_packages_config(args, localpath)
+        plist, p1list = discover_packages_config(args, localpath)
     elif repo_type == 'npm':
-        plist = discover_package_json(args, localpath)
+        plist, p1list = discover_package_json(args, localpath)
     elif repo_type == 'maven':
-        plist = discover_pom_xml(args, localpath)
+        plist, p1list = discover_pom_xml(args, localpath)
     elif repo_type == 'gradle':
-        plist = discover_gradle(args, localpath)
+        plist, p1list = discover_gradle(args, localpath)
     elif repo_type == 'dll':
-        plist = discover_dll(args, localpath)
+        plist, p1list = discover_dll(args, localpath)
 
-    return plist
+    return plist, p1list
 
 def get_last_component(repo_path):
     if repo_path.startswith('http:') or repo_path.startswith('https:'):
@@ -411,18 +428,23 @@ def discover_inventory(args, localpath):
     plist = []
     asset_tags = []
     tech2prod_dict = { }
+    shallow_tech2prod_dict = { }
     if args.type is None:
         # If no type is specified, then process all supported types
         for repo_type in SUPPORTED_TYPES:
-            temp_list = discover_specified_type(repo_type, args, localpath)
+            temp_list, temp1list = discover_specified_type(repo_type, args, localpath)
             if temp_list is not None and len(temp_list) > 0:
                 tech2prod_dict[repo_type] = temp_list
+                if temp1list is not None and len(temp1list) > 0:
+                    shallow_tech2prod_dict[repo_type] = temp1list
                 plist.extend(temp_list)
                 asset_tags.append(repo_type)
     else:
-        plist = discover_specified_type(args.type, args, localpath)
+        plist, p1list = discover_specified_type(args.type, args, localpath)
         if plist is not None and len(plist) > 0:
             tech2prod_dict[args.type] = plist
+            if p1list is not None and len(p1list) > 0:
+                shallow_tech2prod_dict[args.type] = p1list
         asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
@@ -440,7 +462,7 @@ def discover_inventory(args, localpath):
     asset_data['products'] = plist
     asset_data['tags'] = asset_tags
     if len(tech2prod_dict) > 0:
-        asset_data['compliance_metadata'] = {"source_metadata": {"technology_products":tech2prod_dict}}
+        asset_data['compliance_metadata'] = {"source_metadata": {"technology_products":tech2prod_dict, "shallow_technology_products":shallow_tech2prod_dict}}
     
     return [ asset_data ]
 
