@@ -37,6 +37,8 @@ def get_asset_type(os):
         return "Debian"
     elif "Amazon Linux AMI" in os:
         return "Amazon Linux"
+    elif "Oracle Linux" in os:
+        return "Oracle Linux"
     else:
         logging.error('Not a supported OS type')
         return None
@@ -317,7 +319,7 @@ def discover_host(args, host):
         return None
 
     plist = None
-    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux':
+    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
         plist = discover_rh(args, host)
     elif atype == 'Ubuntu' or atype == 'Debian':
         plist = discover_ubuntu(args, host)
