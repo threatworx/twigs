@@ -12,10 +12,16 @@ import glob
 import traceback
 import requirements
 from xml.dom import minidom
-from pygit2 import clone_repository
 
 import utils as lib_utils
 import code_secrets as lib_code_secrets
+
+GIT_PATH = os.environ.get('GIT_PATH')
+if GIT_PATH is None:
+    if os.name == 'nt':
+        GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
+    else:
+        GIT_PATH = '/usr/bin/git'
 
 SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll']
 
@@ -405,18 +411,14 @@ def discover_inventory(args, localpath):
     default_id_name = get_last_component(args.repo)
     asset_id = None
     if args.assetid == None:
-        asset_id = args.type
+        asset_id = default_id_name
     else:
         asset_id = args.assetid
     asset_name = None
     if args.assetname == None:
-        asset_name = args.type
+        asset_name = default_id_name
     else:
         asset_name = args.assetname
-    if asset_id is None:
-        asset_id = default_id_name
-    if asset_name is None:
-        asset_name = default_id_name
     asset_id = asset_id.replace(' ','-')
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
@@ -474,15 +476,18 @@ def on_rm_error( func, path, exc_info):
 def get_inventory(args):
     path = None
     if args.repo.startswith('http'):
+        if os.path.isfile(GIT_PATH) == False:
+            logging.error("git executable does not exist at [%s]", GIT_PATH)
+            logging.info("You can set GIT_PATH environment variable to absolute path of git executable and run twigs again.")
+            sys.exit(1)
         path = tempfile.mkdtemp()
         new_repo = None
         try:
             logging.info("Cloning repo to temporary local directory...")
-            new_repo = clone_repository(args.repo, path)
-            new_repo.free()
+            cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
+            out = subprocess.check_output(cmdarr)
         except:
             print traceback.format_exc()
-        if new_repo is None:
             logging.error('Error cloning repo locally')
             shutil.rmtree(path, onerror = on_rm_error)
             sys.exit(1)
