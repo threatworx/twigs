@@ -33,11 +33,11 @@ default_regex_rules = {
     "Square Access Token": "sq0atp-[0-9A-Za-z\\-_]{22}",
     "Square OAuth Secret": "sq0csp-[0-9A-Za-z\\-_]{43}",
     "PayPal Braintree Access Token": "access_token\\$production\\$[0-9a-z]{16}\\$[0-9a-f]{32}",
-    "JSON Web Token (JWT)": "ey[A-Za-z0-9_-]*\.[A-Za-z0-9._-]*|ey[A-Za-z0-9_\/+-]*\.[A-Za-z0-9._\/+-]*",
+    "JSON Web Token (JWT)": "eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*?",
     # Misc.
     "Password in URL": "[a-zA-Z]{3,10}://[^/\\s:@]{3,20}:[^/\\s:@]{3,20}@.{1,100}[\"'\\s]",
-    "HTTP Authorization Basic": "basic\s*[a-zA-Z0-9=:_\+\/-]+",
-    "HTTP Authorization Bearer": "bearer\s*[a-zA-Z0-9_\-\.=:_\+\/]+"
+    "HTTP Authorization Basic": "basic\s+[a-zA-Z0-9=:_\+\/-]+",
+    "HTTP Authorization Bearer": "bearer\s+[a-zA-Z0-9_\-\.=:_\+\/]+"
 }
 
 common_passwords = [
