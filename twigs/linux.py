@@ -39,6 +39,8 @@ def get_asset_type(os):
         return "Amazon Linux"
     elif "Oracle Linux" in os:
         return "Oracle Linux"
+    elif "FreeBSD" in os:
+        return "FreeBSD"
     else:
         logging.error('Not a supported OS type')
         return None
@@ -81,23 +83,69 @@ def run_remote_ssh_command(args, host, command):
         return output
 
 def get_os_release(args, host):
+    freebsd = False
+    out = None
     cmdarr = ["/bin/cat /etc/os-release"]
     if host['remote']:
         out = run_remote_ssh_command(args, host, cmdarr[0])
-        if out is None:
-            return None
     else:
         try:
             out = subprocess.check_output(cmdarr, shell=True)
         except subprocess.CalledProcessError:
-            logging.error("Error determining OS release")
+            logging.error("Error running local command")
+
+    if out is None or out.strip() == '':
+        # try FreeBSD
+        cmdarr = ["/usr/bin/uname -v -p"]
+        if host['remote']:
+            out = run_remote_ssh_command(args, host, cmdarr[0])
+        else:
+            try:
+                out = subprocess.check_output(cmdarr, shell=True)
+            except subprocess.CalledProcessError:
+                logging.error("uname not found")
+
+    if out is None:
+        logging.error("Failed to get os-release")
+        return None
+    else:
+        freebsd = True
+
+    if not freebsd:
+        output_lines = out.splitlines()
+        for l in output_lines:
+            if 'PRETTY_NAME' in l:
+                return l.split('=')[1].replace('"','')
+    else:
+        if 'FreeBSD' in out:
+            return out
+    return None
+
+def discover_freebsd(args, host):
+    plist = []
+    cmdarr = ["/usr/sbin/pkg info"]
+    logging.info("Retrieving product details")
+    if host['remote']:
+        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
+        if pkgout is None:
+            return None
+    else:
+        try:
+            pkgout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory")
             return None 
 
-    output_lines = out.splitlines()
-    for l in output_lines:
-        if 'PRETTY_NAME' in l:
-            return l.split('=')[1].replace('"','')
-    return None
+    begin = False
+    for l in pkgout.splitlines():
+        lsplit = l.split()
+        pkgline = lsplit[0]
+        ldash = pkgline.rfind('-')
+        pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
+        logging.debug("Found product [%s]", pkg)
+        plist.append(pkg)
+    logging.info("Completed retrieval of product details")
+    return plist
 
 def discover_rh(args, host):
     plist = []
@@ -323,6 +371,8 @@ def discover_host(args, host):
         plist = discover_rh(args, host)
     elif atype == 'Ubuntu' or atype == 'Debian':
         plist = discover_ubuntu(args, host)
+    elif atype == 'FreeBSD':
+        plist = discover_freebsd(args, host)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory asset [%s]", asset_id)
