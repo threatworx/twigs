@@ -26,6 +26,7 @@ import azure
 import servicenow
 import inv_file
 import fingerprint
+import dast 
 from __init__ import __version__
 
 def export_assets_to_csv(assets, csv_file):
@@ -89,7 +90,7 @@ def push_assets_to_TW(assets, args):
         if asset_id is not None:
             asset_id_list.append(asset_id)
 
-    if args.no_scan is not True:
+    if args.no_scan is not True and args.mode != 'dast':
         if len(asset_id_list) == 0:
             logging.info("No assets to scan...")
             return 
@@ -127,7 +128,7 @@ def main(args=None):
         args = sys.argv[1:]
 
     logfilename = "twigs.log"
-    logging_level = logging.INFO
+    logging_level = logging.WARN
 
     parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and project repositories')
     subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
@@ -139,6 +140,7 @@ def main(args=None):
     parser.add_argument('--out', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
+    parser.add_argument('--verbose', action='store_true', help='Enable detailed logging')
     # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
     # Arguments required for AWS discovery
@@ -213,8 +215,19 @@ def main(args=None):
     parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
     parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
+    # Arguments required for web-app discovery and testing
+    parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
+    parser_webapp.add_argument('--url', help='Application URL', required=True)
+    parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
+    parser_webapp.add_argument('--plugin', help='DAST plugin to be used. Default is skipfish. Requires the plugin to be installed separately.', default='skipfish')
+    parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
+    parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
+
+
     args = parser.parse_args()
 
+    if args.verbose:
+        logging_level = logging.INFO
     # Setup the logger
     logging.basicConfig(filename=logfilename, level=logging_level, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     console = logging.StreamHandler()
@@ -269,6 +282,8 @@ def main(args=None):
         assets = docker.get_inventory(args)
     elif args.mode == 'file':
         assets = inv_file.get_inventory(args)
+    elif args.mode == 'dast':
+        assets = dast.get_inventory(args)
 
     if args.mode != 'host' or args.secure == False:
         if assets is None or len(assets) == 0:
