@@ -316,7 +316,7 @@ def discover(args):
             # secure the new rows in the file
             with open(host_list_file, mode='w') as csvfile:
                 fieldnames = ['hostname','userlogin','userpwd','privatekey','assetid','assetname']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_NONE, escapechar='\\')
                 writer.writeheader()
                 for h in remote_hosts:
                     if h['userpwd'] != '' and not h['userpwd'].startswith('__SECURE__:'):
