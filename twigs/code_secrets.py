@@ -247,7 +247,7 @@ def scan_for_secrets(args, local_path):
 
     secret_records = []
     for this_file in final_files:
-        if os.stat(this_file).st_size > 0 and is_binary_string(open(this_file, 'r').read(1024)) == False:
+        if os.path.islink(this_file) == False and os.stat(this_file).st_size > 0 and is_binary_string(open(this_file, 'r').read(1024)) == False:
             secret_records.extend(scan_file_for_secrets(args, this_file, regex_rules))
 
     return secret_records
