@@ -13,6 +13,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
+import socket
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -41,6 +42,8 @@ def get_asset_type(os):
         return "Oracle Linux"
     elif "FreeBSD" in os:
         return "FreeBSD"
+    elif "OpenBSD" in os:
+        return "OpenBSD"
     else:
         logging.error('Not a supported OS type')
         return None
@@ -82,6 +85,21 @@ def run_remote_ssh_command(args, host, command):
     finally:
         return output
 
+def check_host_up(host):
+    if not host['remote']:
+        return True
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    try:
+        result = sock.connect_ex((host['hostname'], 22))
+        if result == 0:
+            return True
+        else:
+            return False
+    except socket.timeout:
+        logging.error("Socket timeout")
+        return False
+
 def get_os_release(args, host):
     freebsd = False
     out = None
@@ -103,23 +121,58 @@ def get_os_release(args, host):
             try:
                 out = subprocess.check_output(cmdarr, shell=True)
             except subprocess.CalledProcessError:
-                logging.error("uname not found")
+                logging.error("Error running local command")
+
+        if out is not None and 'FreeBSD' not in out:
+            # try OpenBSD
+            cmdarr = ["/usr/bin/uname -srvm"]
+            if host['remote']:
+                out = run_remote_ssh_command(args, host, cmdarr[0])
+            else:
+                try:
+                    out = subprocess.check_output(cmdarr, shell=True)
+                except subprocess.CalledProcessError:
+                    logging.error("Error running local command")
 
     if out is None:
         logging.error("Failed to get os-release")
         return None
-    else:
-        freebsd = True
 
-    if not freebsd:
+    if 'FreeBSD' in out or 'OpenBSD' in out:
+        return out
+    else:
         output_lines = out.splitlines()
         for l in output_lines:
             if 'PRETTY_NAME' in l:
                 return l.split('=')[1].replace('"','')
-    else:
-        if 'FreeBSD' in out:
-            return out
     return None
+
+def discover_openbsd(args, host):
+    plist = []
+    cmdarr = ["/usr/sbin/pkg_info -A"]
+    logging.info("Retrieving product details")
+    if host['remote']:
+        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
+        if pkgout is None:
+            return None
+    else:
+        try:
+            pkgout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory")
+            return None 
+
+    begin = False
+    for l in pkgout.splitlines():
+        lsplit = l.split()
+        pkgline = lsplit[0]
+        ldash = pkgline.rfind('-')
+        pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
+        logging.debug("Found product [%s]", pkg)
+        plist.append(pkg)
+    logging.info("Completed retrieval of product details")
+    return plist
+
 
 def discover_freebsd(args, host):
     plist = []
@@ -354,6 +407,11 @@ def discover_host(args, host):
     asset_name = asset_name.replace('/','-')
     asset_name = asset_name.replace(':','-')
 
+    logging.info("Checking if host [%s] is reachable", asset_id)
+    if not check_host_up(host):
+        logging.error("Host is not reachable [%s]", asset_id)
+        return None
+
     logging.info("Started inventory discovery for asset [%s]", asset_id)
 
     os = get_os_release(args, host)
@@ -373,6 +431,8 @@ def discover_host(args, host):
         plist = discover_ubuntu(args, host)
     elif atype == 'FreeBSD':
         plist = discover_freebsd(args, host)
+    elif atype == 'OpenBSD':
+        plist = discover_openbsd(args, host)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory asset [%s]", asset_id)

@@ -140,7 +140,7 @@ def main(args=None):
     parser.add_argument('--out', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
-    parser.add_argument('--verbose', action='store_true', help='Enable detailed logging')
+    parser.add_argument('--quiet', action='store_true', help='Disable verbose logging')
     # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
     # Arguments required for AWS discovery
@@ -226,10 +226,11 @@ def main(args=None):
 
     args = parser.parse_args()
 
-    if args.verbose:
-        logging_level = logging.INFO
+    logging_level = logging.INFO
+    if args.quiet:
+        logging_level = logging.ERROR
     # Setup the logger
-    logging.basicConfig(filename=logfilename, level=logging_level, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    logging.basicConfig(filename=logfilename, level=logging.INFO, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
     console = logging.StreamHandler()
     console.setLevel(logging_level)
     console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
