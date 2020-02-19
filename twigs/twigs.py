@@ -164,7 +164,8 @@ def main(args=None):
 
     # Arguments required for docker discovery 
     parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
-    parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.', required=True)
+    parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.')
+    parser_docker.add_argument('--containerid', help='The container ID of a running docker container which needs to be inspected.')
     parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 

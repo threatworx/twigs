@@ -111,13 +111,16 @@ optional arguments:
 
 Mode: docker
 $ python twigs.py docker --help
-usage: twigs.py docker [-h] --image IMAGE [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs.py docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
   --image IMAGE         The docker image (repo:tag) which needs to be
                         inspected. If tag is not given, "latest" will be
                         assumed.
+  --containerid CONTAINERID
+                        The container ID of a running docker container which
+                        needs to be inspected.
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset

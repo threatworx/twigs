@@ -13,7 +13,9 @@ def docker_available():
     return None 
 
 def start_docker_container(args):
-    cmdarr = [docker_cli+' run -d -i -t '+args.image]
+    if args.image is None:
+        return None
+    cmdarr = [docker_cli+' run -d --rm -i -t '+args.image]
     out = ''
     try:
         out = subprocess.check_output(cmdarr, shell=True)
@@ -25,6 +27,8 @@ def start_docker_container(args):
     return container_id
 
 def stop_docker_container(args, container_id):
+    if args.image is None:
+        return
     cmdarr = [docker_cli+' stop '+container_id]
     out = ''
     try:
@@ -34,35 +38,67 @@ def stop_docker_container(args, container_id):
         sys.exit(1)
     logging.info("Stopped container with ID ["+container_id+"]")
 
-def get_asset_type(args, container_id):
-    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/bin/cat /etc/os-release"']
-    out = ''
-    try:
-        out = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
-        logging.error("Error determining os type: "+args.image)
-        return None 
-    if 'CentOS' in out:
+def get_asset_type(os):
+    if "CentOS" in os:
         return "CentOS"
-    elif 'Ubuntu' in out:
+    elif "Red Hat" in os:
+        return "Red Hat"
+    elif "Ubuntu" in os:
         return "Ubuntu"
-    elif 'Debian' in out:
+    elif "Debian" in os:
         return "Debian"
+    elif "Amazon Linux" in os:
+        return "Amazon Linux"
+    elif "Oracle Linux" in os:
+        return "Oracle Linux"
+    elif "FreeBSD" in os:
+        return "FreeBSD"
+    elif "OpenBSD" in os:
+        return "OpenBSD"
     else:
-        logging.error('Not a supported os type')
+        logging.error('Not a supported OS type')
         return None
 
 def get_os_release(args, container_id):
-    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/bin/cat /etc/os-release"']
-    out = ''
+    base_cmd = docker_cli+' exec -i -t '+container_id+' /bin/sh -c '
+    freebsd = False
+    out = None
+    cmd = '"/bin/cat /etc/os-release"'
+    cmdarr = [base_cmd + cmd]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
     except subprocess.CalledProcessError:
-        logging.error("Error determining os type: "+args.image)
-        return None 
-    for l in out.splitlines():
-        if 'PRETTY_NAME' in l:
-            return l.split('=')[1].replace('"','')
+        logging.error("Error determining os type: %s", args.image)
+
+    if out is None or out.strip() == '':
+        # try FreeBSD
+        cmd = '"/usr/bin/uname -v -p"'
+        cmdarr = [base_cmd + cmd]
+        try:
+            out = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error determining os type: %s", args.image)
+
+        if out is not None and 'FreeBSD' not in out:
+            # try OpenBSD
+            cmd = '"/usr/bin/uname -srvm"'
+            cmdarr = [base_cmd + cmd]
+            try:
+                out = subprocess.check_output(cmdarr, shell=True)
+            except subprocess.CalledProcessError:
+                logging.error("Error determining os type: %s", args.image)
+
+    if out is None:
+        logging.error("Failed to get os-release")
+        return None
+
+    if 'FreeBSD' in out or 'OpenBSD' in out:
+        return out
+    else:
+        output_lines = out.splitlines()
+        for l in output_lines:
+            if 'PRETTY_NAME' in l:
+                return l.split('=')[1].replace('"','')
     return None
 
 def pull_image(args):
@@ -160,18 +196,70 @@ def discover_ubuntu(args, container_id):
     logging.info("Completed retrieval of product details from image")
     return plist
 
-def discover(args, atype, container_id):
+def discover_openbsd(args, container_id):
+    plist = []
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/sbin/pkg_info -A"']
+    logging.info("Retrieving product details from image")
+    if host['remote']:
+        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
+        if pkgout is None:
+            return None
+    else:
+        try:
+            pkgout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory for image: %s",args.image)
+            return None
+
+    begin = False
+    for l in pkgout.splitlines():
+        lsplit = l.split()
+        pkgline = lsplit[0]
+        ldash = pkgline.rfind('-')
+        pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
+        logging.debug("Found product [%s]", pkg)
+        plist.append(pkg)
+    logging.info("Completed retrieval of product details from image")
+    return plist
+
+def discover_freebsd(args, container_id):
+    plist = []
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/sbin/pkg info"']
+    logging.info("Retrieving product details from image")
+    if host['remote']:
+        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
+        if pkgout is None:
+            return None
+    else:
+        try:
+            pkgout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory for image: %s",args.image)
+            return None
+
+    begin = False
+    for l in pkgout.splitlines():
+        lsplit = l.split()
+        pkgline = lsplit[0]
+        ldash = pkgline.rfind('-')
+        pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
+        logging.debug("Found product [%s]", pkg)
+        plist.append(pkg)
+    logging.info("Completed retrieval of product details from image")
+    return plist
+
+def discover(args, atype, os_release, container_id):
     handle = args.handle
     token = args.token
     instance = args.instance
     asset_id = None
     if args.assetid == None:
-        asset_id = args.image
+        asset_id = args.image if args.image is not None else args.containerid
     else:
         asset_id = args.assetid
     asset_name = None
     if args.assetname == None:
-        asset_name = args.image
+        asset_name = args.image if args.image is not None else args.containerid
     else:
         asset_name = args.assetname
     asset_id = asset_id.replace('/','-')
@@ -180,10 +268,14 @@ def discover(args, atype, container_id):
     asset_name = asset_name.replace(':','-')
 
     plist = None
-    if atype == 'CentOS':
+    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
         plist = discover_rh(args, container_id)
     elif atype == 'Ubuntu' or atype == 'Debian':
         plist = discover_ubuntu(args, container_id)
+    elif atype == 'FreeBSD':
+        plist = discover_freebsd(args, container_id)
+    elif atype == 'OpenBSD':
+        plist = discover_openbsd(args, container_id)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory image: "+args.image)
@@ -197,8 +289,7 @@ def discover(args, atype, container_id):
     asset_data['owner'] = handle
     asset_data['products'] = plist
     asset_tags = []
-    os = get_os_release(args, container_id)
-    asset_tags.append('OS_RELEASE:' + os)
+    asset_tags.append('OS_RELEASE:' + os_release)
     asset_tags.append('Docker')
     asset_tags.append('Container')
     asset_tags.append('Linux')
@@ -213,16 +304,27 @@ def get_inventory(args):
     if not docker_cli:
         sys.exit(1)
 
-    if not get_image_id(args):
-        if not pull_image(args):
-            sys.exit(1)
+    if args.image is None and args.containerid is None:
+        logging.error("Error either docker image (--image) or running container id (--containerid) parameter needs to be specified")
+        sys.exit(1)
 
-    container_id = start_docker_container(args)
-    atype = get_asset_type(args, container_id)
-    if not atype:
+    if args.image is not None:
+        if not get_image_id(args):
+            if not pull_image(args):
+                sys.exit(1)
+        container_id = start_docker_container(args)
+    elif args.containerid is not None:
+        container_id = args.containerid
+
+    os_release = get_os_release(args, container_id)
+    if os_release is None:
+        stop_docker_container(args, container_id)
+        sys.exit(1)
+    atype = get_asset_type(os_release)
+    if atype is None:
         stop_docker_container(args, container_id)
         sys.exit(1)
 
-    assets = discover(args, atype, container_id)
+    assets = discover(args, atype, os_release, container_id)
     stop_docker_container(args, container_id)
     return assets
