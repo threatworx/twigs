@@ -40,12 +40,12 @@ setup(
     include_package_data=True,
     keywords='twigs',
     name='twigs',
-    packages=find_packages(include=['twigs']),
+    packages=find_packages(include=['twigs', 'twigs.dast_plugins']),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatwatch/twigs',
-    version='1.0.26',
+    version='1.0.28',
     zip_safe=False,
     entry_points={
         'console_scripts': [
