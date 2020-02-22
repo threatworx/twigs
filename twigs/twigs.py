@@ -259,6 +259,10 @@ def main(args=None):
         if temp is not None:
             logging.info('Using instance specified in "TW_INSTANCE" environment variable...')
             args.instance = temp
+        elif args.token is not None:
+            # missing instance but token is specified
+            logging.error('Error: Missing "--instance" argument and "TW_INSTANCE" environment variable is not set as well')
+            return
 
 #    if args.purge_assets == True and args.email_report == False:
 #        logging.error('Purge assets option (--purge_assets) is used with Email report (--email_report)')

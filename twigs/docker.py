@@ -34,7 +34,7 @@ def stop_docker_container(args, container_id):
     try:
         out = subprocess.check_output(cmdarr, shell=True)
     except subprocess.CalledProcessError:
-        logging.error("Error stopping docker container with image ["+args.image+"] and ID ["+container_id+"]")
+        logging.error("Error stopping docker container with container ID ["+container_id+"]")
         sys.exit(1)
     logging.info("Stopped container with ID ["+container_id+"]")
 
@@ -68,7 +68,7 @@ def get_os_release(args, container_id):
     try:
         out = subprocess.check_output(cmdarr, shell=True)
     except subprocess.CalledProcessError:
-        logging.error("Error determining os type: %s", args.image)
+        logging.error("Error determining os type for container ID: %s", container_id)
 
     if out is None or out.strip() == '':
         # try FreeBSD
@@ -77,7 +77,7 @@ def get_os_release(args, container_id):
         try:
             out = subprocess.check_output(cmdarr, shell=True)
         except subprocess.CalledProcessError:
-            logging.error("Error determining os type: %s", args.image)
+            logging.error("Error determining os type for container ID: %s", container_id)
 
         if out is not None and 'FreeBSD' not in out:
             # try OpenBSD
@@ -86,7 +86,7 @@ def get_os_release(args, container_id):
             try:
                 out = subprocess.check_output(cmdarr, shell=True)
             except subprocess.CalledProcessError:
-                logging.error("Error determining os type: %s", args.image)
+                logging.error("Error determining os type for container ID: %s", container_id)
 
     if out is None:
         logging.error("Failed to get os-release")
@@ -134,8 +134,26 @@ def discover_rh(args, container_id):
     try:
         yumout = subprocess.check_output(cmdarr, shell=True)
     except subprocess.CalledProcessError:
-        logging.error("Error running inventory for image: "+args.image)
-        return None 
+        cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/bin/rpm -qa"']
+        rpmout = ''
+        try:
+            rpmout = subprocess.check_output(cmdarr, shell=True)
+        except subprocess.CalledProcessError:
+            logging.error("Error running inventory for container ID [%s]", container_id)
+            return None
+        for l in rpmout.splitlines():
+            tokens = l.split('-')
+            length = len(tokens)
+            if length <= 2:
+                pname = tokens[0]
+                version = tokens[1]
+            else:
+                version = tokens[length-2]+'-'+tokens[length-1]
+                pname = "-".join(tokens[:-2])
+            logging.debug("Found product [%s %s]", pname, version)
+            plist.append(pname+' '+version)
+        logging.info("Completed retrieval of product details from image")
+        return plist
 
     begin = False
     for l in yumout.splitlines():
@@ -174,7 +192,7 @@ def discover_ubuntu(args, container_id):
     try:
         yumout = subprocess.check_output(cmdarr, shell=True)
     except subprocess.CalledProcessError:
-        logging.error("Error running inventory for image: "+args.image)
+        logging.error("Error running inventory for container ID: "+container_id)
         return None 
 
     begin = False
@@ -208,7 +226,7 @@ def discover_openbsd(args, container_id):
         try:
             pkgout = subprocess.check_output(cmdarr, shell=True)
         except subprocess.CalledProcessError:
-            logging.error("Error running inventory for image: %s",args.image)
+            logging.error("Error running inventory for container ID: %s",container_id)
             return None
 
     begin = False
@@ -234,7 +252,7 @@ def discover_freebsd(args, container_id):
         try:
             pkgout = subprocess.check_output(cmdarr, shell=True)
         except subprocess.CalledProcessError:
-            logging.error("Error running inventory for image: %s",args.image)
+            logging.error("Error running inventory for container ID: %s",container_id)
             return None
 
     begin = False
@@ -278,7 +296,7 @@ def discover(args, atype, os_release, container_id):
         plist = discover_openbsd(args, container_id)
 
     if plist == None or len(plist) == 0:
-        logging.error("Could not inventory image: "+args.image)
+        logging.error("Could not inventory container ID: "+container_id)
         stop_docker_container(args, container_id)
         sys.exit(1) 
 

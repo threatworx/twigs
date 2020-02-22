@@ -30,8 +30,8 @@ Note:
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 2. twigs requires pygit2 package. Mac OS X users will need to perform additional steps as mentioned here [https://www.pygit2.org/install.html#installing-on-os-x] since pygit2 is not available on Mac OS X as a binary wheels package.
 
-$ python twigs.py --help
-usage: twigs.py [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow} ...
+$ twigs --help
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow,dast} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -63,10 +63,11 @@ modes:
     nmap                Fingerprint assets using nmap. Requires nmap to be installed.
     repo                Discover project repository as asset
     servicenow          Discover inventory from ServiceNow instance
+    dast                Discover and test web application using a DAST plugin
 
 Mode: aws
-$ python twigs.py aws --help
-usage: twigs.py aws [-h] --aws_account AWS_ACCOUNT --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --aws_region AWS_REGION --aws_s3_bucket AWS_S3_BUCKET [--enable_tracking_tags]
+$ twigs aws --help
+usage: twigs aws [-h] --aws_account AWS_ACCOUNT --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --aws_region AWS_REGION --aws_s3_bucket AWS_S3_BUCKET [--enable_tracking_tags]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -85,8 +86,8 @@ optional arguments:
                         Account ID, etc.) as asset tags
 
 Mode: azure
-$ python twigs.py azure --help
-usage: twigs.py azure [-h]  --azure_tenant_id AZURE_TENANT_ID --azure_application_id AZURE_APPLICATION_ID --azure_application_key AZURE_APPLICATION_KEY [--azure_subscription AZURE_SUBSCRIPTION] [--azure_resource_group AZURE_RESOURCE_GROUP] [--azure_workspace AZURE_WORKSPACE] [--enable_tracking_tags]
+$ twigs azure --help
+usage: twigs azure [-h]  --azure_tenant_id AZURE_TENANT_ID --azure_application_id AZURE_APPLICATION_ID --azure_application_key AZURE_APPLICATION_KEY [--azure_subscription AZURE_SUBSCRIPTION] [--azure_resource_group AZURE_RESOURCE_GROUP] [--azure_workspace AZURE_WORKSPACE] [--enable_tracking_tags]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -110,8 +111,8 @@ optional arguments:
                         Azure Tenant ID, etc.) as asset tags
 
 Mode: docker
-$ python twigs.py docker --help
-usage: twigs.py docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME]
+$ twigs docker --help
+usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -126,8 +127,8 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
 
 Mode: file
-$ python twigs.py file --help
-usage: twigs.py file [-h] --in IN [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
+$ twigs file --help
+usage: twigs file [-h] --in IN [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -145,8 +146,8 @@ optional arguments:
                         Applies only for PDF files.
 
 Mode: host
-$ python twigs.py host --help
-usage: twigs.py host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME]
+$ twigs host --help
+usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -171,16 +172,16 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
 
 Mode: nmap
-$ python twigs.py nmap --help
-usage: twigs.py nmap [-h] --hosts HOSTS
+$ twigs nmap --help
+usage: twigs nmap [-h] --hosts HOSTS
 
 optional arguments:
   -h, --help     show this help message and exit
   --hosts HOSTS  A hostname, IP address or CIDR range
 
 Mode: repo
-$ python twigs.py repo --help
-usage: twigs.py repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll}] [--level {shallow,deep}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code]
+$ twigs repo --help
+usage: twigs repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll}] [--level {shallow,deep}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -210,8 +211,8 @@ optional arguments:
   --no_code             Disable storing code for reference in ThreatWatch.
 
 Mode: servicenow
-$ python twigs.py servicenow --help
-usage: twigs.py servicenow [-h] --snow_user SNOW_USER --snow_user_pwd SNOW_USER_PWD --snow_instance SNOW_INSTANCE [--enable_tracking_tags]
+$ twigs servicenow --help
+usage: twigs servicenow [-h] --snow_user SNOW_USER --snow_user_pwd SNOW_USER_PWD --snow_instance SNOW_INSTANCE [--enable_tracking_tags]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -224,6 +225,21 @@ optional arguments:
   --enable_tracking_tags
                         Enable recording ServiceNow specific information (like
                         ServiceNow instance name, etc.) as asset tags
+
+Mode: dast
+$ twigs dast --help
+usage: twigs dast [-h] --url URL --assetid ASSETID [--plugin PLUGIN] [--args ARGS] [--assetname ASSETNAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --url URL             Application URL
+  --assetid ASSETID     A unique ID to be assigned to the discovered webapp
+                        asset
+  --plugin PLUGIN       DAST plugin to be used. Default is skipfish. Requires
+                        the plugin to be installed separately.
+  --args ARGS           Optional extra arguments to be passed to the plugin
+  --assetname ASSETNAME
+                        Optional name/label to be assigned to the webapp asset
 
 Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
 
