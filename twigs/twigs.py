@@ -17,6 +17,7 @@ import os
 import logging
 import argparse
 import requests
+import time
 
 import aws
 import linux
@@ -27,6 +28,7 @@ import servicenow
 import inv_file
 import fingerprint
 import dast 
+import policy as policy_lib
 from __init__ import __version__
 
 def export_assets_to_csv(assets, csv_file):
@@ -89,32 +91,51 @@ def push_assets_to_TW(assets, args):
         asset_id = push_asset_to_TW(asset, args)
         if asset_id is not None:
             asset_id_list.append(asset_id)
+    return asset_id_list
 
+def run_scan(asset_id_list, pj_json, args):
     if args.no_scan is not True and args.mode != 'dast':
         if len(asset_id_list) == 0:
             logging.info("No assets to scan...")
             return 
-        # Start VA
-        logging.info("Starting impact refresh for assets %s", str(asset_id_list))
+        run_va_scan = True
+        run_lic_scan = True
+        if pj_json is not None:
+            for policy in pj_json['policy_json']:
+                if policy['type'] == 'vulnerability':
+                    logging.info("Impact assessment performed as part of policy evaluation...")
+                    run_va_scan = False # VA scan already done, so don't do it again
+                elif policy['type'] == 'license':
+                    logging.info("License compliance performed as part of policy evaluation...")
+                    run_lic_scan = False # License scan already done, so don't do it again
+
         scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
-        scan_payload = { }
-        scan_payload['scan_type'] = 'full' 
-        scan_payload['assets'] = asset_id_list
-        # if args.purge_assets:
-        #    scan_payload['mode'] = 'email-purge'
-        if args.email_report:
-            scan_payload['mode'] = 'email'
-        resp = requests.post(scan_api_url, json=scan_payload)
-        if resp.status_code == 200:
-            logging.info("Started impact refresh...")
-        else:
-            logging.error("Failed to start impact refresh")
-            logging.error("Response details: %s", resp.content)
-        if args.mode == "repo":
+        if run_va_scan:
+            # Start VA
+            logging.info("Starting impact refresh for assets %s", str(asset_id_list))
+            scan_payload = { }
+            scan_payload['scan_type'] = 'full' 
+            scan_payload['assets'] = asset_id_list
+            # if args.purge_assets:
+            #    scan_payload['mode'] = 'email-purge'
+            if args.email_report:
+                scan_payload['mode'] = 'email'
+            resp = requests.post(scan_api_url, json=scan_payload)
+            if resp.status_code == 200:
+                logging.info("Started impact refresh...")
+            else:
+                logging.error("Failed to start impact refresh")
+                logging.error("Response details: %s", resp.content)
+        if run_lic_scan and args.mode == "repo":
             # Start license compliance assessment
             logging.info("Starting license compliance assessment for assets %s", str(asset_id_list))
+            scan_payload = { }
+            scan_payload['assets'] = asset_id_list
             scan_payload['license_scan'] = True
-            scan_payload.pop('scan_type', None)
+            # if args.purge_assets:
+            #    scan_payload['mode'] = 'email-purge'
+            if args.email_report:
+                scan_payload['mode'] = 'email'
             resp = requests.post(scan_api_url, json=scan_payload)
             if resp.status_code == 200:
                 logging.info("Started license compliance assessment...")
@@ -137,6 +158,7 @@ def main(args=None):
     parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
     parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
+    parser.add_argument('--apply_policy', help='Path to policy JSON file', required=False)
     parser.add_argument('--out', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
@@ -291,15 +313,31 @@ def main(args=None):
     elif args.mode == 'dast':
         assets = dast.get_inventory(args)
 
+    exit_code = None
     if args.mode != 'host' or args.secure == False:
         if assets is None or len(assets) == 0:
             logging.info("No assets found!")
         else:
             export_assets_to_csv(assets, args.out)
             if args.token is not None and len(args.token) > 0:
-                push_assets_to_TW(assets, args)
+                asset_id_list = push_assets_to_TW(assets, args)
+
+            pj_json = None
+            if args.apply_policy is not None:
+                policy_json = policy_lib.validate_policy_file(args.apply_policy)
+                policy_job_name = policy_lib.apply_policy(policy_json, asset_id_list, args)
+                while True:
+                    time.sleep(3 * 60)
+                    status, pj_json = policy_lib.is_policy_job_done(policy_job_name, args)
+                    if status:
+                        exit_code = policy_lib.process_policy_job_actions(pj_json)
+                        break
+            run_scan(asset_id_list, pj_json, args)
 
     logging.info('Run completed...')
+    if exit_code is not None:
+        logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
+        sys.exit(exit_code)
 
 if __name__ == '__main__':
     main()
