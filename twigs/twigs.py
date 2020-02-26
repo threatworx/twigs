@@ -327,7 +327,7 @@ def main(args=None):
                 policy_json = policy_lib.validate_policy_file(args.apply_policy)
                 policy_job_name = policy_lib.apply_policy(policy_json, asset_id_list, args)
                 while True:
-                    time.sleep(3 * 60)
+                    time.sleep(60)
                     status, pj_json = policy_lib.is_policy_job_done(policy_job_name, args)
                     if status:
                         exit_code = policy_lib.process_policy_job_actions(pj_json)

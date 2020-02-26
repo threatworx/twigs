@@ -5,6 +5,24 @@ import json
 import logging
 import requests
 
+_builtin_policies = [
+    "priority_do_now",
+    "strong_copyleft"
+]
+
+_allowed_fields_by_type = { 
+    'vulnerability': {'priority': ["do now", "do later"] },
+    'license': {'copyleft level': []},
+    'code_secret': {'status': [], 'regex':[]},
+    'dast': {}
+}
+
+_allowed_operators = [ '=', '!=', '>', '<', '>=', '<=']
+
+_supported_action_types = ["on pass", "on fail"]
+
+_allowed_actions = ['exit with code']
+
 def validate_policy_file(policy_json_file):
     if os.path.isfile(policy_json_file) == False:
         logging.error('Error sepcified file [%s] not found...', policy_json_file)
@@ -36,8 +54,19 @@ def validate_policy(policy):
     policy_name = policy['name']
     logging.info('Validating policy [%s]', policy_name)
 
-    policy_fields = ['type', 'conditions', 'actions']
     ret_val = True
+
+    using_builtin_policy = False
+    global _builtin_policies
+    builtin_policy_name = policy.get('builtin_policy')
+    if builtin_policy_name is not None:
+        if builtin_policy_name in _builtin_policies:
+            using_builtin_policy = True
+        else:
+            logging.error("Error: Policy [%s] is using unsupported builtin policy [%s]", policy_name, builtin_policy_name)
+            return False
+
+    policy_fields = ['type', 'conditions', 'actions'] if not using_builtin_policy else ['actions']
 
     # check required fields exist in policy
     for policy_field in policy_fields:
@@ -45,12 +74,13 @@ def validate_policy(policy):
             ret_val = False
             logging.error('Policy [%s] is missing field [%s]', policy_name, policy_field)
 
-    condition_fields = ['field', 'operator', 'value']
-    for condition in policy['conditions']:
-        for cf in condition_fields:
-            if condition.get(cf) is None:
-                logging.error('Condition [%s] in policy [%s] is missing field [%s]', condition, policy_name, cf)
-                ret_val = False
+    if not using_builtin_policy:
+        condition_fields = ['field', 'operator', 'value']
+        for condition in policy['conditions']:
+            for cf in condition_fields:
+                if condition.get(cf) is None:
+                    logging.error('Condition [%s] in policy [%s] is missing field [%s]', condition, policy_name, cf)
+                    ret_val = False
 
     actions = policy.get('actions')
     if len(actions) == 0:
@@ -60,48 +90,44 @@ def validate_policy(policy):
     if ret_val == False:
         return False
 
-    allowed_fields_by_type = { 
-            'vulnerability': {'action bucket': ["do now", "do later"] },
-            'license': {'copyleft level': []},
-            'code_secret': {'status': [], 'regex':[]},
-            'dast': {}
-        }
+    global _allowed_fields_by_type
 
-    policy_type = policy['type'].lower()
-    if policy_type not in allowed_fields_by_type.keys():
-        logging.error('Policy [%s] has invalid type [%s]', policy_name, policy_type)
-        return False
-    else:
-        policy['type'] = policy_type
-
-    allowed_operators = [ '=', '!=', '>', '<', '>=', '<=']
-
-    for condition in policy['conditions']:
-        if condition['field'].lower() in allowed_fields_by_type[policy_type].keys():
-            condition['field'] = condition['field'].lower()
-        else:
-            logging.error('Invalid field [%s] specified in condition [%s] in policy [%s]', condition['field'], condition, policy_name)
+    if not using_builtin_policy:
+        policy_type = policy['type'].lower()
+        if policy_type not in _allowed_fields_by_type.keys():
+            logging.error('Policy [%s] has invalid type [%s]', policy_name, policy_type)
             return False
-        if condition['operator'] not in allowed_operators:
-            logging.error('Invalid operator [%s] specified in condition [%s] in policy [%s]', condition['operator'], condition, policy_name)
-            ret_val = False
-        if len(allowed_fields_by_type[policy_type][condition['field'].lower()]) > 0:
-            if condition['value'].lower() not in allowed_fields_by_type[policy_type][condition['field'].lower()]:
-                logging.error('Invalid value [%s] specified in condtion [%s] in policy [%s]', condition['value'], condition, policy_name)
-                ret_val = False
+        else:
+            policy['type'] = policy_type
 
-    supported_action_types = ["on pass", "on fail"]
-    allowed_actions = ['exit with code']
+        global _allowed_operators
+
+        for condition in policy['conditions']:
+            if condition['field'].lower() in _allowed_fields_by_type[policy_type].keys():
+                condition['field'] = condition['field'].lower()
+            else:
+                logging.error('Invalid field [%s] specified in condition [%s] in policy [%s]', condition['field'], condition, policy_name)
+                return False
+            if condition['operator'] not in _allowed_operators:
+                logging.error('Invalid operator [%s] specified in condition [%s] in policy [%s]', condition['operator'], condition, policy_name)
+                ret_val = False
+            if len(allowed_fields_by_type[policy_type][condition['field'].lower()]) > 0:
+                if condition['value'].lower() not in _allowed_fields_by_type[policy_type][condition['field'].lower()]:
+                    logging.error('Invalid value [%s] specified in condtion [%s] in policy [%s]', condition['value'], condition, policy_name)
+                    ret_val = False
+
+    global _supported_action_types
+    global _allowed_actions
     actions = policy['actions']
     for action_type in actions.keys():
-        if action_type not in supported_action_types:
+        if action_type not in _supported_action_types:
             logging.error('Unsupported action category [%s]', action_type)
             ret_val = False
-    for action_type in supported_action_types:
+    for action_type in _supported_action_types:
         actions = policy['actions'].get(action_type)
         if actions is not None:
             for action in actions:
-                if action.lower() not in allowed_actions:
+                if action.lower() not in _allowed_actions:
                     logging.error('Invalid action [%s] specified in policy [%s]', action, policy_name)
                     ret_val = False
     if ret_val:
