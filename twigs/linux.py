@@ -14,39 +14,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
 import socket
-
-def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
-    except:
-        IP = '127.0.0.1'
-    finally:
-        s.close()
-    return IP
-
-def get_asset_type(os):
-    if "CentOS" in os:
-        return "CentOS"
-    elif "Red Hat" in os:
-        return "Red Hat"
-    elif "Ubuntu" in os:
-        return "Ubuntu"
-    elif "Debian" in os:
-        return "Debian"
-    elif "Amazon Linux" in os:
-        return "Amazon Linux"
-    elif "Oracle Linux" in os:
-        return "Oracle Linux"
-    elif "FreeBSD" in os:
-        return "FreeBSD"
-    elif "OpenBSD" in os:
-        return "OpenBSD"
-    else:
-        logging.error('Not a supported OS type')
-        return None
+import utils
 
 def run_remote_ssh_command(args, host, command):
     assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
@@ -99,53 +67,6 @@ def check_host_up(host):
     except socket.timeout:
         logging.error("Socket timeout")
         return False
-
-def get_os_release(args, host):
-    freebsd = False
-    out = None
-    cmdarr = ["/bin/cat /etc/os-release"]
-    if host['remote']:
-        out = run_remote_ssh_command(args, host, cmdarr[0])
-    else:
-        try:
-            out = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running local command")
-
-    if out is None or out.strip() == '':
-        # try FreeBSD
-        cmdarr = ["/usr/bin/uname -v -p"]
-        if host['remote']:
-            out = run_remote_ssh_command(args, host, cmdarr[0])
-        else:
-            try:
-                out = subprocess.check_output(cmdarr, shell=True)
-            except subprocess.CalledProcessError:
-                logging.error("Error running local command")
-
-        if out is not None and 'FreeBSD' not in out:
-            # try OpenBSD
-            cmdarr = ["/usr/bin/uname -srvm"]
-            if host['remote']:
-                out = run_remote_ssh_command(args, host, cmdarr[0])
-            else:
-                try:
-                    out = subprocess.check_output(cmdarr, shell=True)
-                except subprocess.CalledProcessError:
-                    logging.error("Error running local command")
-
-    if out is None:
-        logging.error("Failed to get os-release")
-        return None
-
-    if 'FreeBSD' in out or 'OpenBSD' in out:
-        return out
-    else:
-        output_lines = out.splitlines()
-        for l in output_lines:
-            if 'PRETTY_NAME' in l:
-                return l.split('=')[1].replace('"','')
-    return None
 
 def discover_openbsd(args, host):
     plist = []
@@ -382,7 +303,7 @@ def discover(args):
             return discover_hosts(args, remote_hosts)
     else:
         host = { }
-        host['assetid'] = get_ip() if args.assetid is None else args.assetid
+        host['assetid'] = utils.get_ip() if args.assetid is None else args.assetid
         host['assetname'] = host['assetid'] if args.assetname is None else args.assetname
         host['remote'] = False
         hosts = [ host ]
@@ -414,12 +335,12 @@ def discover_host(args, host):
 
     logging.info("Started inventory discovery for asset [%s]", asset_id)
 
-    os = get_os_release(args, host)
+    os = utils.get_os_release(args, host)
     if os is None:
         logging.error("Failed to identify OS for asset [%s]", asset_id)
         return None
 
-    atype = get_asset_type(os)
+    atype = utils.get_asset_type(os)
     if atype is None:
         logging.error("Could not determine asset type for asset [%s]", asset_id)
         return None

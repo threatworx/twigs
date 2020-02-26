@@ -2,6 +2,10 @@ import sys
 import os
 import subprocess
 import logging
+import re
+import json
+
+import utils
 
 docker_cli = ""
 
@@ -37,27 +41,6 @@ def stop_docker_container(args, container_id):
         logging.error("Error stopping docker container with container ID ["+container_id+"]")
         sys.exit(1)
     logging.info("Stopped container with ID ["+container_id+"]")
-
-def get_asset_type(os):
-    if "CentOS" in os:
-        return "CentOS"
-    elif "Red Hat" in os:
-        return "Red Hat"
-    elif "Ubuntu" in os:
-        return "Ubuntu"
-    elif "Debian" in os:
-        return "Debian"
-    elif "Amazon Linux" in os:
-        return "Amazon Linux"
-    elif "Oracle Linux" in os:
-        return "Oracle Linux"
-    elif "FreeBSD" in os:
-        return "FreeBSD"
-    elif "OpenBSD" in os:
-        return "OpenBSD"
-    else:
-        logging.error('Not a supported OS type')
-        return None
 
 def get_os_release(args, container_id):
     base_cmd = docker_cli+' exec -i -t '+container_id+' /bin/sh -c '
@@ -316,15 +299,94 @@ def discover(args, atype, os_release, container_id):
 
     return [ asset_data ]
 
+def run_docker_bench(args):
+    DBENCH = "/docker-bench-security.sh"
+
+    asset_id = utils.get_ip() if args.assetid is None else args.assetid
+    asset_name = asset_id if args.assetname is None else args.assetname
+    os_release = utils.get_os_release(args, None)
+    if os_release == None:
+        logging.error('Unsupported OS type for running docker bench')
+        sys.exit(1) 
+    atype = utils.get_asset_type(os_release)
+
+    dbench_path = args.docker_bench_home + DBENCH
+    if not os.path.isfile(dbench_path) or not os.access(dbench_path, os.X_OK):
+        logging.error('Docker bench script not found')
+        sys.exit(1) 
+    logging.info('Running docker bench script: '+dbench_path)
+    try:
+        os.chdir(os.path.dirname(args.docker_bench_home))
+        out = subprocess.check_output([dbench_path+" 2>/dev/null "], shell=True)
+        ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
+        out = ansi_escape.sub('', out)
+    except subprocess.CalledProcessError:
+        logging.error("Error running docker bench script")
+        return None 
+    logging.info("docker bench run completed")
+
+    asset_data = {}
+    asset_data['id'] = asset_id
+    asset_data['name'] = asset_name
+    asset_data['type'] = atype
+    asset_data['owner'] = args.handle
+    asset_data['products'] = [] 
+    asset_tags = []
+    asset_tags.append('OS_RELEASE:' + os_release)
+    asset_tags.append('Docker')
+    asset_tags.append('Container')
+    asset_tags.append('Linux')
+    asset_tags.append(atype)
+    asset_data['tags'] = asset_tags 
+
+    findings = []
+    details = ''
+    issue = {}
+    for l in out.splitlines():
+        if not l.startswith('[WARN]'):
+            continue
+        spa = l.split()
+        if spa[1] != '*':
+            if 'asset_id' in issue:
+                issue['details'] = details
+                findings.append(issue)
+                details = ''
+                issue = {}
+            issue['twc_id'] = 'docker-bench-check-'+spa[1].strip()
+            issue['asset_id'] = asset_id 
+            issue['twc_title'] = l.split('-')[1].strip()
+            issue['rating'] = '4'
+            issue['object_id'] = '' 
+            issue['object_meta'] = ''
+            details = ''
+        else:
+            details = details + l.split('*')[1] + '\n'
+    # add the final issue
+    if 'asset_id' in issue:
+        issue['details'] = details
+        findings.append(issue)
+    asset_data['config_issues'] = findings
+    # disable scan
+    args.no_scan = True
+    return [ asset_data ]
+
 def get_inventory(args):
     global docker_cli
+
+    if os.geteuid() != 0:
+        logging.error("Docker operations need root privilege. Please run as 'sudo' or 'root'")
+        sys.exit(1)
+
     docker_cli = docker_available()
     if not docker_cli:
         sys.exit(1)
 
-    if args.image is None and args.containerid is None:
-        logging.error("Error either docker image (--image) or running container id (--containerid) parameter needs to be specified")
+    if args.image is None and args.containerid is None and args.run_docker_bench == False:
+        logging.error("Nothing to do")
         sys.exit(1)
+
+    if args.run_docker_bench:
+        return run_docker_bench(args)
 
     if args.image is not None:
         if not get_image_id(args):
@@ -338,7 +400,7 @@ def get_inventory(args):
     if os_release is None:
         stop_docker_container(args, container_id)
         sys.exit(1)
-    atype = get_asset_type(os_release)
+    atype = utils.get_asset_type(os_release)
     if atype is None:
         stop_docker_container(args, container_id)
         sys.exit(1)
