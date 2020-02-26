@@ -190,6 +190,8 @@ def main(args=None):
     parser_docker.add_argument('--containerid', help='The container ID of a running docker container which needs to be inspected.')
     parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_docker.add_argument('--run_docker_bench', action='store_true', help='Run docker bench tests')
+    parser_docker.add_argument('--docker_bench_home', help='Location of docker bench CLI', default='.')
 
     # Arguments required for File-based discovery
     parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
