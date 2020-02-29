@@ -28,6 +28,7 @@ import servicenow
 import inv_file
 import fingerprint
 import dast 
+import aws_cis
 import policy as policy_lib
 from __init__ import __version__
 
@@ -248,6 +249,13 @@ def main(args=None):
     parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
     parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
 
+    # Arguments required for AWS CIS benchmarks
+    parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
+    parser_aws_cis.add_argument('--aws_access_key', help='AWS access key', required=True)
+    parser_aws_cis.add_argument('--aws_secret_key', help='AWS secret key', required=True)
+    parser_aws_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+    parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to current directory', default='.')
 
     args = parser.parse_args()
 
@@ -314,6 +322,8 @@ def main(args=None):
         assets = inv_file.get_inventory(args)
     elif args.mode == 'dast':
         assets = dast.get_inventory(args)
+    elif args.mode == 'aws_cis':
+        assets = aws_cis.get_inventory(args)
 
     exit_code = None
     if args.mode != 'host' or args.secure == False:
