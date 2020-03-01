@@ -291,6 +291,10 @@ def main(args=None):
             logging.info('Using token specified in "TW_TOKEN" environment variable...')
             args.token = temp
 
+    if args.token is None and args.apply_policy is not None:
+        logging.error('Error: Policy cannot be applied since "--token" argument is missing and "TW_TOKEN" environment variable is not set as well!')
+        return
+
     if args.instance is None:
         temp = os.environ.get('TW_INSTANCE')
         if temp is not None:
@@ -351,7 +355,9 @@ def main(args=None):
                     if status:
                         exit_code = policy_lib.process_policy_job_actions(pj_json)
                         break
-            run_scan(asset_id_list, pj_json, args)
+
+            if args.token is not None and len(args.token) > 0:
+                run_scan(asset_id_list, pj_json, args)
 
     logging.info('Run completed...')
     if exit_code is not None:
