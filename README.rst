@@ -31,7 +31,7 @@ python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 2. twigs requires pygit2 package. Mac OS X users will need to perform additional steps as mentioned here [https://www.pygit2.org/install.html#installing-on-os-x] since pygit2 is not available on Mac OS X as a binary wheels package.
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow,dast,aws_cis} ...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -56,7 +56,7 @@ optional arguments:
 modes:
   Discovery modes supported
 
-  {aws,azure,docker,file,host,nmap,repo,servicenow} 
+  {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis}
     aws                 Discover AWS instances
     azure               Discover Azure instances
     docker              Discover docker instances
@@ -66,6 +66,7 @@ modes:
     repo                Discover project repository as asset
     servicenow          Discover inventory from ServiceNow instance
     dast                Discover and test web application using a DAST plugin
+    docker_cis          Run docker CIS benchmarks
     aws_cis             Run AWS CIS benchmarks
 
 Mode: aws
@@ -243,6 +244,18 @@ optional arguments:
   --args ARGS           Optional extra arguments to be passed to the plugin
   --assetname ASSETNAME
                         Optional name/label to be assigned to the webapp asset
+
+Mode: docker_cis
+$ twigs docker_cis --help
+usage: twigs docker_cis [-h] [--assetid ASSETID] [--assetname ASSETNAME] [--docker_bench_home DOCKER_BENCH_HOME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --docker_bench_home DOCKER_BENCH_HOME
+                        Location of docker bench CLI
 
 Mode: aws_cis
 $ twigs aws_cis --help

@@ -2,8 +2,6 @@ import sys
 import os
 import subprocess
 import logging
-import re
-import json
 
 import utils
 
@@ -381,12 +379,9 @@ def get_inventory(args):
     if not docker_cli:
         sys.exit(1)
 
-    if args.image is None and args.containerid is None and args.run_docker_bench == False:
-        logging.error("Nothing to do")
+    if args.image is None and args.containerid is None:
+        logging.error("Error either docker image (--image) or running container id (--containerid) parameter needs to be specified")
         sys.exit(1)
-
-    if args.run_docker_bench:
-        return run_docker_bench(args)
 
     if args.image is not None:
         if not get_image_id(args):

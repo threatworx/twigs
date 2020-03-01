@@ -28,6 +28,7 @@ import servicenow
 import inv_file
 import fingerprint
 import dast 
+import docker_cis
 import aws_cis
 import policy as policy_lib
 from __init__ import __version__
@@ -191,8 +192,6 @@ def main(args=None):
     parser_docker.add_argument('--containerid', help='The container ID of a running docker container which needs to be inspected.')
     parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-    parser_docker.add_argument('--run_docker_bench', action='store_true', help='Run docker bench tests')
-    parser_docker.add_argument('--docker_bench_home', help='Location of docker bench CLI', default='.')
 
     # Arguments required for File-based discovery
     parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
@@ -248,6 +247,12 @@ def main(args=None):
     parser_webapp.add_argument('--plugin', help='DAST plugin to be used. Default is skipfish. Requires the plugin to be installed separately.', default='skipfish')
     parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
     parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
+
+    # Arguments required for docker CIS benchmarks 
+    parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
+    parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+    parser_docker_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI', default='.')
 
     # Arguments required for AWS CIS benchmarks
     parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
@@ -322,6 +327,8 @@ def main(args=None):
         assets = inv_file.get_inventory(args)
     elif args.mode == 'dast':
         assets = dast.get_inventory(args)
+    elif args.mode == 'docker_cis':
+        assets = docker_cis.get_inventory(args)
     elif args.mode == 'aws_cis':
         assets = aws_cis.get_inventory(args)
 
