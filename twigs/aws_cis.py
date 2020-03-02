@@ -34,7 +34,7 @@ def run_cis_aws_bench(args):
     asset = { }
     asset['id'] = asset_id
     asset['name'] = asset_name
-    asset['type'] = 'AWS_CIS'
+    asset['type'] = 'AWS'
     asset['owner'] = args.handle
     asset['products'] = []
     asset['tags'] = ['AWS', 'CIS']

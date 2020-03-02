@@ -6,8 +6,9 @@ import logging
 import requests
 
 _builtin_policies = [
-    "priority_do_now",
-    "strong_copyleft"
+    "no_do_now_impacts",
+    "no_strong_copylefts",
+    "no_code_secrets"
 ]
 
 _allowed_fields_by_type = { 
