@@ -36,8 +36,8 @@ default_regex_rules = {
     "JSON Web Token (JWT)": "eyJ[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*?",
     # Misc.
     "Password in URL": "[a-zA-Z]{3,10}://[^/\\s:@]{3,20}:[^/\\s:@]{3,20}@.{1,100}[\"'\\s]",
-    "HTTP Authorization Basic": "basic\s+[a-zA-Z0-9=:_\+\/-]+",
-    "HTTP Authorization Bearer": "bearer\s+[a-zA-Z0-9_\-\.=:_\+\/]+"
+    "HTTP Authorization Basic": "Authorization:\sBasic\s[a-zA-Z0-9=:_\+\/-]+",
+    "HTTP Authorization Bearer": "Authorization:\sBearer\s[a-zA-Z0-9_\-\.=:_\+\/]+"
 }
 
 common_passwords = [
