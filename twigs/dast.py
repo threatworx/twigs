@@ -38,6 +38,8 @@ def get_inventory(args):
 
     asset_data['config_issues'] = run_dast(args)
 
+    # disable scan
+    args.no_scan = True
     return [ asset_data ]
 
 def run_dast(args):
