@@ -58,7 +58,10 @@ def get_issues_from_csv_file(csv_file_path, asset_id):
                 issue['asset_id'] = asset_id
                 issue['twc_title'] = row['LEVEL'] + ' ' + row['TITLE_TEXT']
                 issue['details'] = row['NOTES']
-                issue['rating'] = '4'
+                if row['LEVEL'] == 'Level 1':
+                    issue['rating'] = '4'
+                else:
+                    issue['rating'] = '5'
                 issue['object_id'] = ''
                 issue['object_meta'] = ''
                 prev = row['TITLE_ID']
