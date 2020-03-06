@@ -18,6 +18,7 @@ import logging
 import argparse
 import requests
 import time
+import json
 
 import aws
 import linux
@@ -33,26 +34,11 @@ import aws_cis
 import policy as policy_lib
 from __init__ import __version__
 
-def export_assets_to_csv(assets, csv_file):
-    logging.info("Exporting assets to CSV file [%s]", csv_file)
-    with open(csv_file, "w") as fd:
-        for asset in assets:
-            fd.write(asset['id'])
-            fd.write(",")
-            fd.write(asset['name'])
-            fd.write(",")
-            fd.write(asset['type'])
-            fd.write(",")
-            fd.write(":OWNER:" + asset['owner'])
-            if asset.get('tags') is not None:
-                for tag in asset['tags']:
-                    fd.write(",")
-                    fd.write(":TAG:" + tag)
-            for product in asset['products']:
-                fd.write(",")
-                fd.write(product)
-            fd.write("\n")
-    logging.info("Successfully exported assets to CSV file!")
+def export_assets_to_file(assets, json_file):
+    logging.info("Exporting assets to JSON file [%s]", json_file)
+    with open(json_file, "w") as fd:
+        json.dump(assets, fd, indent=2, sort_keys=True)
+    logging.info("Successfully exported assets to JSON file!")
 
 def push_asset_to_TW(asset, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
@@ -96,7 +82,7 @@ def push_assets_to_TW(assets, args):
     return asset_id_list
 
 def run_scan(asset_id_list, pj_json, args):
-    if args.no_scan is not True and args.mode != 'dast':
+    if args.no_scan is not True:
         if len(asset_id_list) == 0:
             logging.info("No assets to scan...")
             return 
@@ -114,7 +100,7 @@ def run_scan(asset_id_list, pj_json, args):
         scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
         if run_va_scan:
             # Start VA
-            logging.info("Starting impact refresh for assets %s", str(asset_id_list))
+            logging.info("Starting impact refresh for assets: %s", ",".join(asset_id_list))
             scan_payload = { }
             scan_payload['scan_type'] = 'full' 
             scan_payload['assets'] = asset_id_list
@@ -130,7 +116,7 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Response details: %s", resp.content)
         if run_lic_scan and args.mode == "repo":
             # Start license compliance assessment
-            logging.info("Starting license compliance assessment for assets %s", str(asset_id_list))
+            logging.info("Starting license compliance assessment for assets: %s", ".".join(asset_id_list))
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
             scan_payload['license_scan'] = True
@@ -161,7 +147,7 @@ def main(args=None):
     parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
     parser.add_argument('--apply_policy', help='Path to policy JSON file', required=False)
-    parser.add_argument('--out', help='Specify name of the CSV file to hold the exported asset information. Defaults to out.csv', default='out.csv')
+    parser.add_argument('--out', help='Specify name of the JSON file to hold the exported asset information.')
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
     parser.add_argument('--quiet', action='store_true', help='Disable verbose logging')
@@ -195,7 +181,7 @@ def main(args=None):
 
     # Arguments required for File-based discovery
     parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
-    parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing CSV files. Supported file formats are: PDF & CSV', required=True)
+    parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing CSV files. Supported file formats are: PDF, CSV & JSON', required=True)
     parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
     parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
     parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
@@ -281,7 +267,7 @@ def main(args=None):
         temp = os.environ.get('TW_HANDLE')
         if temp is None:
             logging.error('Error: Missing "--handle" argument and "TW_HANDLE" environment variable is not set as well')
-            return
+            sys.exit(1)
         logging.info('Using handle specified in "TW_HANDLE" environment variable...')
         args.handle = temp
 
@@ -293,7 +279,7 @@ def main(args=None):
 
     if args.token is None and args.apply_policy is not None:
         logging.error('Error: Policy cannot be applied since "--token" argument is missing and "TW_TOKEN" environment variable is not set as well!')
-        return
+        sys.exit(1)
 
     if args.instance is None:
         temp = os.environ.get('TW_INSTANCE')
@@ -303,14 +289,15 @@ def main(args=None):
         elif args.token is not None:
             # missing instance but token is specified
             logging.error('Error: Missing "--instance" argument and "TW_INSTANCE" environment variable is not set as well')
-            return
+            sys.exit(1)
 
 #    if args.purge_assets == True and args.email_report == False:
 #        logging.error('Purge assets option (--purge_assets) is used with Email report (--email_report)')
-#        return
+#        sys.exit(1)
 
-    if args.token is None or len(args.token) == 0:
-        logging.debug('[token] argument is not specified. Asset information will be exported to CSV file [%s]', args.out)
+    if (args.token is None or len(args.token) == 0) and args.out is None:
+        logging.error('[token] argument is not specified and [out] argument is not specified. Unable to share discovered assets...exiting....')
+        sys.exit(1)
 
     assets = []
     if args.mode == 'aws':
@@ -341,7 +328,8 @@ def main(args=None):
         if assets is None or len(assets) == 0:
             logging.info("No assets found!")
         else:
-            export_assets_to_csv(assets, args.out)
+            if args.out is not None:
+                export_assets_to_file(assets, args.out)
             if args.token is not None and len(args.token) > 0:
                 asset_id_list = push_assets_to_TW(assets, args)
 

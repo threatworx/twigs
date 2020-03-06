@@ -22,8 +22,9 @@ def run_docker_bench(args):
         logging.error('Docker bench script not found')
         sys.exit(1)
     logging.info('Running docker bench script: '+dbench_path)
+    cwd = os.getcwd()
     try:
-        os.chdir(os.path.dirname(args.docker_bench_home))
+        os.chdir(os.path.dirname(dbench_path))
         out = subprocess.check_output([dbench_path+" 2>/dev/null "], shell=True)
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
         out = ansi_escape.sub('', out)
@@ -31,6 +32,7 @@ def run_docker_bench(args):
         logging.error("Error running docker bench script")
         return None
     logging.info("docker bench run completed")
+    os.chdir(cwd)
 
     asset_data = {}
     asset_data['id'] = asset_id

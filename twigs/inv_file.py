@@ -2,6 +2,7 @@ import sys
 import platform
 import os
 import logging
+import json
 import PyPDF4
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
@@ -95,6 +96,16 @@ def get_assets_from_csv_file(in_file):
             line = fd.readline()
     return assets
 
+def get_assets_from_json_file(in_file):
+    assets = []
+    with open(in_file,'r') as fd:
+        try:
+            assets = json.load(fd)
+        except json.JSONDecodeError:
+            logging.error("Error loading JSON file [%s]", in_file)
+            sys.exit(1)
+    return assets
+
 def enumerate_files(in_path, file_ext):
     ret_files = []
     for root, subdirs, files in os.walk(in_path):
@@ -108,6 +119,9 @@ def get_inventory(args):
     # Note this is a workaround since 'in' is a reserved word and hence one cannot do args.in
     temp_dict = vars(args)
     in_file = temp_dict['in']
+
+    # disable scan
+    args.no_scan = True
 
     if os.path.isdir(in_file):
         logging.info("Processing CSV files in specified directory [%s]", in_file)
@@ -135,6 +149,10 @@ def get_inventory(args):
     elif in_file_ext == 'csv':
         logging.info("Retriving products from CSV file [%s]", in_file)
         assets = get_assets_from_csv_file(in_file)
+        return assets
+    elif in_file_ext == 'json':
+        logging.info("Retriving products from JSON file [%s]", in_file)
+        assets = get_assets_from_json_file(in_file)
         return assets
     else:
         logging.error('Error unsupported input file type specified...')

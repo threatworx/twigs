@@ -19,7 +19,8 @@ def run_cis_aws_bench(args):
 
     logging.info("Running AWS CIS Bench script [%s]", prowler_path)
     logging.info("This may take sometime...")
-    os.chdir(os.path.dirname(args.prowler_home))
+    cwd = os.getcwd()
+    os.chdir(os.path.dirname(prowler_path))
     cmd = 'AWS_ACCESS_KEY_ID=' + args.aws_access_key + ' AWS_SECRET_ACCESS_KEY=' + args.aws_secret_key
     cmd = cmd + ' ' + prowler_path + ' -b -q -g cislevel2 -M csv 2>/dev/null'
     csv_file_path = tempfile.gettempdir() + os.path.sep + 'aws_cis_bench_out.csv'
@@ -31,6 +32,7 @@ def run_cis_aws_bench(args):
             logging.error("Error running CIS AWS bench script")
             sys.exit(1)
 
+    os.chdir(cwd) 
     asset = { }
     asset['id'] = asset_id
     asset['name'] = asset_name

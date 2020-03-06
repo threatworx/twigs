@@ -47,8 +47,8 @@ optional arguments:
                         "TW_INSTANCE" environment variable
   --apply_policy APPLY_POLICY
                         Path to policy JSON file
-  --out OUT             Specify name of the CSV file to hold the exported
-                        asset information. Defaults to out.csv
+  --out OUT             Specify name of the JSON file to hold the exported
+                        asset information.
   --no_scan             Do not initiate a baseline assessment
   --email_report        After impact refresh is complete email scan report to
                         self
@@ -138,7 +138,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --in IN               Absolute path to single input inventory file or a
                         directory containing CSV files. Supported file formats
-                        are: PDF & CSV
+                        are: PDF, CSV & JSON
   --assetid ASSETID     A unique ID to be assigned to the discovered asset.
                         Defaults to input filename if not specified. Applies
                         only for PDF files.
