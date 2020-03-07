@@ -181,7 +181,7 @@ def main(args=None):
 
     # Arguments required for File-based discovery
     parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
-    parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing CSV files. Supported file formats are: PDF, CSV & JSON', required=True)
+    parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing JSON files. Supported file formats are: PDF & JSON', required=True)
     parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
     parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
     parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')

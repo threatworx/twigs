@@ -70,32 +70,6 @@ def get_products_from_pdf_file_using_pdfminer(in_file):
             products.append(j)
     return products
 
-def get_assets_from_csv_file(in_file):
-    assets = []
-    with open(in_file, "r") as fd:
-        line  = fd.readline()
-        while line:
-            tokens = line.split(',')
-            asset = { }
-            asset['id'] = tokens[0]
-            asset['name'] = tokens[1]
-            asset['type'] = tokens[2]
-            for i in range(3, len(tokens)):
-                token = tokens[i]
-                if token.startswith(':OWNER:'):
-                    asset['owner'] = token[7:]
-                elif token.startswith(':TAG:'):
-                    if asset.get('tags') is None:
-                        asset['tags'] = []
-                    asset['tags'].append(token[5:])
-                else:
-                    if asset.get('products') is None:
-                        asset['products'] = []
-                    asset['products'].append(token)
-            assets.append(asset)
-            line = fd.readline()
-    return assets
-
 def get_assets_from_json_file(in_file):
     assets = []
     with open(in_file,'r') as fd:
@@ -124,12 +98,12 @@ def get_inventory(args):
     args.no_scan = True
 
     if os.path.isdir(in_file):
-        logging.info("Processing CSV files in specified directory [%s]", in_file)
-        csv_files = enumerate_files(in_file, '.csv')
+        logging.info("Processing JSON files in specified directory [%s]", in_file)
+        json_files = enumerate_files(in_file, '.json')
         assets = []
-        for csv_file in csv_files:
-            logging.info("Retriving products from CSV file [%s]", csv_file)
-            temp_assets = get_assets_from_csv_file(csv_file)
+        for json_file in json_files:
+            logging.info("Retriving products from JSON file [%s]", json_file)
+            temp_assets = get_assets_from_json_file(json_file)
             assets.extend(temp_assets)
         return assets
     elif os.path.isfile(in_file) == False:
@@ -146,16 +120,12 @@ def get_inventory(args):
         if len(products) == 0:
             products = get_products_from_pdf_file_using_pdfminer(in_file)
         logging.info("Done retriving products from PDF file")
-    elif in_file_ext == 'csv':
-        logging.info("Retriving products from CSV file [%s]", in_file)
-        assets = get_assets_from_csv_file(in_file)
-        return assets
     elif in_file_ext == 'json':
         logging.info("Retriving products from JSON file [%s]", in_file)
         assets = get_assets_from_json_file(in_file)
         return assets
     else:
-        logging.error('Error unsupported input file type specified...')
+        logging.error('Error unsupported input file type [%s] specified! Supported file types are JSON and PDF.', in_file_ext)
         sys.exit(1)
     
     if args.assetid is None:

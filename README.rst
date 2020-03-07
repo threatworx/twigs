@@ -138,7 +138,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --in IN               Absolute path to single input inventory file or a
                         directory containing CSV files. Supported file formats
-                        are: PDF, CSV & JSON
+                        are: PDF & JSON
   --assetid ASSETID     A unique ID to be assigned to the discovered asset.
                         Defaults to input filename if not specified. Applies
                         only for PDF files.
