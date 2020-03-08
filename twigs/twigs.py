@@ -131,6 +131,18 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Failed to start license compliance assessment")
                 logging.error("Response details: %s", resp.content)
 
+def add_asset_tags(assets, tags):
+    for asset in assets:
+        existing_tags = asset.get('tags')
+        if existing_tags is None:
+            asset['tags'] = tags
+        else:
+            existing_tags.extend(tags)
+
+def add_asset_criticality_tag(assets, asset_criticality):
+    asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
+    add_asset_tags(assets, [asset_criticality_tag])
+
 def main(args=None):
     
     if args is None:
@@ -146,6 +158,9 @@ def main(args=None):
     parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
     parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
     parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
+    parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
+    parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
+    #parser.add_argument('--asset_criticality', choices=['1', '2', '3','4', '5'], help='Business criticality of the discovered assets on a scale of 1 (low) to 5 (high).', required=False)
     parser.add_argument('--apply_policy', help='Path to policy JSON file', required=False)
     parser.add_argument('--out', help='Specify name of the JSON file to hold the exported asset information.')
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
@@ -328,8 +343,20 @@ def main(args=None):
         if assets is None or len(assets) == 0:
             logging.info("No assets found!")
         else:
+            """
+            if args.asset_criticality is not None:
+                add_asset_criticiality_tag(assets, args.asset_criticality)
+            """
+
+            if args.tag_critical:
+                add_asset_criticality_tag(assets, '5')
+
+            if args.tag:
+                add_asset_tags(assets, args.tag)
+
             if args.out is not None:
                 export_assets_to_file(assets, args.out)
+
             if args.token is not None and len(args.token) > 0:
                 asset_id_list = push_assets_to_TW(assets, args)
 

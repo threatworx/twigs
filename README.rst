@@ -31,7 +31,7 @@ python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 2. twigs requires pygit2 package. Mac OS X users will need to perform additional steps as mentioned here [https://www.pygit2.org/install.html#installing-on-os-x] since pygit2 is not available on Mac OS X as a binary wheels package.
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis} ...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -45,6 +45,10 @@ optional arguments:
                         be set as "TW_TOKEN" environment variable
   --instance INSTANCE   The ThreatWatch instance. Note this can be set as 
                         "TW_INSTANCE" environment variable
+  --tag_critical        Tag the discovered asset(s) as critical
+  --tag TAG             Add specified tag to discovered asset(s). You can
+                        specify this option multiple times to add multiple
+                        tags
   --apply_policy APPLY_POLICY
                         Path to policy JSON file
   --out OUT             Specify name of the JSON file to hold the exported
@@ -52,6 +56,7 @@ optional arguments:
   --no_scan             Do not initiate a baseline assessment
   --email_report        After impact refresh is complete email scan report to
                         self
+  --quiet               Disable verbose logging
 
 modes:
   Discovery modes supported
