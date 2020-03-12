@@ -245,13 +245,24 @@ def discover(args):
                             logging.error("Skipping invalid range [%s]", row['hostname'])
                             continue
                         logging.info("Enumerating IPs based on specified range [%s]", iprange)
-                        startip = ipaddress.IPv4Address(unicode(tokens[0]))
-                        endip = ipaddress.IPv4Address(unicode(tokens[1]))
-                        cidrs = [ipaddr for ipaddr in ipaddress.summarize_address_range(startip,endip)]
+                        try:
+                            startip = ipaddress.IPv4Address(unicode(tokens[0]))
+                            endip = ipaddress.IPv4Address(unicode(tokens[1]))
+                            cidrs = []
+                            cidrs = [ipaddr for ipaddr in ipaddress.summarize_address_range(startip,endip)]
+                        except Exception as e:
+                            logging.error("Encountered exception: %s",e)
+                            logging.error("Error converting IP range [%s] to CIDRs. Skipping it...", iprange)
+                            continue
                         logging.info("Converted IP range [%s] to CIDRs %s", iprange, cidrs)
                     if '/' in row['hostname']:
                         logging.info("Enumerating IPs based on specified CIDR [%s]", row['hostname'])
-                        cidrs = [ipaddress.ip_network(unicode(row['hostname'],"ascii"))]
+                        try:
+                            cidrs = [ipaddress.ip_network(unicode(row['hostname'],"ascii"))]
+                        except Exception as e:
+                            logging.error("Encountered exception: %s",e)
+                            logging.error("Invalid CIDR [%s] specified. Skipping it...", row['hostname'])
+                            continue
                     for cidr in cidrs:
                         for a in cidr:
                             trow = row.copy()
