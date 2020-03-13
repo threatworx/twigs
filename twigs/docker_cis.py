@@ -53,24 +53,37 @@ def run_docker_bench(args):
     details = ''
     issue = {}
     for l in out.splitlines():
-        if not l.startswith('[WARN]'):
+        if not l.startswith('[WARN]') and not l.startswith('[NOTE]') and not l.startswith('[INFO]'):
+            continue
+        if l.startswith('[INFO] Checks') or l.startswith('[INFO] Score'):
             continue
         spa = l.split()
         if spa[1] != '*':
             if 'asset_id' in issue:
+                if issue['rating'] == '2' and details.strip() == '':
+                    details = ''
+                    issue = {}
+                    continue
                 issue['details'] = details
                 findings.append(issue)
                 details = ''
                 issue = {}
-            issue['twc_id'] = 'docker-bench-check-'+spa[1].strip()
+            check_id = spa[1].strip()
+            issue['twc_id'] = 'docker-bench-check-'+check_id
             issue['asset_id'] = asset_id
-            issue['twc_title'] = l.split('-')[1].strip()
-            issue['rating'] = '4'
+            issue['twc_title'] = check_id + ' ' + l.split(check_id)[1].strip()
+            if l.startswith('[WARN]'):
+                rating = '4'
+            elif l.startswith('[NOTE]'):
+                rating = '3'
+            else:
+                rating = '2'
+            issue['rating'] = rating 
             issue['object_id'] = ''
             issue['object_meta'] = ''
             details = ''
         else:
-            details = details + l.split('*')[1] + '\n'
+            details = details + l.split('*')[1].strip() + '\n'
     # add the final issue
     if 'asset_id' in issue:
         issue['details'] = details
