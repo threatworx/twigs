@@ -236,21 +236,46 @@ def discover(args):
                         return None 
                 elif row['userpwd'] != '' and not args.secure:
                     logging.warning('Unsecure login information in file. Use --secure to encrypt.')
-                if '/' in row['hostname']: # CIDR is specified, then expand it
-                    logging.info("Enumerating IPs based on specified CIDR [%s]", row['hostname'])
-                    net = ipaddress.ip_network(unicode(row['hostname'],"ascii"))
-                    for a in net:
-                        trow = row.copy()
-                        trow['hostname'] = str(a)
+                if '-' in row['hostname'] or '/' in row['hostname']: # IP range or CIDR is specified, then expand it
+                    if '-' in row['hostname']:
+                        iprange = row['hostname']
+                        iprange = iprange.replace(' ','')
+                        tokens = iprange.split('-')
+                        if len(tokens) != 2 or len(tokens[0])==0 or len(tokens[1])==0:
+                            logging.error("Skipping invalid range [%s]", row['hostname'])
+                            continue
+                        logging.info("Enumerating IPs based on specified range [%s]", iprange)
+                        try:
+                            startip = ipaddress.IPv4Address(unicode(tokens[0]))
+                            endip = ipaddress.IPv4Address(unicode(tokens[1]))
+                            cidrs = []
+                            cidrs = [ipaddr for ipaddr in ipaddress.summarize_address_range(startip,endip)]
+                        except Exception as e:
+                            logging.error("Encountered exception: %s",e)
+                            logging.error("Error converting IP range [%s] to CIDRs. Skipping it...", iprange)
+                            continue
+                        logging.info("Converted IP range [%s] to CIDRs %s", iprange, cidrs)
+                    if '/' in row['hostname']:
+                        logging.info("Enumerating IPs based on specified CIDR [%s]", row['hostname'])
+                        try:
+                            cidrs = [ipaddress.ip_network(unicode(row['hostname'],"ascii"))]
+                        except Exception as e:
+                            logging.error("Encountered exception: %s",e)
+                            logging.error("Invalid CIDR [%s] specified. Skipping it...", row['hostname'])
+                            continue
+                    for cidr in cidrs:
+                        for a in cidr:
+                            trow = row.copy()
+                            trow['hostname'] = str(a)
 
-                        # Remove hard-coded asset ID and name for CIDR, as it will overwrite same asset
-                        # These will based on host IP address automatically
-                        trow['assetid'] = None
-                        trow['assetname'] = None
+                            # Remove hard-coded asset ID and name for CIDR, as it will overwrite same asset
+                            # These will based on host IP address automatically
+                            trow['assetid'] = None
+                            trow['assetname'] = None
                         
-                        remote_hosts.append(trow)
-                        remote_hosts[-1]['remote'] = True
-                        logging.info("Enumerated IP: %s", a)
+                            remote_hosts.append(trow)
+                            remote_hosts[-1]['remote'] = True
+                            logging.info("Enumerated IP: %s", a)
                 else:
                     remote_hosts.append(row)
                     remote_hosts[-1]['remote'] = True
