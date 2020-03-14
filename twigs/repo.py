@@ -356,13 +356,17 @@ def HIWORD(dword):
     return dword >> 16
 
 def get_dll_version(path):
-
-    pe = pefile.PE(path)
-    if hasattr(pe, 'VS_FIXEDFILEINFO'):
-        ms = pe.VS_FIXEDFILEINFO[0].FileVersionMS
-        ls = pe.VS_FIXEDFILEINFO[0].FileVersionLS
-        return "%d.%d.%d.%d" % (HIWORD (ms), LOWORD (ms), HIWORD (ls), LOWORD (ls))
-    else:
+    try:
+        pe = pefile.PE(path)
+        if hasattr(pe, 'VS_FIXEDFILEINFO'):
+            ms = pe.VS_FIXEDFILEINFO[0].FileVersionMS
+            ls = pe.VS_FIXEDFILEINFO[0].FileVersionLS
+            return "%d.%d.%d.%d" % (HIWORD (ms), LOWORD (ms), HIWORD (ls), LOWORD (ls))
+        else:
+            return None
+    except Exception as e:
+        logging.error("Error parsing DLL file [%s]: %s", path, e)
+        logging.error("Skipping the DLL file...")
         return None
 
 def discover_dll(args, localpath):
