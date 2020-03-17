@@ -166,18 +166,19 @@ def check_regex_rules(this_file, lines, line, line_no, secret_records, args):
             secret_records.append(create_secret_record(this_file, lines, line_no, "REGEX:"+key, line, secret, args))
             break
 
-def scan_file_for_secrets(args, this_file, regex_rules):
+def scan_file_for_secrets(args, base_path, this_file, regex_rules):
     secret_records = []
     with open(this_file, 'r') as fd:
         mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
         lines = mm_file.read(-1).split('\n')
         line_no = 0
+        stripped_file_path = this_file[len(base_path)+1:]
         for line in lines:
             if args.enable_entropy:
-                check_entropy(this_file, lines, line, line_no, secret_records, args)
-            check_regex_rules(this_file, lines, line, line_no, secret_records, args)
+                check_entropy(stripped_file_path, lines, line, line_no, secret_records, args)
+            check_regex_rules(stripped_file_path, lines, line, line_no, secret_records, args)
             if args.check_common_passwords:
-                check_common_passwords(this_file, lines, line, line_no, secret_records, args)
+                check_common_passwords(stripped_file_path, lines, line, line_no, secret_records, args)
             line_no = line_no + 1
     return secret_records
 
@@ -206,7 +207,7 @@ def meets_pattern(this_file, patterns):
             return True
     return False
 
-def scan_for_secrets(args, local_path):
+def scan_for_secrets(args, local_path, base_path):
     local_path = os.path.abspath(local_path)
     all_files = lib_utils.find_files(local_path, '')
 
@@ -248,7 +249,7 @@ def scan_for_secrets(args, local_path):
     secret_records = []
     for this_file in final_files:
         if os.path.islink(this_file) == False and os.stat(this_file).st_size > 0 and is_binary_string(open(this_file, 'r').read(1024)) == False:
-            secret_records.extend(scan_file_for_secrets(args, this_file, regex_rules))
+            secret_records.extend(scan_file_for_secrets(args, base_path, this_file, regex_rules))
 
     return secret_records
 

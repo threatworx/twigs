@@ -485,6 +485,7 @@ def get_inventory(args):
             logging.info("You can set GIT_PATH environment variable to absolute path of git executable and run twigs again.")
             sys.exit(1)
         path = tempfile.mkdtemp()
+        base_path = path
         new_repo = None
         try:
             logging.info("Cloning repo to temporary local directory...")
@@ -497,6 +498,9 @@ def get_inventory(args):
             sys.exit(1)
     elif os.path.isdir(args.repo):
         path = args.repo
+        base_path = os.path.abspath(path)
+        if base_path == os.path.dirname(base_path):
+            base_path = "" # handle directory contained in root directory
     else:
         logging.error('Not a valid repo')
         sys.exit(1) 
@@ -505,7 +509,7 @@ def get_inventory(args):
     assets = discover_inventory(args, path)
     if args.secrets_scan:
         logging.info("Discovering secrets in source code. This may take some time...")
-        secret_records = lib_code_secrets.scan_for_secrets(args, path)
+        secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         logging.info("Secrets discovery complete.")
         assets[0]['secrets'] = secret_records
         secrets = json.dumps(secret_records, indent=4, sort_keys=True)
