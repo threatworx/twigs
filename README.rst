@@ -31,7 +31,7 @@ python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 2. twigs requires pygit2 package. Mac OS X users will need to perform additional steps as mentioned here [https://www.pygit2.org/install.html#installing-on-os-x] since pygit2 is not available on Mac OS X as a binary wheels package.
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis} ...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis,azure_cis} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -73,6 +73,7 @@ modes:
     dast                Discover and test web application using a DAST plugin
     docker_cis          Run docker CIS benchmarks
     aws_cis             Run AWS CIS benchmarks
+    azure_cis           Run Azure CIS benchmarks
 
 Mode: aws
 $ twigs aws --help
@@ -278,6 +279,16 @@ optional arguments:
   --prowler_home PROWLER_HOME
                         Location of cloned prowler github repo. Defaults to
                         current directory
+
+Mode: azure_cis
+$ twigs azure_cis --help
+usage: twigs.py azure_cis [-h] --assetid ASSETID [--assetname ASSETNAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
 
 Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
 

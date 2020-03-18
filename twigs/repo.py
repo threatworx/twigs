@@ -512,11 +512,6 @@ def get_inventory(args):
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         logging.info("Secrets discovery complete.")
         assets[0]['secrets'] = secret_records
-        secrets = json.dumps(secret_records, indent=4, sort_keys=True)
-        secrets_json_file = assets[0]['name']+'_source_secrets.json'
-        with open(secrets_json_file, 'w') as fd:
-            fd.write(secrets)
-        logging.info("Secrets are written to [%s]", secrets_json_file)
 
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)

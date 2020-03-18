@@ -31,6 +31,7 @@ import fingerprint
 import dast 
 import docker_cis
 import aws_cis
+import azure_cis
 import policy as policy_lib
 from __init__ import __version__
 
@@ -263,6 +264,11 @@ def main(args=None):
     parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
     parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to current directory', default='.')
 
+    # Arguments required for Azure CIS benchmarks
+    parser_az_cis = subparsers.add_parser("azure_cis", help = "Run Azure CIS benchmarks")
+    parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+    parser_az_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
     args = parser.parse_args()
 
     logging_level = logging.INFO
@@ -337,6 +343,8 @@ def main(args=None):
         assets = docker_cis.get_inventory(args)
     elif args.mode == 'aws_cis':
         assets = aws_cis.get_inventory(args)
+    elif args.mode == 'azure_cis':
+        assets = azure_cis.get_inventory(args)
 
     exit_code = None
     if args.mode != 'host' or args.secure == False:

@@ -40,12 +40,12 @@ setup(
     include_package_data=True,
     keywords='twigs',
     name='twigs',
-    packages=find_packages(include=['twigs', 'twigs.dast_plugins']),
+    packages=find_packages(include=['twigs', 'twigs.dast_plugins', 'twigs.azure_cis_tool']),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatwatch/twigs',
-    version='1.0.28',
+    version='1.0.29',
     zip_safe=False,
     entry_points={
         'console_scripts': [
