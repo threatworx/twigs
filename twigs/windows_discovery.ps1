@@ -1,16 +1,46 @@
-﻿# Sample PowerShell based discovery script for Windows
+﻿<#
+.SYNOPSIS
+    Windows Host discovery script (twigs equivalent)
+.DESCRIPTION
+    This script helps discovery Windows Host(s) as assets in ThreatWatch instance. It is equivalent to twigs.
+.PARAMETER handle
+    Specifies the handle of the ThreatWatch user. Mandatory.
+.PARAMETER token
+    Specifies the API token of the ThreatWatch user. Optional.
+.PARAMETER instance
+    Specifies the ThreatWatch instance. Optional.
+.PARAMETER out
+    Specifies the output JSON filename to hold discovered asset details. Optional.
+.PARAMETER assetid
+    Specifies the identifier for the asset. Optional.
+.PARAMETER assetname
+    Specifies the name for the asset. Optional.
+.PARAMETER tag_critical
+    Tag the asset as critical. Optional.
+.PARAMETER tags
+    Specify tags for the asset. Optional.
+.EXAMPLE
+    .\windows_discovery.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatwatch.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2'
+.NOTES
+    .    
+#>
+# Sample PowerShell based discovery script for Windows
 param(
     [parameter(Mandatory=$true, HelpMessage='Enter the email handle for ThreatWatch instance')]
     [String]
     $handle,
 
-    [parameter(Mandatory=$true, HelpMessage='Enter the API key for the specified email handle for ThreatWatch instance')]
+    [parameter(Mandatory=$false, HelpMessage='Enter the API key for the specified email handle for ThreatWatch instance')]
     [String]
     $token,
 
-    [parameter(Mandatory=$true, HelpMessage='Specify the ThreatWatch instance')]
+    [parameter(Mandatory=$false, HelpMessage='Specify the ThreatWatch instance')]
     [String]
     $instance,
+
+    [parameter(Mandatory=$false, HelpMessage='Specify the output JSON filename')]
+    [String]
+    $out,
 
     [parameter(Mandatory=$false, HelpMessage='Enter the Asset ID')]
     [String]
@@ -18,8 +48,15 @@ param(
 
     [parameter(Mandatory=$false, HelpMessage='Enter the Asset Name')]
     [String]
-    $assetname
+    $assetname,
 
+    [parameter(Mandatory=$false, HelpMessage='Tag the asset as critical')]
+    [Switch]
+    $tag_critical,
+	
+    [parameter(Mandatory=$false, HelpMessage='Specify tags for the asset')]
+    [String[]]
+    $tags	
 )
 
 if ($PSVersionTable) {
@@ -31,6 +68,11 @@ if ($PSVersionTable) {
 }
 else {
     Write-Host "Unable to detect your PowerShell version...exiting"
+    exit
+}
+
+if (!$token -and !$instance -and !$out) {
+    Write-Host "Error missing token, instance and out arguments....nothing to do!"
     exit
 }
 
@@ -51,28 +93,31 @@ $tw_assets_url = 'https://' + $instance+ '/api/v2/assets/'
 # Check if asset exists
 $asset_exists = 1
 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+if ($token -and $instance) {
 
-$url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
-$http_method = 'Get'
-Write-Host 'Validating credentials...'
-try {
-    $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json'
-}
-catch {
-    if($_.Exception.Response.StatusCode.value__ -eq 404) { 
-        $asset_exists = 0
-    }
-    else {
-        Write-Host 'Encountered fatal error (details below)'
-        Write-Host "$_"
-        Write-Host 'Exiting...'
-        exit
-    }
-}
-Write-Host 'Credentials validated.'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-Write-Host ''
+    $url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
+    $http_method = 'Get'
+    Write-Host 'Validating credentials...'
+    try {
+        $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json'
+    }
+    catch {
+        if($_.Exception.Response.StatusCode.value__ -eq 404) { 
+            $asset_exists = 0
+        }
+        else {
+            Write-Host 'Encountered fatal error (details below)'
+            Write-Host "$_"
+            Write-Host 'Exiting...'
+            exit
+        }
+    }
+    Write-Host 'Credentials validated.'
+
+    Write-Host ''
+}
 Write-Host 'Running discovery for Windows...'
 
 Write-Host ''
@@ -119,8 +164,17 @@ Write-Host 'Number of products found (using wmic):', $temp_array.Count
 Write-Host 'Total number of unique products found:', $product_json_array.Count
 
 $tags_json_array = New-Object System.Collections.Generic.List[string]
-$tags_json_array.Add('OS_RELEASE:' + $base_os + ' ' + $os_sp)
+$os_and_sp = $base_os + ' ' + $os_sp
+$tags_json_array.Add('OS_RELEASE:' + $os_and_sp.Trim())
 $tags_json_array.Add('Windows')
+if ($tag_critical) {
+    $tags_json_array.Add('CRITICALITY:5')
+}
+if ($tags) {
+    foreach($tag in $tags) {
+	    $tags_json_array.Add($tag)
+	}
+}
 
 $url = ''
 $http_method = ''
@@ -146,22 +200,30 @@ $payload = @{
 	products=$product_json_array
 	tags=$tags_json_array
 }
-$body = (ConvertTo-Json $payload)
+$body = (ConvertTo-Json -Depth 100 $payload)
 
 # Remove any non-ascii characters
 $body = $body -replace '[^ -~]', ''
 
-Write-Host ''
-if ($asset_exists -eq 0) {
-    Write-Host 'Creating asset...'
+if ($token -and $instance) {
+    Write-Host ''
+    if ($asset_exists -eq 0) {
+        Write-Host 'Creating asset...'
+    }
+    else {
+        Write-Host 'Updating asset...'
+    }
+    $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $body
+    if ($asset_exists -eq 0) {
+        Write-Host 'Successfully created asset'
+    }
+    else {
+        Write-Host 'Successfully updated asset'
+    }
 }
-else {
-    Write-Host 'Updating asset...'
+
+if ($out) {
+    # ConvertFrom-Json and ConvertTo-Json is required for pretty printing the JSON
+    $body | ConvertFrom-Json | ConvertTo-Json -Depth 100 | Out-File $out
 }
-$response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $body
-if ($asset_exists -eq 0) {
-    Write-Host 'Successfully created asset'
-}
-else {
-    Write-Host 'Successfully updated asset'
-}
+
