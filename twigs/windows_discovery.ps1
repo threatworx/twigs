@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Windows Host discovery script (twigs equivalent)
 .DESCRIPTION
@@ -266,4 +266,3 @@ if ($out) {
 # fKYiPVKTAqJ2WTsfxgY2ZW0kQg/rzNx3jO1TyFQg+lMrI9lwEtigbTOd/z7RsN1W
 # UiUYqYYREtv+h2FbOwBL6a3Q/Q==
 # SIG # End signature block
-
