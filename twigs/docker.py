@@ -199,16 +199,11 @@ def discover_openbsd(args, container_id):
     plist = []
     cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/sbin/pkg_info -A"']
     logging.info("Retrieving product details from image")
-    if host['remote']:
-        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
-        if pkgout is None:
-            return None
-    else:
-        try:
-            pkgout = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running inventory for container ID: %s",container_id)
-            return None
+    try:
+        pkgout = subprocess.check_output(cmdarr, shell=True)
+    except subprocess.CalledProcessError:
+        logging.error("Error running inventory for container ID: %s",container_id)
+        return None
 
     begin = False
     for l in pkgout.splitlines():
@@ -225,16 +220,11 @@ def discover_freebsd(args, container_id):
     plist = []
     cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/sbin/pkg info"']
     logging.info("Retrieving product details from image")
-    if host['remote']:
-        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
-        if pkgout is None:
-            return None
-    else:
-        try:
-            pkgout = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running inventory for container ID: %s",container_id)
-            return None
+    try:
+        pkgout = subprocess.check_output(cmdarr, shell=True)
+    except subprocess.CalledProcessError:
+        logging.error("Error running inventory for container ID: %s",container_id)
+        return None
 
     begin = False
     for l in pkgout.splitlines():

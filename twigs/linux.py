@@ -6,52 +6,13 @@ import logging
 import socket
 import csv
 import ipaddress
-import paramiko
 import getpass
 import base64
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
-import socket
 import utils
-
-def run_remote_ssh_command(args, host, command):
-    assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
-    output = ''
-    try:
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
-        if host.get('userpwd') is not None and len(host['userpwd']) > 0 and (host.get('privatekey') is None or len(host['privatekey'])==0):
-            client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
-        elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
-            if host.get('userpwd') is not None and len(host['userpwd']) > 0:
-                client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'],passphrase=host['userpwd'])
-            else:
-                client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
-        else:
-            client.connect(host['hostname'],username=host['userlogin'])
-        stdin, stdout, stderr = client.exec_command(command)
-        for line in stdout:
-            output = output + line
-        client.close()
-    except paramiko.ssh_exception.AuthenticationException as e:
-        logging.info("Authentication failed for asset [%s], host [%s]", assetid, host['hostname'])
-        logging.info("Exception: %s", e)
-        output = None
-    except paramiko.ssh_exception.SSHException as e:
-        logging.info("SSHException while connecting to asset [%s], host [%s]", assetid, host['hostname'])
-        logging.info("Exception: %s", e)
-        output = None
-    except socket.error as e:
-        logging.info("Socket error while connection to asset [%s], host [%s]", assetid, host['hostname'])
-        logging.info("Exception: %s", e)
-        output = None
-    except:
-        logging.info("Unknown error running remote discovery for asset [%s], host [%s]: [%s]", assetid, host['hostname'], sys.exc_info()[0])
-        output = None
-    finally:
-        return output
 
 def check_host_up(host):
     if not host['remote']:
@@ -72,16 +33,7 @@ def discover_openbsd(args, host):
     plist = []
     cmdarr = ["/usr/sbin/pkg_info -A"]
     logging.info("Retrieving product details")
-    if host['remote']:
-        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
-        if pkgout is None:
-            return None
-    else:
-        try:
-            pkgout = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running inventory")
-            return None 
+    pkgout = utils.run_cmd_on_host(args, host, cmdarr)
 
     begin = False
     for l in pkgout.splitlines():
@@ -99,16 +51,7 @@ def discover_freebsd(args, host):
     plist = []
     cmdarr = ["/usr/sbin/pkg info"]
     logging.info("Retrieving product details")
-    if host['remote']:
-        pkgout = run_remote_ssh_command(args, host, cmdarr[0])
-        if pkgout is None:
-            return None
-    else:
-        try:
-            pkgout = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running inventory")
-            return None 
+    pkgout = utils.run_cmd_on_host(args, host, cmdarr)
 
     begin = False
     for l in pkgout.splitlines():
@@ -125,16 +68,7 @@ def discover_rh(args, host):
     plist = []
     cmdarr = ["/usr/bin/yum list installed"]
     logging.info("Retrieving product details")
-    if host['remote']:
-        yumout = run_remote_ssh_command(args, host, cmdarr[0])
-        if yumout is None:
-            return None
-    else:
-        try:
-            yumout = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running inventory")
-            return None 
+    yumout = utils.run_cmd_on_host(args, host, cmdarr)
 
     begin = False
     for l in yumout.splitlines():
@@ -169,16 +103,7 @@ def discover_ubuntu(args, host):
     plist = []
     cmdarr = ["/usr/bin/apt list --installed"]
     logging.info("Retrieving product details")
-    if host['remote']:
-        yumout = run_remote_ssh_command(args, host, cmdarr[0])
-        if yumout is None:
-            return None
-    else:
-        try:
-            yumout = subprocess.check_output(cmdarr, shell=True)
-        except subprocess.CalledProcessError:
-            logging.error("Error running inventory")
-            return None 
+    yumout = utils.run_cmd_on_host(args, host, cmdarr)
 
     begin = False
     for l in yumout.splitlines():
