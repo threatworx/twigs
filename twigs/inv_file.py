@@ -89,13 +89,24 @@ def enumerate_files(in_path, file_ext):
                 ret_files.append(file_path)
     return ret_files
 
+def check_and_update_scan(args, assets):
+    # if user has indicated no_scan then honor it
+    if args.no_scan == True:
+        return
+    to_scan = False
+    for a in assets:
+        if len(a['products']) > 0:
+            to_scan = True
+        if a.get('compliance_metadata') is not None:
+            args.mode = "file_repo" # update the mode to help trigger license scan
+            to_scan = True
+    if to_scan == False:
+        args.no_scan = True
+
 def get_inventory(args):
     # Note this is a workaround since 'in' is a reserved word and hence one cannot do args.in
     temp_dict = vars(args)
     in_file = temp_dict['in']
-
-    # disable scan
-    args.no_scan = True
 
     if os.path.isdir(in_file):
         logging.info("Processing JSON files in specified directory [%s]", in_file)
@@ -105,6 +116,7 @@ def get_inventory(args):
             logging.info("Retriving products from JSON file [%s]", json_file)
             temp_assets = get_assets_from_json_file(json_file)
             assets.extend(temp_assets)
+        check_and_update_scan(args, assets)
         return assets
     elif os.path.isfile(in_file) == False:
         logging.error("Error specified file [%s] not found...", in_file)
@@ -123,6 +135,7 @@ def get_inventory(args):
     elif in_file_ext == 'json':
         logging.info("Retriving products from JSON file [%s]", in_file)
         assets = get_assets_from_json_file(in_file)
+        check_and_update_scan(args, assets)
         return assets
     else:
         logging.error('Error unsupported input file type [%s] specified! Supported file types are JSON and PDF.', in_file_ext)
@@ -153,5 +166,6 @@ def get_inventory(args):
     asset['owner'] = args.handle
     asset['products'] = products
     assets = [ asset ]
+    check_and_update_scan(args, assets)
     return assets
 

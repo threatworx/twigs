@@ -116,9 +116,9 @@ def run_scan(asset_id_list, pj_json, args):
             else:
                 logging.error("Failed to start impact refresh")
                 logging.error("Response details: %s", resp.content)
-        if run_lic_scan and args.mode == "repo":
+        if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo"):
             # Start license compliance assessment
-            logging.info("Starting license compliance assessment for assets: %s", ".".join(asset_id_list))
+            logging.info("Starting license compliance assessment for assets: %s", ",".join(asset_id_list))
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
             scan_payload['license_scan'] = True
