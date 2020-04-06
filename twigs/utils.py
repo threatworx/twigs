@@ -60,14 +60,21 @@ def get_os_release(args, host=None):
     out = run_cmd_on_host(args, host, cmdarr)
 
     if out is None or out.strip() == '':
-        # try FreeBSD
-        cmdarr = ["/usr/bin/uname -v -p"]
-        out = run_cmd_on_host(args, host, cmdarr)
 
-        if out is not None and 'FreeBSD' not in out:
-            # try OpenBSD
-            cmdarr = ["/usr/bin/uname -srvm"]
+        # try redhat-release
+        cmdarr = ["/bin/cat /etc/redhat-release"]
+        out = run_cmd_on_host(args, host, cmdarr)
+        if out is not None and out.strip() != '':
+            return out.strip()
+        else:
+            # try FreeBSD
+            cmdarr = ["/usr/bin/uname -v -p"]
             out = run_cmd_on_host(args, host, cmdarr)
+
+            if out is not None and 'FreeBSD' not in out:
+                # try OpenBSD
+                cmdarr = ["/usr/bin/uname -srvm"]
+                out = run_cmd_on_host(args, host, cmdarr)
 
     if out is None:
         logging.error("Failed to get os-release")
