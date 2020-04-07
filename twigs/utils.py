@@ -2,6 +2,7 @@ import os
 import socket
 import subprocess
 import paramiko
+import logging
 
 def run_cmd_on_host(args, host, cmdarr):
     if host and host['remote']:
