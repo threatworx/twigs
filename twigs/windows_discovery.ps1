@@ -223,15 +223,19 @@ if ($token -and $instance) {
 }
 
 if ($out) {
-    # ConvertFrom-Json and ConvertTo-Json is required for pretty printing the JSON
-    $body | ConvertFrom-Json | ConvertTo-Json -Depth 100 | Out-File $out
+    $temp_body = ($body | ConvertFrom-Json)
+    ConvertTo-Json -Depth 100 @($temp_body) | Out-File $out
 }
+
+# Remove any temporary files
+Remove-Item -force -path $patch_csv_file
+Remove-Item -force -path $product_csv_file
 
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUx4+6OdG1qN9q5jEydrr2dbTr
-# VsKgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUuwUByqgO53hNQn6wQY1VJl0G
+# Gs6gggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -258,11 +262,11 @@ if ($out) {
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQU7nsBOK4tX727/m9olXGmoksW8uYwDQYJKoZIhvcNAQEBBQAE
-# ggEAQrJUuNeGjXzJvDJF5/83TcFPwg858Wmwo1F0xN0Bohrb9IZBFdVNJBCrRSom
-# 2wWT/bmsKGRKOWMV27rBWvgzArdyLGseutTZylWJVeume450S3D8kGPnMdSXyjCr
-# pwixCbQl6WFSOLROe4AQwm0f0G3/o4qGgY7ERNuzwF5muq16jQiLMyCORtSni9mq
-# bQGCVSAqiShV4C/imwG8CjJzKa8XXtzlmDI69Elx6mTCVLGVdwvyrAsXxWC2Yao4
-# fKYiPVKTAqJ2WTsfxgY2ZW0kQg/rzNx3jO1TyFQg+lMrI9lwEtigbTOd/z7RsN1W
-# UiUYqYYREtv+h2FbOwBL6a3Q/Q==
+# hkiG9w0BCQQxFgQUXacqJsvYHREXw8uXBnXTXKgu54EwDQYJKoZIhvcNAQEBBQAE
+# ggEALkr/Kpe7ecCG0eNkRN1mTt4xy/21W7vSwhKBKSbATCXfpGnSSu+m3Zl3a2IT
+# mqE0U6VXQsDkosc89YTaw4ly0HfpkCM5I+C/JbQCDnphaOL8JU1sftzlHs6lc3kB
+# nzO57yorxRN1tItCXqV/sgAbtBK9bOaG5gOuBScKVBWASZ/MGIDdR8938R8MsUgJ
+# iVbjOkagvxXKm1NbY3l/cuhX+htwwSnCY2nsVtaV2o3oq3vICFqEdK3JtUijgDHL
+# ymuRvc22n7VoucBIdN/kFWyDi0Mrw2z5/gZtItjOnTd8vldfBCiLqlrAEgx1py8t
+# KbBUqJ5KwU8Sj4R2O+7KKN3Nkg==
 # SIG # End signature block
