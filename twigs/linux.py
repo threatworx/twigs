@@ -64,6 +64,41 @@ def discover_freebsd(args, host):
     logging.info("Completed retrieval of product details")
     return plist
 
+def discover_macos(args, host):
+    plist = []
+    cmdarr = ["ls -la /Applications/"]
+    logging.info("Retrieving product details")
+    pkgout = utils.run_cmd_on_host(args, host, cmdarr)
+    for l in pkgout.splitlines():
+        l = l.strip()
+        if l.startswith("d") and l.endswith(".") == False:
+            tokens = l.split()
+            app_name_tokens = tokens[8:] # there are 8 other fields apart from directory name
+            app_name = " ".join(app_name_tokens)
+            cmd = "defaults read \"/Applications/%s/Contents/Info.plist\" CFBundleShortVersionString" % app_name
+            cmdarr = [cmd]
+            out = utils.run_cmd_on_host(args, host, cmdarr, False)
+            app_name = app_name[:-4]
+            if out is not None:
+                out = out.strip()
+                app_name = app_name + " " + out
+            plist.append(app_name)
+
+    # Look for packages from any package manager
+    
+    # Home brew
+    cmdarr = ["which brew"]
+    out = utils.run_cmd_on_host(args, host, cmdarr, False)
+    if out is not None and len(out.strip()) > 0:
+        # Home brew is present
+        cmdarr = ["brew list --versions"]
+        pkgout = utils.run_cmd_on_host(args, host, cmdarr)
+        for l in pkgout.splitlines():
+            plist.append(l.strip())
+        
+    logging.info("Completed retrieval of product details")
+    return plist
+
 def discover_rh(args, host):
     plist = []
     cmdarr = ["/usr/bin/yum list installed"]
@@ -304,6 +339,8 @@ def discover_host(args, host):
         plist = discover_freebsd(args, host)
     elif atype == 'OpenBSD':
         plist = discover_openbsd(args, host)
+    elif atype == "Mac OS":
+        plist = discover_macos(args, host)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory asset [%s]", asset_id)
@@ -317,7 +354,8 @@ def discover_host(args, host):
     asset_data['products'] = plist
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os)
-    asset_tags.append('Linux')
+    if atype != "Mac OS":
+        asset_tags.append('Linux')
     asset_tags.append(atype)
     asset_data['tags'] = asset_tags
 

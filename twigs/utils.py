@@ -4,16 +4,18 @@ import subprocess
 import paramiko
 import logging
 
-def run_cmd_on_host(args, host, cmdarr):
+def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
     if host and host['remote']:
         pkgout = run_remote_ssh_command(args, host, cmdarr[0])
         if pkgout is None:
             return None
     else:
         try:
-            pkgout = subprocess.check_output(cmdarr, shell=True)
+            dev_null_device = open(os.devnull, "w")
+            pkgout = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
         except subprocess.CalledProcessError:
-            logging.error("Error running inventory")
+            if logging_enabled:
+                logging.error("Error running inventory")
             return None
     return pkgout
 
@@ -58,24 +60,24 @@ def get_os_release(args, host=None):
     freebsd = False
     out = None
     cmdarr = ["/bin/cat /etc/os-release"]
-    out = run_cmd_on_host(args, host, cmdarr)
+    out = run_cmd_on_host(args, host, cmdarr, False)
 
     if out is None or out.strip() == '':
 
         # try redhat-release
         cmdarr = ["/bin/cat /etc/redhat-release"]
-        out = run_cmd_on_host(args, host, cmdarr)
+        out = run_cmd_on_host(args, host, cmdarr, False)
         if out is not None and out.strip() != '':
             return out.strip()
         else:
             # try FreeBSD
             cmdarr = ["/usr/bin/uname -v -p"]
-            out = run_cmd_on_host(args, host, cmdarr)
+            out = run_cmd_on_host(args, host, cmdarr, False)
 
             if out is not None and 'FreeBSD' not in out:
                 # try OpenBSD
                 cmdarr = ["/usr/bin/uname -srvm"]
-                out = run_cmd_on_host(args, host, cmdarr)
+                out = run_cmd_on_host(args, host, cmdarr, False)
 
     if out is None:
         logging.error("Failed to get os-release")
@@ -83,6 +85,16 @@ def get_os_release(args, host=None):
 
     if 'FreeBSD' in out or 'OpenBSD' in out:
         return out
+    elif 'Darwin' in out:
+        # Check for Mac OS
+        cmdarr = ["sw_vers"]
+        out = run_cmd_on_host(args, host, cmdarr, False)
+        if out is not None and out.strip() != '':
+            mac_os_version = ""
+            for line in out.splitlines():
+                value = line.split(':')[1].strip()
+                mac_os_version = value if len(mac_os_version) == 0 else mac_os_version + " " + value
+            return mac_os_version
     else:
         output_lines = out.splitlines()
         for l in output_lines:
@@ -108,6 +120,8 @@ def get_asset_type(os):
         return "FreeBSD"
     elif "OpenBSD" in os:
         return "OpenBSD"
+    elif "Mac OS" in os:
+        return "Mac OS"
     else:
         logging.error('Not a supported OS type')
         return None
