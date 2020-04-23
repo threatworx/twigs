@@ -2,7 +2,7 @@
 .SYNOPSIS
     Windows Host discovery script (twigs equivalent)
 .DESCRIPTION
-    This script helps discovery Windows Host(s) as assets in ThreatWatch instance. It is equivalent to twigs.
+    This script helps discover Windows Host(s) as assets in ThreatWatch instance. It is equivalent to twigs.
 .PARAMETER handle
     Specifies the handle of the ThreatWatch user. Mandatory.
 .PARAMETER token
@@ -19,8 +19,12 @@
     Tag the asset as critical. Optional.
 .PARAMETER tags
     Specify tags for the asset. Optional.
+.PARAMETER no_scan
+    Do not initiate a baseline assessment. Optional.
+.PARAMETER email_report
+    After impact refresh is complete, email scan report to self. Optional.
 .EXAMPLE
-    .\windows_discovery.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatwatch.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2'
+    .\windows_discovery.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatwatch.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2' -email_report
 .NOTES
     .    
 #>
@@ -56,7 +60,15 @@ param(
 	
     [parameter(Mandatory=$false, HelpMessage='Specify tags for the asset')]
     [String[]]
-    $tags	
+    $tags,
+
+    [parameter(Mandatory=$false, HelpMessage='Do not initiate a baseline assessment')]
+    [Switch]
+    $no_scan,
+
+    [parameter(Mandatory=$false, HelpMessage='After impact refresh is complete email scan report to self')]
+    [Switch]
+    $email_report
 )
 
 if ($PSVersionTable) {
@@ -76,9 +88,13 @@ if (!$token -and !$instance -and !$out) {
     exit
 }
 
-$ip_address = (get-netadapter | get-netipaddress | ? addressfamily -eq 'IPv4').ipaddress
+if ($no_scan -and $email_report) {
+    Write-Host "Error conflicting options [no_scan] and [email_report] as specified!"
+    exit
+}
+
 if (!$assetid) {
-    $assetid = $ip_address
+    $assetid = $env:ComputerName
 }
 if (!$assetname) {
     $assetname = $assetid
@@ -89,6 +105,7 @@ $assetname = $assetname.Replace("/","-")
 $assetname = $assetname.Replace(":","-")
 
 $tw_assets_url = 'https://' + $instance+ '/api/v2/assets/'
+$tw_scan_url = 'https://' + $instance+ '/api/v1/scans/'
 
 # Check if asset exists
 $asset_exists = 1
@@ -220,6 +237,24 @@ if ($token -and $instance) {
     else {
         Write-Host 'Successfully updated asset'
     }
+
+    if (-not $no_scan) {
+        $http_method = 'Post'
+        $url = $tw_scan_url + '?handle=' + $handle + '&token=' + $token + '&format=json'
+        $assets_array = New-Object System.Collections.Generic.List[string]
+        $assets_array.Add($assetid)
+        $payload = @{
+            scan_type='full'
+            assets=$assets_array
+        }
+        if ($email_report) {
+            $payload["mode"] = "email"
+        }
+        $body = (ConvertTo-Json -Depth 100 $payload)
+        Write-Host 'Starting impact refresh'
+        $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $body
+        Write-Host 'Started impact refresh...'
+    }
 }
 
 if ($out) {
@@ -231,11 +266,12 @@ if ($out) {
 Remove-Item -force -path $patch_csv_file
 Remove-Item -force -path $product_csv_file
 
+
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUuwUByqgO53hNQn6wQY1VJl0G
-# Gs6gggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUBXVRFp2S1t588mlDKE/C2SV8
+# k6GgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -262,11 +298,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQUXacqJsvYHREXw8uXBnXTXKgu54EwDQYJKoZIhvcNAQEBBQAE
-# ggEALkr/Kpe7ecCG0eNkRN1mTt4xy/21W7vSwhKBKSbATCXfpGnSSu+m3Zl3a2IT
-# mqE0U6VXQsDkosc89YTaw4ly0HfpkCM5I+C/JbQCDnphaOL8JU1sftzlHs6lc3kB
-# nzO57yorxRN1tItCXqV/sgAbtBK9bOaG5gOuBScKVBWASZ/MGIDdR8938R8MsUgJ
-# iVbjOkagvxXKm1NbY3l/cuhX+htwwSnCY2nsVtaV2o3oq3vICFqEdK3JtUijgDHL
-# ymuRvc22n7VoucBIdN/kFWyDi0Mrw2z5/gZtItjOnTd8vldfBCiLqlrAEgx1py8t
-# KbBUqJ5KwU8Sj4R2O+7KKN3Nkg==
+# hkiG9w0BCQQxFgQUVhoLarTEZRbLCxDCKa/jJCbTrSQwDQYJKoZIhvcNAQEBBQAE
+# ggEASrtSdo16QJCL3MqQEJEzuSntXLdDIBsxUOPyqA0jZADoxU8TQuovJxJWqFNh
+# hg30CchDxbrCFHWqxxwFSBM4oIE2qKORyzYplPhQMVVKfXVEKbHAM5tEb5XpmmNG
+# n8Fhlc2SVvaLoqIO8KOcWV8QFLV4qdSpE43cPC73y21p1y5fKO+CZaNVuGgycWFq
+# Y7vwhKpX/T+q8CRVoAo8yITwdEyqR6qSJnmpz7BgyCcG8WT4TnTyPs4PvYpOilQN
+# tYB46NdhT6G50npZfRHHIbnWfjbecwO++iD87dqqOWlET0iQpfg0bAIDlxM3cpCr
+# P27gtc36D4DO2NnqqLpmzuh3jQ==
 # SIG # End signature block
