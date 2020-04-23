@@ -75,7 +75,7 @@ def get_assets_from_json_file(in_file):
     with open(in_file,'r') as fd:
         try:
             assets = json.load(fd)
-        except json.JSONDecodeError:
+        except ValueError:
             logging.error("Error loading JSON file [%s]", in_file)
             sys.exit(1)
     return assets
