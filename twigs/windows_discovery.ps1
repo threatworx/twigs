@@ -143,6 +143,18 @@ $temp_str = wmic os get Caption /format:list | Select-string -Pattern 'Caption'
 $base_os = $temp_str.ToString().Split('=')[1].Trim()
 Write-Host "OS:", $base_os
 
+$os_version = $null
+$os_release_id = $null
+$os_arch = $null
+$temp_str = systeminfo /fo csv | ConvertFrom-Csv | format-list -Property 'OS Version' | Out-String
+$os_version = $temp_str.ToString().Trim().Split(':')[1].Trim()
+$temp_str = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").ReleaseId
+if ($temp_str) {
+    $os_release_id = $temp_str.ToString().Trim()
+}
+$temp_str = systeminfo /fo csv | convertFrom-Csv | format-list -Property 'System Type' | Out-String
+$os_arch = $temp_str.ToString().Trim().Split(':')[1].Trim()
+
 Write-Host ''
 Write-Host 'Extracting service pack...'
 $temp_str = wmic os get Caption /format:list | Select-string -Pattern 'CSDVersion'
@@ -183,6 +195,15 @@ Write-Host 'Total number of unique products found:', $product_json_array.Count
 $tags_json_array = New-Object System.Collections.Generic.List[string]
 $os_and_sp = $base_os + ' ' + $os_sp
 $tags_json_array.Add('OS_RELEASE:' + $os_and_sp.Trim())
+if ($os_version) {
+    $tags_json_array.Add('OS_VERSION:' + $os_version)
+}
+if ($os_release_id) {
+    $tags_json_array.Add('OS_RELEASE_ID:' + $os_release_id)
+}
+if ($os_arch) {
+    $tags_json_array.Add('OS_ARCH:' + $os_arch)
+}
 $tags_json_array.Add('Windows')
 if ($tag_critical) {
     $tags_json_array.Add('CRITICALITY:5')
@@ -270,8 +291,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUBXVRFp2S1t588mlDKE/C2SV8
-# k6GgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUMtpVON193wQdmOoNNWUOhKr/
+# knSgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -298,11 +319,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQUVhoLarTEZRbLCxDCKa/jJCbTrSQwDQYJKoZIhvcNAQEBBQAE
-# ggEASrtSdo16QJCL3MqQEJEzuSntXLdDIBsxUOPyqA0jZADoxU8TQuovJxJWqFNh
-# hg30CchDxbrCFHWqxxwFSBM4oIE2qKORyzYplPhQMVVKfXVEKbHAM5tEb5XpmmNG
-# n8Fhlc2SVvaLoqIO8KOcWV8QFLV4qdSpE43cPC73y21p1y5fKO+CZaNVuGgycWFq
-# Y7vwhKpX/T+q8CRVoAo8yITwdEyqR6qSJnmpz7BgyCcG8WT4TnTyPs4PvYpOilQN
-# tYB46NdhT6G50npZfRHHIbnWfjbecwO++iD87dqqOWlET0iQpfg0bAIDlxM3cpCr
-# P27gtc36D4DO2NnqqLpmzuh3jQ==
+# hkiG9w0BCQQxFgQUR3KRo3hvC0oUL4QNoUh4GxhPz0QwDQYJKoZIhvcNAQEBBQAE
+# ggEAgoyDR78tXWgMh13Yhfwlc2SnCA/KuI5c2eBmi1EBU4Ff2eM7oxeGXLh6e+0T
+# 8njFU6M/5HCYWhjKSLrWDhVcks6tLu1VDoGOmlmkQ0eKE8JARjbB46tKs3P32Stu
+# eFnzJ+d8+/7bS+kLlcFiaNQE0IAApK6F2l/b/28L2yA9TZInIstCUNN/zR1lKewl
+# 8v+yHIXpoByGszenT1NSf5s3GrCfc7LleBgrSxIOJNJQVaqV+XZKuhW6m6xAlwOW
+# fjGeciKJr58uiatUmK9BJ1QjmngZ+kSTyOHE/rUz+oo6z/VrlLni7tRXXatJAv9k
+# EoHzmaCfK0WxT+DcJ2YFI79EtQ==
 # SIG # End signature block
