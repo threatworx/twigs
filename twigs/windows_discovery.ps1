@@ -156,11 +156,6 @@ $temp_str = systeminfo /fo csv | convertFrom-Csv | format-list -Property 'System
 $os_arch = $temp_str.ToString().Trim().Split(':')[1].Trim()
 
 Write-Host ''
-Write-Host 'Extracting service pack...'
-$temp_str = wmic os get Caption /format:list | Select-string -Pattern 'CSDVersion'
-if ($temp_str) { $os_sp = $temp_str.ToString().Split('=')[1].Trim(); Write-Host 'Service Pack:', $os_sp} else { Write-Host 'Service Pack: No service pack found' } 
-
-Write-Host ''
 Write-Host 'Extracting patch information...'
 $patch_csv_file = 'wmic_patches.csv'
 wmic qfe get HotFixID /format:csv > $patch_csv_file
@@ -193,8 +188,7 @@ Write-Host 'Number of products found (using wmic):', $temp_array.Count
 Write-Host 'Total number of unique products found:', $product_json_array.Count
 
 $tags_json_array = New-Object System.Collections.Generic.List[string]
-$os_and_sp = $base_os + ' ' + $os_sp
-$tags_json_array.Add('OS_RELEASE:' + $os_and_sp.Trim())
+$tags_json_array.Add('OS_RELEASE:' + $base_os)
 if ($os_version) {
     $tags_json_array.Add('OS_VERSION:' + $os_version)
 }
@@ -291,8 +285,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUMtpVON193wQdmOoNNWUOhKr/
-# knSgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsYv1lPL8PIX8BKrOShilfCBE
+# YCygggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -319,11 +313,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQUR3KRo3hvC0oUL4QNoUh4GxhPz0QwDQYJKoZIhvcNAQEBBQAE
-# ggEAgoyDR78tXWgMh13Yhfwlc2SnCA/KuI5c2eBmi1EBU4Ff2eM7oxeGXLh6e+0T
-# 8njFU6M/5HCYWhjKSLrWDhVcks6tLu1VDoGOmlmkQ0eKE8JARjbB46tKs3P32Stu
-# eFnzJ+d8+/7bS+kLlcFiaNQE0IAApK6F2l/b/28L2yA9TZInIstCUNN/zR1lKewl
-# 8v+yHIXpoByGszenT1NSf5s3GrCfc7LleBgrSxIOJNJQVaqV+XZKuhW6m6xAlwOW
-# fjGeciKJr58uiatUmK9BJ1QjmngZ+kSTyOHE/rUz+oo6z/VrlLni7tRXXatJAv9k
-# EoHzmaCfK0WxT+DcJ2YFI79EtQ==
+# hkiG9w0BCQQxFgQURKgEXmYKTd1FT45Nfh5jX8J96GAwDQYJKoZIhvcNAQEBBQAE
+# ggEAiUnO9wlD3dxv5jV0uuqM2pPIXGpCDsmDFkJusvolztF+Q0R0Q3bkKfMavger
+# cNum3EBfwPuhwPPZOjBzhqamoYIXdztio0PvCZ25KFiQGvSjWr7Uz9pTCAu5hlvb
+# yF0WvPZpez2bvctoof1/u5iz02LlV4p7N5ENbzpl+j9wVehZmviamP6guPl+6qNg
+# RbAiZqkSBo58oHmmzwFNyZh3s7fJ9nKUMC9io5SoNvl0Mf9JPLrWjrj/M7kNZ2fo
+# AZVuYivrNXPJaE39mC7gJ/+reQTV9RbKPzihGmeshbAZyPRHZ1aCiZSvaypX09Ci
+# djAqK5sqWDDY5ktBB7dtSmObPQ==
 # SIG # End signature block
