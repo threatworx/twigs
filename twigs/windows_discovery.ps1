@@ -153,7 +153,11 @@ if ($temp_str) {
     $os_release_id = $temp_str.ToString().Trim()
 }
 $temp_str = systeminfo /fo csv | convertFrom-Csv | format-list -Property 'System Type' | Out-String
-$os_arch = $temp_str.ToString().Trim().Split(':')[1].Trim()
+$mc_arch = $temp_str.ToString().Trim().Split(':')[1].Trim()
+$temp_str = wmic os get OSArchitecture /format:list | Select-string -Pattern 'OSArchitecture'
+$bit_arch = $temp_str.ToString().Split('=')[1].Trim()
+$os_arch = $bit_arch + ' ' + $mc_arch
+$os_arch = $os_arch.Trim()
 
 Write-Host ''
 Write-Host 'Extracting patch information...'
@@ -285,8 +289,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsYv1lPL8PIX8BKrOShilfCBE
-# YCygggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvJ8WeBoXvRfBW4VKSiGikiqP
+# ks6gggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -313,11 +317,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQURKgEXmYKTd1FT45Nfh5jX8J96GAwDQYJKoZIhvcNAQEBBQAE
-# ggEAiUnO9wlD3dxv5jV0uuqM2pPIXGpCDsmDFkJusvolztF+Q0R0Q3bkKfMavger
-# cNum3EBfwPuhwPPZOjBzhqamoYIXdztio0PvCZ25KFiQGvSjWr7Uz9pTCAu5hlvb
-# yF0WvPZpez2bvctoof1/u5iz02LlV4p7N5ENbzpl+j9wVehZmviamP6guPl+6qNg
-# RbAiZqkSBo58oHmmzwFNyZh3s7fJ9nKUMC9io5SoNvl0Mf9JPLrWjrj/M7kNZ2fo
-# AZVuYivrNXPJaE39mC7gJ/+reQTV9RbKPzihGmeshbAZyPRHZ1aCiZSvaypX09Ci
-# djAqK5sqWDDY5ktBB7dtSmObPQ==
+# hkiG9w0BCQQxFgQU7ScWwca29Oy4EV+48JvCi0qH1U0wDQYJKoZIhvcNAQEBBQAE
+# ggEAdYmthoUFbexe+h9WXmKZ10auDVE8u7QFWE+7Ppy2R9sLwZvGkkU/tEe607Cw
+# 7/rR+pagKjmk1ZdZCWzNCm7lqEM5gve4Zo0TjPuoXIlb1/DJsuNpRsO1drbUe4uj
+# 0q9V7DwU/iTQAU3dXiHMlSIJ+4xBm8aZnBC7MF4vtqdDDHHlnd1HmiKPbQCeVCg0
+# FyikNhFroHB/bYRIf0/r4dgJiEXHy3ow4WfynD4bdfVcaaxIE/YJy4oK4djAqe9f
+# o3+HeedcsXj2GpKlze11svxdqGZ3KXm4nBy9xFimqZ/yAeYOhD8pEwImFykkp2hc
+# My0iyd3H8CDJsfmIUQ4UL58s4g==
 # SIG # End signature block
