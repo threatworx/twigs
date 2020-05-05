@@ -24,7 +24,7 @@
 .PARAMETER email_report
     After impact refresh is complete, email scan report to self. Optional.
 .EXAMPLE
-    .\windows_discovery.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatwatch.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2' -email_report
+    .\twigs.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatwatch.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2' -email_report
 .NOTES
     .    
 #>
@@ -289,8 +289,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvJ8WeBoXvRfBW4VKSiGikiqP
-# ks6gggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5E0iMG0vfm3LLqAo7VrGRKqa
+# pbCgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -317,11 +317,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQU7ScWwca29Oy4EV+48JvCi0qH1U0wDQYJKoZIhvcNAQEBBQAE
-# ggEAdYmthoUFbexe+h9WXmKZ10auDVE8u7QFWE+7Ppy2R9sLwZvGkkU/tEe607Cw
-# 7/rR+pagKjmk1ZdZCWzNCm7lqEM5gve4Zo0TjPuoXIlb1/DJsuNpRsO1drbUe4uj
-# 0q9V7DwU/iTQAU3dXiHMlSIJ+4xBm8aZnBC7MF4vtqdDDHHlnd1HmiKPbQCeVCg0
-# FyikNhFroHB/bYRIf0/r4dgJiEXHy3ow4WfynD4bdfVcaaxIE/YJy4oK4djAqe9f
-# o3+HeedcsXj2GpKlze11svxdqGZ3KXm4nBy9xFimqZ/yAeYOhD8pEwImFykkp2hc
-# My0iyd3H8CDJsfmIUQ4UL58s4g==
+# hkiG9w0BCQQxFgQUAQEBQnp0cZ6y/7XTzVQorC4DXTMwDQYJKoZIhvcNAQEBBQAE
+# ggEAJ1YcMnCFH85SulYox6mwp/0WW+zPHK73B0fSTRfN2YFJljrXZcT9th6pWdlf
+# 7JD0llIZ7vd4S848/9MJciLHiCBr/95QtZkOj6SyHvTABtD8DW1JKEP7WAF8tjZG
+# 1agvAF1PYIftbmArX1RhrWEdz0yjUmG8k3t6HEa5FQ5fXXReNL4F8tsPNTlf3Kuc
+# 8+hzlUFThpLD9oVGalHjYTwxTDWkk/Lw9fQgfYFb/QAKpHl2XF5h6sm1/uag13Cd
+# Mrb1RdXOHT/Ke/yAbo7QakwNjKjy2IukrRzdVTHZP44kjIEAdpAi0ZvvV+k3cXZP
+# jJEKFLoE3TV9hhwux/dw8pVYAg==
 # SIG # End signature block
