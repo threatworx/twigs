@@ -301,11 +301,11 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
 
-Note: For Windows hosts, you can use provided PowerShell script (windows_discovery.ps1) for discovery. It requires PowerShell 3.0 or higher.
+Note: For Windows hosts, you can use provided PowerShell script (twigs.ps1) for discovery. It requires PowerShell 3.0 or higher.
 
-usage: .\\windows_discovery.ps1 -?
+usage: .\\twigs.ps1 -?
 
-windows_discovery.ps1 [-handle] <string> [-token] <string> [-instance] <string> [[-assetid] <string>] [[-assetname] <string>] [<CommonParamete rs>]
+twigs.ps1 [-handle] <String> [[-token] <String>] [[-instance] <String>] [[-out] <String>] [[-assetid] <String>] [[-assetname] <String>] [-tag_critical] [[-tags] <String[]>] [<CommonParameters>]
 
 Credits
 -------
