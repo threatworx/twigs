@@ -11,13 +11,21 @@ def check7_1():
     projects = gcp_cis_utils.get_bigquery_enabled_projects()
     for p in projects:
         output = gcp_cis_utils.run_cmd("bq ls --project_id=%s --format=json 2>/dev/null" % p)
-        out_json = json.loads(output)
+        try:
+            out_json = json.loads(output)
+        except ValueError:
+            logging.warn("Unable to load response JSON for project [%s]...skipping it", p)
+            out_json = []
         for entry in out_json:
             if entry['kind'] != "bigquery#dataset":
                 continue
             dataset_id = entry['id']
             output = gcp_cis_utils.run_cmd("bq show --format=json %s 2>/dev/null" %dataset_id)
-            out_json_2 = json.loads(output) 
+            try:
+                out_json_2 = json.loads(output) 
+            except ValueError:
+                logging.warn("Unable to load response JSON for project [%s]...skipping it", p)
+                out_json_2 = {}
             access_configs = out_json_2.get('access')
             if access_configs is not None:
                 for ac in access_configs:
