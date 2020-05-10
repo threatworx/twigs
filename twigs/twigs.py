@@ -211,10 +211,12 @@ def main(args=None):
     parser_linux.add_argument('--password', help='A password used to encrypt / decrypt login information from the host list file')
     parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
     parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+    parser_linux.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
     # Arguments required for nmap discovery
     parser_nmap = subparsers.add_parser ("nmap", help = "Fingerprint assets using nmap. Requires nmap to be installed.")
     parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range', required=True)
+    parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
     # Arguments required for Repo discovery
     parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")

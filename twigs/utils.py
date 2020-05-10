@@ -13,6 +13,7 @@ def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
         try:
             dev_null_device = open(os.devnull, "w")
             pkgout = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
+            dev_null_device.close()
         except subprocess.CalledProcessError:
             if logging_enabled:
                 logging.error("Error running inventory")
@@ -156,3 +157,20 @@ def ascii_string(in_str):
 
 def get_indent(line):
     return len(line) - len(line.lstrip(' '))
+
+def get_rating(cvss_score):
+    rating = '1'
+    if cvss_score is None or cvss_score == '':
+        return rating
+    s = float(cvss_score)
+    if s <= 2:
+        rating = '1'
+    elif s <= 4:
+        rating = '2'
+    elif s <= 6:
+        rating = '3'
+    elif s <= 8:
+        rating = '4'
+    elif s <= 10:
+        rating = '5'
+    return rating

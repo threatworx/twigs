@@ -8,6 +8,7 @@ import csv
 import ipaddress
 import getpass
 import base64
+import json
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -295,11 +296,15 @@ def discover(args):
         return discover_hosts(args, hosts)
 
 def discover_hosts(args, hosts):
-
     assets = []
     for host in hosts:
         asset = discover_host(args, host)
         if asset is not None:
+            if args.no_ssh_audit == False and host['remote'] == True:
+                ssh_config_issues = run_ssh_audit(args, args.assetid, host['hostname'])
+                asset['config_issues'] = ssh_config_issues
+                if len(ssh_config_issues) != 0:
+                    asset['tags'].append('SSH Audit')
             assets.append(asset)
     return assets
 
@@ -362,6 +367,87 @@ def discover_host(args, host):
     logging.info("Completed inventory discovery for asset [%s]", asset_id)
 
     return asset_data
+
+def run_ssh_audit(args, assetid, ip):
+    logging.info("Running ssh audit for "+ip)
+    issue_list = []
+    SSH_AUDIT_PATH = os.path.dirname(os.path.realpath(__file__)) + '/ssh-audit.py'
+    audit_out = ''
+    try:
+        cmd = SSH_AUDIT_PATH + ' -nv ' +ip
+        cmdarr = [cmd]
+        dev_null_device = open(os.devnull, "w")
+        audit_out = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
+        dev_null_device.close()
+    except subprocess.CalledProcessError:
+        logging.error("Error running ssh audit")
+        return issue_list
+    key_issues = {}
+    recs = {}
+    for l in audit_out.splitlines():
+        if l.strip() == '':
+            continue
+        larr = l.split()
+        rtype = larr[0].strip()
+        if rtype not in ['(cve)','(kex)','(key)','(enc)','(mac)','(rec)']:
+            continue
+        if ' [info] ' in l:
+            continue
+        if rtype == '(cve)':
+            issue = { }
+            issue['twc_id'] = 'ssh-audit: '+larr[1]
+            title = l.split('CVSSv2:')[1].split(')')[1]
+            cvss_score = l.split('CVSSv2:')[1].split(')')[0]
+            issue['twc_title'] = 'ssh-audit: '+ larr[1]
+            issue['details'] = larr[1]+'\n'+title+'\nCVSS Score '+cvss_score 
+            issue['rating'] = utils.get_rating(cvss_score)
+            issue['asset_id'] = assetid
+            issue['object_id'] = ip
+            issue['object_meta'] = ''
+            issue_list.append(issue)
+        elif rtype in ['(kex)','(key)','(enc)','(mac)']:
+            algo = larr[1]
+            if algo not in key_issues:
+                key_issues[algo] = {}
+                key_issues[algo]['type'] = larr[0].replace('(','').replace(')','')
+                rating = l.split('--')[1].split()[0]
+                if rating == '[fail]':
+                    rating = '4'
+                else:
+                    rating = '3'
+                key_issues[algo]['rating'] = rating 
+                detail = l.split('--')[1].split(']')[1].strip()
+                title = ""
+                if rtype == '(kex)':
+                    title = 'ssh-audit: Unsafe key exchange - '+algo
+                elif rtype == '(key)':
+                    title = 'ssh-audit: Unsafe key - '+algo
+                elif rtype == '(mac)':
+                    title = 'ssh-audit: Unsafe mac algorithm - '+algo
+                elif rtype == '(enc)':
+                    title = 'ssh-audit: Unsafe encryption - '+algo
+                key_issues[algo]['title'] = title 
+                key_issues[algo]['details'] = detail 
+            else:
+                detail = l.split('--')[1].split(']')[1].strip()
+                key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ detail
+        elif rtype == '(rec)':
+            algo = larr[1][1:]
+            reco = 'Recommentation: '+l.split('--')[1].strip()
+            key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ reco 
+    for k in key_issues:
+        issue = {}
+        issue['twc_id'] = 'ssh-audit-'+key_issues[k]['type'] + '-' + k 
+        issue['twc_title'] = key_issues[k]['title']
+        issue['details'] = key_issues[k]['details']
+        issue['rating'] = key_issues[k]['rating']
+        issue['object_id'] = k
+        issue['asset_id'] = assetid
+        issue['object_meta'] = '' 
+        issue_list.append(issue)
+
+    logging.info("ssh audit completed "+ip)
+    return issue_list
 
 def get_inventory(args):
     return discover(args)

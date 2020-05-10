@@ -5,6 +5,7 @@ import subprocess
 import logging
 from xml.dom.minidom import parse, parseString
 import csv
+import linux
 
 NMAP = "/usr/bin/nmap"
 
@@ -60,5 +61,12 @@ def get_inventory(args):
         asset_data['type'] = 'Other' 
         asset_data['owner'] = args.handle
         asset_data['products'] = products 
+        asset_tags = []
+        asset_data['tags'] = asset_tags
+        if args.no_ssh_audit == False:
+            ssh_issues = linux.run_ssh_audit(args, addr, addr)
+            if len(ssh_issues) != 0:
+                asset_data['tags'].append('SSH Audit')
+            asset_data['config_issues'] = ssh_issues
         assets.append(asset_data)
     return assets
