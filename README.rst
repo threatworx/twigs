@@ -181,6 +181,7 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+  --no_ssh_audit        Skip ssh audit
 
 Mode: nmap
 $ twigs nmap --help
@@ -189,6 +190,7 @@ usage: twigs nmap [-h] --hosts HOSTS
 optional arguments:
   -h, --help     show this help message and exit
   --hosts HOSTS  A hostname, IP address or CIDR range
+  --no_ssh_audit  Skip ssh audit
 
 Mode: repo
 $ twigs repo --help

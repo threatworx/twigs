@@ -93,15 +93,9 @@ def check_and_update_scan(args, assets):
     # if user has indicated no_scan then honor it
     if args.no_scan == True:
         return
-    to_scan = False
     for a in assets:
-        if len(a['products']) > 0:
-            to_scan = True
         if a.get('compliance_metadata') is not None:
             args.mode = "file_repo" # update the mode to help trigger license scan
-            to_scan = True
-    if to_scan == False:
-        args.no_scan = True
 
 def get_inventory(args):
     # Note this is a workaround since 'in' is a reserved word and hence one cannot do args.in
