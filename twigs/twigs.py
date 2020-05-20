@@ -36,6 +36,9 @@ import gcp_cis
 import policy as policy_lib
 from __init__ import __version__
 
+
+GoDaddyCABundle = ""
+
 def export_assets_to_file(assets, json_file):
     logging.info("Exporting assets to JSON file [%s]", json_file)
     with open(json_file, "w") as fd:
@@ -49,11 +52,11 @@ def push_asset_to_TW(asset, args):
         auth_data = auth_data + "&esr=true" # email secrets report (esr)
     asset_id = asset['id']
 
-    resp = requests.get(asset_url + asset_id + "/" + auth_data)
+    resp = requests.get(asset_url + asset_id + "/" + auth_data, verify=GoDaddyCABundle)
     if resp.status_code != 200:
         logging.info("Creating new asset [%s]", asset_id)
         # Asset does not exist so create one with POST
-        resp = requests.post(asset_url + auth_data, json=asset)
+        resp = requests.post(asset_url + auth_data, json=asset, verify=GoDaddyCABundle)
         if resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content)
@@ -65,7 +68,7 @@ def push_asset_to_TW(asset, args):
     else:
         logging.info("Updating asset [%s]", asset_id)
         # asset exists so update it with PUT
-        resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset)
+        resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset, verify=GoDaddyCABundle)
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content)
@@ -110,7 +113,7 @@ def run_scan(asset_id_list, pj_json, args):
             #    scan_payload['mode'] = 'email-purge'
             if args.email_report:
                 scan_payload['mode'] = 'email'
-            resp = requests.post(scan_api_url, json=scan_payload)
+            resp = requests.post(scan_api_url, json=scan_payload, verify=GoDaddyCABundle)
             if resp.status_code == 200:
                 logging.info("Started impact refresh...")
             else:
@@ -126,7 +129,7 @@ def run_scan(asset_id_list, pj_json, args):
             #    scan_payload['mode'] = 'email-purge'
             if args.email_report:
                 scan_payload['mode'] = 'email'
-            resp = requests.post(scan_api_url, json=scan_payload)
+            resp = requests.post(scan_api_url, json=scan_payload, verify=GoDaddyCABundle)
             if resp.status_code == 200:
                 logging.info("Started license compliance assessment...")
             else:
@@ -150,6 +153,8 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
 
+    global GoDaddyCABundle
+    GoDaddyCABundle = os.path.dirname(os.path.realpath(__file__)) + '/gd-ca-bundle.crt'
     logfilename = "twigs.log"
     logging_level = logging.WARN
 
