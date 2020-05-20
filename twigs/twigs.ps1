@@ -177,7 +177,11 @@ $unique_products = New-Object System.Collections.Generic.List[string]
 $product_json_array = New-Object System.Collections.Generic.List[string]
 $temp_array = Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object Publisher, DisplayName, DisplayVersion
 $temp_array | foreach { $var = $_ ; $product = $var.'DisplayName'; $vendor = $var.'Publisher'; $version = $var.'DisplayVersion'; if ($product -and $version) { $product_details = $product.Trim() + ' ' + $version.Trim(); $product_json_array.add($product_details); }}
-Write-Host 'Number of products found (using registry key):', $temp_array.Length
+$temp_products_count = $temp_array.Length
+$temp_array = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object Publisher, DisplayName, DisplayVersion
+$temp_array | foreach { $var = $_ ; $product = $var.'DisplayName'; $vendor = $var.'Publisher'; $version = $var.'DisplayVersion'; if ($product -and $version) { $product_details = $product.Trim() + ' ' + $version.Trim(); $product_json_array.add($product_details); }}
+$temp_products_count = $temp_products_count + $temp_array.Length
+Write-Host 'Number of products found (using registry key):', $temp_products_count
 Write-Host 'Number of products identified till now:', $product_json_array.Count
 
 Write-Host ''
@@ -289,8 +293,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5E0iMG0vfm3LLqAo7VrGRKqa
-# pbCgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlVw+eIxyPD1WFRc+QDSSSq68
+# b3+gggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -317,11 +321,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQUAQEBQnp0cZ6y/7XTzVQorC4DXTMwDQYJKoZIhvcNAQEBBQAE
-# ggEAJ1YcMnCFH85SulYox6mwp/0WW+zPHK73B0fSTRfN2YFJljrXZcT9th6pWdlf
-# 7JD0llIZ7vd4S848/9MJciLHiCBr/95QtZkOj6SyHvTABtD8DW1JKEP7WAF8tjZG
-# 1agvAF1PYIftbmArX1RhrWEdz0yjUmG8k3t6HEa5FQ5fXXReNL4F8tsPNTlf3Kuc
-# 8+hzlUFThpLD9oVGalHjYTwxTDWkk/Lw9fQgfYFb/QAKpHl2XF5h6sm1/uag13Cd
-# Mrb1RdXOHT/Ke/yAbo7QakwNjKjy2IukrRzdVTHZP44kjIEAdpAi0ZvvV+k3cXZP
-# jJEKFLoE3TV9hhwux/dw8pVYAg==
+# hkiG9w0BCQQxFgQU3xlJkQQcgzOSIhifB87TW91xWZkwDQYJKoZIhvcNAQEBBQAE
+# ggEAUc7+i4abaZ3o3kIIQMXA1iyTJIBLjP2rlVAFBs77oI7uA+b2WG18V/OLY6RI
+# FdRNBZ5c63x3nc6she9gG9vB9qH6fg8oEItUFuBa2a8dMVL/PWspz5uV58RrvoiD
+# yAQLZykFD9JsAdkwCzltOW5ojsObbJX+KLtZFMERhz2TuNib7Fdz9sgVrr2NSojL
+# emuM3DyUHGogCwhvsHVqz1klZAWgxCNkAxFoMmLm1l0K0MWh9jw0Ri7NgVnTZbJH
+# tiTyebDGsbTZu8/udcw5pEultQIJlgynHOfN8J4rU7OXdgutHjyeyA+ayYnBbbPQ
+# 2hEASpoMpTBsCTphtjd7H4WdlA==
 # SIG # End signature block
