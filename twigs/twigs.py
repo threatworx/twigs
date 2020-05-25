@@ -173,6 +173,7 @@ def main(args=None):
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
     parser.add_argument('--quiet', action='store_true', help='Disable verbose logging')
+    parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS)
     # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
     # Arguments required for AWS discovery
@@ -293,6 +294,10 @@ def main(args=None):
     console.setLevel(logging_level)
     console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
     logging.getLogger('').addHandler(console)
+
+    # In insecure mode, we want to set verify=False for requests
+    if args.insecure:
+        GoDaddyCABundle = False
 
     logging.info('Started new run...')
     logging.debug('Arguments: %s', str(args))

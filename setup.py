@@ -45,7 +45,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatwatch/twigs',
-    version='1.0.33',
+    version='1.0.34',
     zip_safe=False,
     entry_points={
         'console_scripts': [

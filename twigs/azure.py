@@ -5,6 +5,22 @@ import requests
 import re
 import logging
 
+gAllVMs = None
+
+def get_all_vms(params):
+    global gAllVMs
+    if gAllVMs is not None:
+        return gAllVMs
+    gAllVMs = { }
+    access_token = params['access_token']
+    allsubs = get_all_subscriptions(access_token)
+    for sub in allsubs:
+        resourcegroups = get_all_resourcegroups_for_subscription(sub, access_token)
+        for res_group in resourcegroups:
+            vms = get_vms(access_token, sub, res_group)
+            gAllVMs.update(vms)
+    return gAllVMs
+
 # Prints details about subscriptions, resource groups and workspaces
 def print_details(token):
     allsubs = get_all_subscriptions(token)
@@ -39,6 +55,7 @@ def get_inventory(args):
     if token is None:
         return
     params['access_token'] = token
+    get_all_vms(params)
     if args.azure_subscription is None or args.azure_resource_group is None or args.azure_workspace is None:
         print_details(token)
         return
@@ -54,6 +71,7 @@ def parse_inventory(email,data,params):
         if data[i][4] == 'WindowsServices': #ConfigDataType
             continue
         host = data[i][5]
+        vmuuid = data[i][6]
         publisher = data[i][2]
 
         if host not in hosts  and publisher != '0':
@@ -66,6 +84,7 @@ def parse_inventory(email,data,params):
             asset_map['name'] = host
             asset_map['tags'] = [ ]
             asset_map['patch_tracker'] = { } # To help remove duplicate patches
+            asset_map['vmuuid'] = vmuuid
             if data[i][1] == 'Update': #ApplicationType for MS patches
                 patch = parse_patch(data[i])
                 patches.append(patch)
@@ -76,12 +95,15 @@ def parse_inventory(email,data,params):
                 products.append(pname+' ' + pversion)
             asset_map['products'] = products
             asset_map['patches'] = patches
-            os = get_os_name(host,params)
+            os, os_version = get_os_details(host, vmuuid, params)
             asset_map['type'] = get_os_type(os)
             if len(asset_map['type']) > 0:
                 asset_map['tags'].append(asset_map['type'])
             if asset_map['type'] == 'Windows':
                 asset_map['tags'].append('OS_RELEASE:' + os)
+                asset_map['tags'].append('OS_VERSION:' + os_version)
+            else:
+                asset_map['tags'].append('OS_RELEASE:%s %s' % (os, os_version))
             if params['enable_tracking_tags'] == True:
                 asset_map['tags'].append("SOURCE:Azure:" + params['tenant_id'])
             else:
@@ -104,9 +126,10 @@ def parse_inventory(email,data,params):
                         pversion =  data[i][3]
                         products.append(pname+' ' + pversion)
                         asset['products'] = products
-    # Remove the additional field 'patch_tracker' (added to avoid duplicate patches)
+    # Remove the additional fields 'patch_tracker' (added to avoid duplicate patches) & 'vmuuid'
     for asset in assets:
         asset.pop('patch_tracker', None)
+        asset.pop('vmuuid', None)
     return assets
 
 def parse_patch(data):
@@ -121,10 +144,14 @@ def parse_patch(data):
 def get_os_type(ostype):
     if ostype is None:
         return ''
-    if 'Microsoft' in  ostype or 'Windows' in ostype:
+    elif 'Microsoft' in  ostype or 'Windows' in ostype:
         return 'Windows'
-    if 'Red Hat' in ostype or 'redhat' in ostype:
+    elif 'Red Hat' in ostype or 'redhat' in ostype:
         return 'Red Hat'
+    elif 'Ubuntu' in ostype or 'ubuntu' in ostype:
+        return 'Ubuntu'
+    elif 'Oracle' in ostype or 'oracle' in ostype:
+        return "Oracle Linux"
     return ''
 
 def retrieve_inventory(params):
@@ -135,7 +162,7 @@ def retrieve_inventory(params):
     token = params['access_token']
     headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
     url = 'https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.OperationalInsights/workspaces/%s/api/query?api-version=2017-01-01-preview' % (sub_id,resource_group,workspace_id)
-    json_data = {"query":"ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer"}
+    json_data = {"query":"ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer, VMUUID"}
 
     logging.info("Retrieving inventory details from Azure...") 
 
@@ -171,16 +198,50 @@ def get_access_token(params):
     return token
 
 # Try to get OS details for given VM
-def get_os_name(host,params):
+def get_os_details(host, vmuuid, params):
+    all_vms = get_all_vms(params)
+    vm_id = all_vms.get(vmuuid)
+    if vm_id is None:
+        # Handle Endian-ness issue with Azure VM UUIDs
+        tokens = vmuuid.split('-')
+        t = tokens[0]
+        alt_vmuuid = "%s%s%s%s" % (t[6:8], t[4:6], t[2:4], t[0:2])
+        t = tokens[1]
+        alt_vmuuid = alt_vmuuid + "-%s%s" % (t[2:4], t[0:2])
+        t = tokens[2]
+        alt_vmuuid = alt_vmuuid + "-%s%s" % (t[2:4], t[0:2])
+        alt_vmuuid = alt_vmuuid + '-%s-%s' % (tokens[3], tokens[4])
+        vm_id = all_vms.get(alt_vmuuid)
+        if vm_id is None:
+            return None
+
     headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % params['access_token'] }
-    url = "https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines/%s/instanceView?api-version=2018-06-01" % (params['subscription'], params['resource_group'],host)
+    url = "https://management.azure.com" + vm_id + "/instanceView?api-version=2018-06-01"
 
     resp = requests.get(url, headers=headers)
     if resp.status_code == 200:
         response = resp.json()
-        return response.get('osName')
+        return response.get('osName'), response.get('osVersion')
     else:
+        logging.warn("Warning unable to get OS version details for VM [%s]. It might not be running..." % host)
         return None
+
+# Get details for all VMs
+def get_vms(access_token, subscription, resource_group):
+    all_vms = { }
+    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % access_token }
+    url = "https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines?api-version=2019-12-01" % (subscription, resource_group)
+    while url is not None:
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 200:
+            response = resp.json()
+            for vm in response['value']:
+                vmuuid = vm['properties']['vmId']
+                all_vms[vmuuid] = vm['id']
+            url = response.get('nextLink')
+        else:
+           url = None
+    return all_vms
 
 # Get a list of subscriptions for current AAD/Tenant
 def get_all_subscriptions(token):
