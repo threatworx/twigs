@@ -371,7 +371,7 @@ def discover_host(args, host):
 def run_ssh_audit(args, assetid, ip):
     logging.info("Running ssh audit for "+ip)
     issue_list = []
-    SSH_AUDIT_PATH = os.path.dirname(os.path.realpath(__file__)) + '/ssh-audit.py'
+    SSH_AUDIT_PATH = "python " + os.path.dirname(os.path.realpath(__file__)) + '/ssh-audit.py'
     audit_out = ''
     try:
         cmd = SSH_AUDIT_PATH + ' -nv ' +ip
@@ -379,8 +379,8 @@ def run_ssh_audit(args, assetid, ip):
         dev_null_device = open(os.devnull, "w")
         audit_out = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
         dev_null_device.close()
-    except subprocess.CalledProcessError:
-        logging.error("Error running ssh audit")
+    except subprocess.CalledProcessError as e:
+        logging.error("Error running ssh audit: %s" % str(e))
         return issue_list
     key_issues = {}
     recs = {}
