@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import re
 import math
@@ -169,7 +170,10 @@ def check_regex_rules(this_file, lines, line, line_no, secret_records, args):
 def scan_file_for_secrets(args, base_path, this_file, regex_rules):
     secret_records = []
     with open(this_file, 'r') as fd:
-        mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
+        if sys.platform == 'win32':
+            mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.ACCESS_READ)
+        else:
+            mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
         lines = mm_file.read(-1).split('\n')
         line_no = 0
         stripped_file_path = this_file[len(base_path)+1:]
