@@ -37,7 +37,7 @@ import policy as policy_lib
 from __init__ import __version__
 
 
-GoDaddyCABundle = ""
+GoDaddyCABundle = True
 
 def export_assets_to_file(assets, json_file):
     logging.info("Exporting assets to JSON file [%s]", json_file)
@@ -154,7 +154,8 @@ def main(args=None):
         args = sys.argv[1:]
 
     global GoDaddyCABundle
-    GoDaddyCABundle = os.path.dirname(os.path.realpath(__file__)) + '/gd-ca-bundle.crt'
+    if sys.platform != 'win32':
+        GoDaddyCABundle = os.path.dirname(os.path.realpath(__file__)) + os.sep + 'gd-ca-bundle.crt'
     logfilename = "twigs.log"
     logging_level = logging.WARN
 
