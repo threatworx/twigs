@@ -171,7 +171,7 @@ def scan_file_for_secrets(args, base_path, this_file, regex_rules):
     secret_records = []
     with open(this_file, 'r') as fd:
         if sys.platform == 'win32':
-            mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.ACCESS_READ)
+            mm_file = mmap.mmap(fd.fileno(), 0, access=mmap.ACCESS_READ)
         else:
             mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
         lines = mm_file.read(-1).split('\n')
