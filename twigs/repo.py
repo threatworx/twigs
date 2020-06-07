@@ -11,6 +11,8 @@ import pefile
 import glob
 import traceback
 import requirements
+import re
+import zipfile
 from xml.dom import minidom
 
 import utils as lib_utils
@@ -23,7 +25,7 @@ if GIT_PATH is None:
     else:
         GIT_PATH = '/usr/bin/git'
 
-SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll']
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar']
 
 def cleanse_semver_version(pv):
     pv = pv.replace('"','')
@@ -380,6 +382,41 @@ def discover_dll(args, localpath):
         plist.append(dll_details)
     return plist, None
 
+def discover_jar(args, localpath):
+    plist = []
+    files = lib_utils.find_files(localpath, '.jar')
+    for file_path in files:
+        prod = ''
+        ver = ''
+        #print "Checking "+file_path
+        zf = zipfile.ZipFile(file_path, 'r')
+        try:
+            metafile = zf.read('META-INF/MANIFEST.MF')
+            if metafile:
+                for l in metafile.splitlines():
+                    if l.startswith("Bundle-Version:"):
+                        ver = l.split(':')[1].strip()
+                    if l.startswith("Bundle-Name:"):
+                        prod = l.split(':')[1].strip().lower().replace(' ','-')
+        except KeyError:
+            #print "Error: No manifest found"
+            pass
+        if prod == '' or ver == '':
+            jfile = os.path.basename(file_path)
+            jfile = jfile.replace('.jar','')
+            pattern = r'(?:(\d+\.(?:\d+\.)*\d+))'
+            match = re.findall(pattern, jfile)
+            if len(match) == 0:
+                continue
+            else:
+                ver = match[0]
+                prod = jfile.split(ver)[0][:-1]
+        prod = prod + ' ' + ver
+        prod = prod.strip()
+        if prod != '':
+            plist.append(prod)
+    return plist, None
+
 def discover_specified_type(repo_type, args, localpath):
     if repo_type not in SUPPORTED_TYPES:
         logging.error("Type not supported")
@@ -402,6 +439,8 @@ def discover_specified_type(repo_type, args, localpath):
         plist, p1list = discover_gradle(args, localpath)
     elif repo_type == 'dll':
         plist, p1list = discover_dll(args, localpath)
+    elif repo_type == 'jar':
+        plist, p1list = discover_jar(args, localpath)
 
     return plist, p1list
 
@@ -439,6 +478,7 @@ def discover_inventory(args, localpath):
         # If no type is specified, then process all supported types
         for repo_type in SUPPORTED_TYPES:
             temp_list, temp1list = discover_specified_type(repo_type, args, localpath)
+            temp_list = list(set(temp_list))
             if temp_list is not None and len(temp_list) > 0:
                 tech2prod_dict[repo_type] = temp_list
                 if temp1list is not None and len(temp1list) > 0:
@@ -447,6 +487,7 @@ def discover_inventory(args, localpath):
                 asset_tags.append(repo_type)
     else:
         plist, p1list = discover_specified_type(args.type, args, localpath)
+        plist = list(set(plist))
         if plist is not None and len(plist) > 0:
             tech2prod_dict[args.type] = plist
             if p1list is not None and len(p1list) > 0:
