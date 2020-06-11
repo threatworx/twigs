@@ -100,7 +100,7 @@ class EC2Impl(AWS):
                             pname = data[i]['Name']
                             pversion = data[i]['Version']
                             products.append(pname+' '+pversion)
-                        elif host_type == "Amazon Linux AMI":
+                        elif host_type in ["Amazon Linux AMI", "Ubuntu", "Linux"] :
                             pname = data[i]['Name']
                             pver = data[i]['Version']
                             prpm = data[i]['PackageId']
@@ -140,7 +140,7 @@ class EC2Impl(AWS):
                     logging.info("Found asset [%s] in AWS inventory", asset['name'])
                     asset['type'] = data[0]['PlatformName']
                     asset['owner'] = email
-                    if 'Linux' in asset['type']:
+                    if 'Linux' in asset['type'] or 'Ubuntu' in asset['type']:
                         asset['tags'] = [ 'Linux' ]
                     elif 'Windows' in asset['type']:
                         asset['tags'] = [ 'Windows' ]
