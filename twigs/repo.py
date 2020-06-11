@@ -117,7 +117,7 @@ def discover_pom_xml(args, localpath):
                 pname = libname + ' ' + libver
             else:
                 pname = libgname + ':' + libname + ' ' + libver
-            pname = pname.strip()
+            pname = pname.strip() + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
     return plist, None
@@ -136,7 +136,7 @@ def discover_gradle(args, localpath):
                 gname = arr[0].split('group:')[1].strip()
                 lname = arr[1].split('name:')[1].strip()
                 ver = arr[2].split('version:')[1].strip()
-                pname = gname + ':' + lname + ' ' + ver
+                pname = gname + ':' + lname + ' ' + ver + " source:"+file_path
                 pname = pname.replace("'","")
                 if pname not in plist:
                     plist.append(pname)
@@ -161,7 +161,7 @@ def process_package_json_files(files, level):
             logging.error("Error parsing package.json contents - %s", file_path)
             continue
         if 'name' in cjson and 'version' in cjson:
-            pname = cjson['name'] + ' ' + cjson['version']
+            pname = cjson['name'] + ' ' + cjson['version'] + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
                 p1list.append(pname)
@@ -171,7 +171,7 @@ def process_package_json_files(files, level):
                 content = ddict[d]
                 if isinstance(content, dict):
                     ver = content['version']
-                    pname = d + ' ' + ver
+                    pname = d + ' ' + ver + " source:"+file_path
                     if pname not in plist:
                         plist.append(pname)
                         p1list.append(pname)
@@ -179,11 +179,11 @@ def process_package_json_files(files, level):
                     if req_dict is None or level == 'shallow':
                         continue
                     for req_pname in req_dict:
-                        pname = req_pname + ' ' + req_dict[req_pname]
+                        pname = req_pname + ' ' + req_dict[req_pname] + " source:"+file_path
                         if pname not in plist:
                             plist.append(pname)
                 else:
-                    pname = d + ' ' + ddict[d]
+                    pname = d + ' ' + ddict[d] + " source:"+file_path
                     pname = cleanse_semver_version(pname)
                     if pname not in plist:
                         plist.append(pname)
@@ -192,7 +192,7 @@ def process_package_json_files(files, level):
             ddict = cjson['devDependencies']
             for d in ddict:
                 pname = d + ' ' + ddict[d]
-                pname = cleanse_semver_version(pname)
+                pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
                     p1list.append(pname)
@@ -200,7 +200,7 @@ def process_package_json_files(files, level):
             ddict = cjson['optionalDependencies']
             for d in ddict:
                 pname = d + ' ' + ddict[d]
-                pname = cleanse_semver_version(pname)
+                pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
                     p1list.append(pname)
@@ -233,7 +233,7 @@ def discover_packages_config(args, localpath):
         for p in temp_plist:
             libname = p.getAttribute('id')
             libver = p.getAttribute('version')
-            pname = libname + ' ' + libver
+            pname = libname + ' ' + libver + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
     return plist, None
@@ -265,7 +265,7 @@ def discover_yarn(args, localpath):
                     libname = l.split('@')[0]
                 vline = cline[index+1]
                 libver = vline.split()[1].replace('"','')
-                pname = libname+' '+libver
+                pname = libname+' '+libver + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
                     p1list.append(pname)
@@ -277,7 +277,7 @@ def discover_yarn(args, localpath):
                 if pname == '':
                     dparse = False
                     continue
-                pname = cleanse_semver_version(pname)
+                pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist and args.type == 'deep':
                     plist.append(pname)
     return plist, p1list
@@ -325,7 +325,7 @@ def discover_ruby(args, localpath):
                         else:
                             gver = ''
                 pname = gname + ' ' + gver
-                pname = pname.strip()
+                pname = pname.strip() + " source:"+file_path
                 if pname not in pset:
                     pset.add(pname)
                     p1list.append(pname)
@@ -343,7 +343,7 @@ def discover_python(args, localpath):
             for r in req:
                 prod = r.name
                 if len(r.specs) > 0:
-                    prod = prod + ' ' + r.specs[0][1]
+                    prod = prod + ' ' + r.specs[0][1] + " source:"+file_path
                     if prod not in plist:
                         plist.append(prod)
         except:
@@ -378,7 +378,8 @@ def discover_dll(args, localpath):
         dll_version = get_dll_version(file_path)
         if dll_version is None:
             continue
-        dll_details = os.path.basename(file_path) + " " + dll_version
+        dll_details = os.path.basename(file_path) + " " + dll_version + " source:"+file_path
+
         plist.append(dll_details)
     return plist, None
 
@@ -412,7 +413,7 @@ def discover_jar(args, localpath):
                 ver = match[0]
                 prod = jfile.split(ver)[0][:-1]
         prod = prod + ' ' + ver
-        prod = prod.strip()
+        prod = prod.strip() + " source:"+file_path
         if prod != '':
             plist.append(prod)
     return plist, None
@@ -450,6 +451,16 @@ def get_last_component(repo_path):
     else:
         return os.path.basename(os.path.normpath(repo_path))
 
+def strip_source(plist):
+    ret_list = []
+    for pname in plist:
+        index = pname.find(" source:")
+        if index != -1:
+            ret_list.append(pname[:index])
+        else:
+            ret_list.append(pname)
+    return ret_list
+
 def discover_inventory(args, localpath):
     default_id_name = get_last_component(args.repo)
     asset_id = None
@@ -480,18 +491,18 @@ def discover_inventory(args, localpath):
             temp_list, temp1list = discover_specified_type(repo_type, args, localpath)
             temp_list = list(set(temp_list))
             if temp_list is not None and len(temp_list) > 0:
-                tech2prod_dict[repo_type] = temp_list
+                tech2prod_dict[repo_type] = strip_source(temp_list)
                 if temp1list is not None and len(temp1list) > 0:
-                    shallow_tech2prod_dict[repo_type] = temp1list
+                    shallow_tech2prod_dict[repo_type] = strip_source(temp1list)
                 plist.extend(temp_list)
                 asset_tags.append(repo_type)
     else:
         plist, p1list = discover_specified_type(args.type, args, localpath)
         plist = list(set(plist))
         if plist is not None and len(plist) > 0:
-            tech2prod_dict[args.type] = plist
+            tech2prod_dict[args.type] = strip_source(plist)
             if p1list is not None and len(p1list) > 0:
-                shallow_tech2prod_dict[args.type] = p1list
+                shallow_tech2prod_dict[args.type] = strip_source(p1list)
         asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
