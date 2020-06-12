@@ -94,13 +94,14 @@ class EC2Impl(AWS):
                     with codecs.open(fname,'rU','utf-8') as f:
                	        for line in f:
                             data.append(json.loads(line))
+                    #print data
                     products = []
                     for i in range(len(data)):
                         if "Windows" in host_type:
                             pname = data[i]['Name']
                             pversion = data[i]['Version']
                             products.append(pname+' '+pversion)
-                        elif host_type in ["Amazon Linux AMI", "Ubuntu", "Linux"] :
+                        elif host_type == "Amazon Linux AMI":
                             pname = data[i]['Name']
                             pver = data[i]['Version']
                             prpm = data[i]['PackageId']
@@ -108,6 +109,13 @@ class EC2Impl(AWS):
                             index = prpm.rfind('-')
                             temp = prpm[index:-8]
                             product_name = pname+' '+pver+temp+"."+parch
+                            #print "[%s][%s] ==> [%s]" % (pname, prpm, product_name)
+                            products.append(product_name)
+                        elif host_type == "Ubuntu":
+                            pname = data[i]['Name']
+                            pver = data[i]['Version']
+                            parch = data[i]['Architecture']
+                            product_name = pname+' '+pver
                             #print "[%s][%s] ==> [%s]" % (pname, prpm, product_name)
                             products.append(product_name)
                     return products
@@ -140,10 +148,16 @@ class EC2Impl(AWS):
                     logging.info("Found asset [%s] in AWS inventory", asset['name'])
                     asset['type'] = data[0]['PlatformName']
                     asset['owner'] = email
-                    if 'Linux' in asset['type'] or 'Ubuntu' in asset['type']:
+                    os_release = None
+                    if 'Linux' in asset['type']:
                         asset['tags'] = [ 'Linux' ]
+                    elif 'Ubuntu' in asset['type']:
+                        asset['tags'] = [ 'Linux' ]
+                        os_release = asset['type'] + " " + data[0]['PlatformVersion']
                     elif 'Windows' in asset['type']:
                         asset['tags'] = [ 'Windows' ]
+                    if os_release is not None:
+                        asset['tags'].append("OS_RELEASE:" + os_release)
                     if self.enable_tracking_tags == True:
                         asset['tags'].append("SOURCE:AWS:"+self.account_id)
                     else:
