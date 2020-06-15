@@ -38,7 +38,7 @@ def check1_1():
 
     # List accounts for each folder
     for f in folders:
-        out_json = gcp_cis_utils.run_gcloud_cmd("gcloud resource-manager folders get-iam-policy " % f)
+        out_json = gcp_cis_utils.run_gcloud_cmd("resource-manager folders get-iam-policy " % f)
         for entry in out_json['bindings']:
             members = entry.get('members')
             for m in members:
