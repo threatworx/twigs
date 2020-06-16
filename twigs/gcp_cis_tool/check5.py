@@ -13,8 +13,12 @@ def check5_1():
         output = gcp_cis_utils.run_cmd("gsutil ls -p %s 2>/dev/null" % p)
         for bucket in output.splitlines():
             out_json = gcp_cis_utils.run_cmd("gsutil iam get %s 2>/dev/null" % bucket)
-            out_json = json.loads(out_json) 
-            bindings = out_json.get('bindings')
+            try:
+                out_json = json.loads(out_json) 
+                bindings = out_json.get('bindings')
+            except ValueError:
+                logging.warn("Unable to load response JSON in Cloud Storage bucket access check...")
+                bindings = None
             if bindings is not None:
                 for entry in out_json['bindings']:
                     if "allUsers" in entry['members'] or "allAuthenticatedUsers" in entry['members']:
