@@ -4,6 +4,7 @@
 """The setup script."""
 
 from setuptools import setup, find_packages
+import sys
 
 with open('README.rst') as readme_file:
     readme = readme_file.read()
@@ -12,6 +13,8 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'PyPDF4==1.27.0', 'paramiko==2.6.0', 'pdfminer==20140328', 'cryptography==2.7']
+if sys.platform != 'win32':
+    requirements.append('python-crontab==2.5.1')
 
 setup_requirements = [ ]
 

@@ -35,7 +35,7 @@ source bin/activate
 pip install twigs
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis,azure_cis,gcp_cis} ...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis,azure_cis,gcp_cis} ...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -61,6 +61,7 @@ optional arguments:
   --email_report        After impact refresh is complete email scan report to
                         self
   --quiet               Disable verbose logging
+  --schedule SCHEDULE   Run this twigs command at specified schedule (crontab format)
 
 modes:
   Discovery modes supported

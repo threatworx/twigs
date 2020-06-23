@@ -174,6 +174,8 @@ def main(args=None):
     parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
     parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
     parser.add_argument('--quiet', action='store_true', help='Disable verbose logging')
+    if sys.platform != 'win32':
+        parser.add_argument('--schedule', help='Run this twigs command at specified schedule (crontab format)')
     parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS)
     # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
@@ -339,6 +341,13 @@ def main(args=None):
         logging.error('[token] argument is not specified and [out] argument is not specified. Unable to share discovered assets...exiting....')
         sys.exit(1)
 
+    if args.schedule is not None and sys.platform != 'win32':
+        from crontab import CronSlices
+        # validate schedule
+        if CronSlices.is_valid(args.schedule) == False:
+            logging.error("Error: Invalid cron schedule [%s] specified!" % args.schedule)
+            sys.exit(1)
+
     assets = []
     if args.mode == 'aws':
         assets = aws.get_inventory(args)
@@ -402,6 +411,38 @@ def main(args=None):
 
             if args.token is not None and len(args.token) > 0:
                 run_scan(asset_id_list, pj_json, args)
+            
+            if args.schedule is not None and sys.platform != 'win32':
+                from crontab import CronTab
+                # create/update cron job
+                cron_cmd = sys.argv[0]
+                if "--handle" not in sys.argv:
+                    cron_cmd = cron_cmd + " " + "--handle " + '"' + args.handle + '"'
+                if "--token" not in sys.argv:
+                    cron_cmd = cron_cmd + " " + "--token " + '"' + args.token + '"'
+                if "--instance" not in sys.argv:
+                    cron_cmd = cron_cmd + " " + "--instance " + '"' + args.instance + '"'
+                skip_next = False
+                for index in range(1, len(sys.argv)):
+                    if sys.argv[index] == "--schedule":
+                        skip_next = True
+                        continue
+                    if skip_next:
+                        skip_next = False
+                        continue
+                    if sys.argv[index].startswith('-'):
+                        cron_cmd = cron_cmd + " " + sys.argv[index]
+                    else:
+                        cron_cmd = cron_cmd + " " + '"' + sys.argv[index] + '"'
+                cron_comment = "TWIGS_" + args.mode
+                with CronTab(user=True) as user_cron:
+                    # Find any existing jobs and remove those
+                    ejobs = user_cron.find_comment(cron_comment)
+                    for ejob in ejobs:
+                        user_cron.remove(ejob)
+                    njob = user_cron.new(command=cron_cmd, comment=cron_comment)
+                    njob.setall(args.schedule)
+                    logging.info("Added to crontab with comment [%s]", cron_comment)
 
     logging.info('Run completed...')
     if exit_code is not None:
