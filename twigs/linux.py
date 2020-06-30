@@ -433,6 +433,8 @@ def run_ssh_audit(args, assetid, ip):
                 key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ detail
         elif rtype == '(rec)':
             algo = larr[1][1:]
+            if algo not in key_issues:
+                key_issues[algo] = {}
             reco = 'Recommentation: '+l.split('--')[1].strip()
             key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ reco 
     for k in key_issues:
