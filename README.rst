@@ -54,7 +54,7 @@ optional arguments:
                         specify this option multiple times to add multiple
                         tags
   --apply_policy APPLY_POLICY
-                        Path to policy JSON file
+                        One or more policy names as a comma-separated list
   --out OUT             Specify name of the JSON file to hold the exported
                         asset information.
   --no_scan             Do not initiate a baseline assessment
