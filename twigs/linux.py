@@ -437,7 +437,10 @@ def run_ssh_audit(args, assetid, ip):
                 key_issues[algo]['details'] = detail 
             else:
                 detail = l.split('--')[1].split(']')[1].strip()
-                key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ detail
+                if 'details' in key_issues[algo]:
+                    key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ detail
+                else:
+                    key_issues[algo]['details'] = detail
         elif rtype == '(rec)':
             algo = larr[1][1:]
             if algo not in key_issues:
