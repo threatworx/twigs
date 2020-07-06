@@ -9,6 +9,7 @@ import ipaddress
 import getpass
 import base64
 import json
+import traceback
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -301,7 +302,12 @@ def discover_hosts(args, hosts):
         asset = discover_host(args, host)
         if asset is not None:
             if args.no_ssh_audit == False and host['remote'] == True:
-                ssh_config_issues = run_ssh_audit(args, args.assetid, host['hostname'])
+                ssh_config_issues = []
+                try:
+                    ssh_config_issues = run_ssh_audit(args, args.assetid, host['hostname'])
+                except Exception as e:
+                    logging.error("Error parsing ssh audit: %s" % str(e))
+                    logging.error(traceback.format_exc())
                 asset['config_issues'] = ssh_config_issues
                 if len(ssh_config_issues) != 0:
                     asset['tags'].append('SSH Audit')
@@ -381,6 +387,7 @@ def run_ssh_audit(args, assetid, ip):
         dev_null_device.close()
     except subprocess.CalledProcessError as e:
         logging.error("Error running ssh audit: %s" % str(e))
+        logging.error(traceback.format_exc())
         return issue_list
     key_issues = {}
     recs = {}
