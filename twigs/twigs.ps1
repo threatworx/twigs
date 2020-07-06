@@ -180,6 +180,17 @@ $temp_array | foreach { $var = $_ ; $product = $var.'DisplayName'; $vendor = $va
 $temp_products_count = $temp_array.Length
 $temp_array = Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object Publisher, DisplayName, DisplayVersion
 $temp_array | foreach { $var = $_ ; $product = $var.'DisplayName'; $vendor = $var.'Publisher'; $version = $var.'DisplayVersion'; if ($product -and $version) { $product_details = $product.Trim() + ' ' + $version.Trim(); $product_json_array.add($product_details); }}
+$ie_version = Get-ItemProperty "HKLM:\Software\Microsoft\Internet Explorer" | Select-Object svcVersion, Version
+if ($ie_version.svcVersion -ne $null) {
+    $product_json_array.add('Internet Explorer ' + $ie_version.svcVersion)
+    $temp_products_count = $temp_products_count + 1
+}
+else {
+    if ($ie_version.Version -ne $null) {
+        $product_json_array.add('Internet Explorer ' + $ie_version.Version)
+        $temp_products_count = $temp_products_count + 1
+    }
+}
 $temp_products_count = $temp_products_count + $temp_array.Length
 Write-Host 'Number of products found (using registry key):', $temp_products_count
 Write-Host 'Number of products identified till now:', $product_json_array.Count
@@ -293,8 +304,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUlVw+eIxyPD1WFRc+QDSSSq68
-# b3+gggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUbqvFxT6a4Q7b4EEMUh06y497
+# L+KgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -321,11 +332,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQU3xlJkQQcgzOSIhifB87TW91xWZkwDQYJKoZIhvcNAQEBBQAE
-# ggEAUc7+i4abaZ3o3kIIQMXA1iyTJIBLjP2rlVAFBs77oI7uA+b2WG18V/OLY6RI
-# FdRNBZ5c63x3nc6she9gG9vB9qH6fg8oEItUFuBa2a8dMVL/PWspz5uV58RrvoiD
-# yAQLZykFD9JsAdkwCzltOW5ojsObbJX+KLtZFMERhz2TuNib7Fdz9sgVrr2NSojL
-# emuM3DyUHGogCwhvsHVqz1klZAWgxCNkAxFoMmLm1l0K0MWh9jw0Ri7NgVnTZbJH
-# tiTyebDGsbTZu8/udcw5pEultQIJlgynHOfN8J4rU7OXdgutHjyeyA+ayYnBbbPQ
-# 2hEASpoMpTBsCTphtjd7H4WdlA==
+# hkiG9w0BCQQxFgQUxEhMn2QYObqaZSTgY6bFeXUNC7swDQYJKoZIhvcNAQEBBQAE
+# ggEAhJ+9kJdtOQw165WeIkIzCe4SyIRmIQW3NtUG2qypWZifRK13OninaKYIpplC
+# zjXQBTaacBBGmMlfjw89eVrROT/ZTpQaydm5KxhgmHS0QIYk0bteLAUmv/wiQl9g
+# 84VGXgHcxRZopRI1pHRoPHUJ7gwCc3i1db5uA4lkf9sFCDzlMwWCH4B1i5FW+DVK
+# 3tjmWifE4Hq2wbcYD9IgPabKkSE+0o+wGBV3BLylzoNLylBk4re2UMR9XtAF/t2a
+# j1DxMlAAGjnVr67jQ1fSOyhCAO/Op34BgK4ONR5q7IDDN1kVqn/Ib/BEmycPiyH2
+# P45yMrHU4K1CJYSb9ELb5ut0kQ==
 # SIG # End signature block
