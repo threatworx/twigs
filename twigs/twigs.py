@@ -34,6 +34,7 @@ import docker_cis
 import aws_cis
 import azure_cis
 import gcp_cis
+import ssl_audit 
 import policy as policy_lib
 from __init__ import __version__
 
@@ -208,13 +209,6 @@ def main(args=None):
         parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
         parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
-        # Arguments required for File-based discovery
-        parser_file = subparsers.add_parser ("file", help = "Discover inventory from file")
-        parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing JSON files. Supported file formats are: PDF & JSON', required=True)
-        parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
-        parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
-        parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
-
         # Arguments required for Host discovery on Linux
         parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
         parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
@@ -226,7 +220,7 @@ def main(args=None):
         parser_linux.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
         # Arguments required for nmap discovery
-        parser_nmap = subparsers.add_parser ("nmap", help = "Fingerprint assets using nmap. Requires nmap to be installed.")
+        parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range', required=True)
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
@@ -250,20 +244,19 @@ def main(args=None):
         parser_repo.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
         parser_repo.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
 
+        # Arguments required for File-based discovery
+        parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
+        parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing JSON files. Supported file formats are: PDF & JSON', required=True)
+        parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
+        parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
+        parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
+
         # Arguments required for ServiceNow discovery
-        parser_snow = subparsers.add_parser ("servicenow", help = "Discover inventory from ServiceNow instance")
+        parser_snow = subparsers.add_parser ("servicenow", help = "Ingest inventory from ServiceNow CMDB")
         parser_snow.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
         parser_snow.add_argument('--snow_user_pwd', help='User password of ServiceNow account', required=True)
         parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
         parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
-
-        # Arguments required for web-app discovery and testing
-        parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
-        parser_webapp.add_argument('--url', help='Application URL', required=True)
-        parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
-        parser_webapp.add_argument('--plugin', help='DAST plugin to be used. Default is skipfish. Requires the plugin to be installed separately.', default='skipfish')
-        parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
-        parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
 
         # Arguments required for docker CIS benchmarks 
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
@@ -288,6 +281,22 @@ def main(args=None):
         parser_gcp_cis = subparsers.add_parser("gcp_cis", help = "Run Google Cloud Platform CIS benchmarks")
         parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_gcp_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
+        # Arguments required for ssl audit 
+        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs")
+        parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
+        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
+        parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
+        parser_ssl_audit.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
+
+        # Arguments required for web-app discovery and testing
+        parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
+        parser_webapp.add_argument('--url', help='Application URL', required=True)
+        parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
+        parser_webapp.add_argument('--plugin', help='DAST plugin to be used. Default is skipfish. Requires the plugin to be installed separately.', default='skipfish')
+        parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
+        parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
+
 
         args = parser.parse_args()
 
@@ -378,6 +387,8 @@ def main(args=None):
             assets = azure_cis.get_inventory(args)
         elif args.mode == 'gcp_cis':
             assets = gcp_cis.get_inventory(args)
+        elif args.mode == 'ssl_audit':
+            assets = ssl_audit.get_inventory(args)
 
         exit_code = None
         if args.mode != 'host' or args.secure == False:
