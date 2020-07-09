@@ -117,6 +117,8 @@ def discover_pom_xml(args, localpath):
                 pname = libname + ' ' + libver
             else:
                 pname = libgname + ':' + libname + ' ' + libver
+            if localpath.startswith('/tmp/'):
+                file_path = file_path.replace(localpath+'/','')
             pname = pname.strip() + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
@@ -136,13 +138,15 @@ def discover_gradle(args, localpath):
                 gname = arr[0].split('group:')[1].strip()
                 lname = arr[1].split('name:')[1].strip()
                 ver = arr[2].split('version:')[1].strip()
+                if localpath.startswith('/tmp/'):
+                    file_path = file_path.replace(localpath+'/','')
                 pname = gname + ':' + lname + ' ' + ver + " source:"+file_path
                 pname = pname.replace("'","")
                 if pname not in plist:
                     plist.append(pname)
     return plist, None
 
-def process_package_json_files(files, level):
+def process_package_json_files(files, level, localpath):
     plist = []
     p1list = [] # 1st level dependencies
     for file_path in files:
@@ -161,6 +165,8 @@ def process_package_json_files(files, level):
             logging.error("Error parsing package.json contents - %s", file_path)
             continue
         if 'name' in cjson and 'version' in cjson:
+            if localpath.startswith('/tmp/'):
+                file_path = file_path.replace(localpath+'/','')
             pname = cjson['name'] + ' ' + cjson['version'] + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
@@ -171,6 +177,8 @@ def process_package_json_files(files, level):
                 content = ddict[d]
                 if isinstance(content, dict):
                     ver = content['version']
+                    if localpath.startswith('/tmp/'):
+                        file_path = file_path.replace(localpath+'/','')
                     pname = d + ' ' + ver + " source:"+file_path
                     if pname not in plist:
                         plist.append(pname)
@@ -179,10 +187,14 @@ def process_package_json_files(files, level):
                     if req_dict is None or level == 'shallow':
                         continue
                     for req_pname in req_dict:
+                        if localpath.startswith('/tmp/'):
+                            file_path = file_path.replace(localpath+'/','')
                         pname = req_pname + ' ' + req_dict[req_pname] + " source:"+file_path
                         if pname not in plist:
                             plist.append(pname)
                 else:
+                    if localpath.startswith('/tmp/'):
+                        file_path = file_path.replace(localpath+'/','')
                     pname = d + ' ' + ddict[d] + " source:"+file_path
                     pname = cleanse_semver_version(pname)
                     if pname not in plist:
@@ -192,6 +204,8 @@ def process_package_json_files(files, level):
             ddict = cjson['devDependencies']
             for d in ddict:
                 pname = d + ' ' + ddict[d]
+                if localpath.startswith('/tmp/'):
+                    file_path = file_path.replace(localpath+'/','')
                 pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
@@ -200,6 +214,8 @@ def process_package_json_files(files, level):
             ddict = cjson['optionalDependencies']
             for d in ddict:
                 pname = d + ' ' + ddict[d]
+                if localpath.startswith('/tmp/'):
+                    file_path = file_path.replace(localpath+'/','')
                 pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
@@ -209,10 +225,10 @@ def process_package_json_files(files, level):
 def discover_package_json(args, localpath):
     files = lib_utils.find_files(localpath, 'package-lock.json')
     if len(files) > 0:
-        plist, p1list = process_package_json_files(files, args.level)
+        plist, p1list = process_package_json_files(files, args.level, localpath)
     else:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist, p1list = process_package_json_files(files, args.level)
+        plist, p1list = process_package_json_files(files, args.level, localpath)
     return plist, p1list
 
 def discover_packages_config(args, localpath):
@@ -233,6 +249,8 @@ def discover_packages_config(args, localpath):
         for p in temp_plist:
             libname = p.getAttribute('id')
             libver = p.getAttribute('version')
+            if localpath.startswith('/tmp/'):
+                file_path = file_path.replace(localpath+'/','')
             pname = libname + ' ' + libver + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
@@ -244,7 +262,7 @@ def discover_yarn(args, localpath):
     files = lib_utils.find_files(localpath, 'yarn.lock')
     if len(files) == 0 and args.type is not None:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist = process_package_json_files(files, args.level)
+        plist = process_package_json_files(files, args.level, localpath)
         return plist
 
     for file_path in files:
@@ -265,6 +283,8 @@ def discover_yarn(args, localpath):
                     libname = l.split('@')[0]
                 vline = cline[index+1]
                 libver = vline.split()[1].replace('"','')
+                if localpath.startswith('/tmp/'):
+                    file_path = file_path.replace(localpath+'/','')
                 pname = libname+' '+libver + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
@@ -277,6 +297,8 @@ def discover_yarn(args, localpath):
                 if pname == '':
                     dparse = False
                     continue
+                if localpath.startswith('/tmp/'):
+                    file_path = file_path.replace(localpath+'/','')
                 pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist and args.type == 'deep':
                     plist.append(pname)
@@ -325,6 +347,8 @@ def discover_ruby(args, localpath):
                         else:
                             gver = ''
                 pname = gname + ' ' + gver
+                if localpath.startswith('/tmp/'):
+                    file_path = file_path.replace(localpath+'/','')
                 pname = pname.strip() + " source:"+file_path
                 if pname not in pset:
                     pset.add(pname)
@@ -343,6 +367,8 @@ def discover_python(args, localpath):
             for r in req:
                 prod = r.name
                 if len(r.specs) > 0:
+                    if localpath.startswith('/tmp/'):
+                        file_path = file_path.replace(localpath+'/','')
                     prod = prod + ' ' + r.specs[0][1] + " source:"+file_path
                     if prod not in plist:
                         plist.append(prod)
@@ -378,6 +404,8 @@ def discover_dll(args, localpath):
         dll_version = get_dll_version(file_path)
         if dll_version is None:
             continue
+        if localpath.startswith('/tmp/'):
+            file_path = file_path.replace(localpath+'/','')
         dll_details = os.path.basename(file_path) + " " + dll_version + " source:"+file_path
 
         plist.append(dll_details)
@@ -413,6 +441,8 @@ def discover_jar(args, localpath):
                 ver = match[0]
                 prod = jfile.split(ver)[0][:-1]
         prod = prod + ' ' + ver
+        if localpath.startswith('/tmp/'):
+            file_path = file_path.replace(localpath+'/','')
         prod = prod.strip() + " source:"+file_path
         if prod != '':
             plist.append(prod)
