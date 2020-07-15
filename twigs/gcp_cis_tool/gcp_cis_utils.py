@@ -114,7 +114,7 @@ def get_compute_instances_by_projects():
 def add_members_with_role(entry, role, add_to_set):
     if entry['role'] == role:
         for m in entry['members']:
-            if m.startwith('user:'):
+            if m.startswith('user:'):
                 add_to_set.add(m.split(':')[1])
 
 def _get_services_by_projects():
