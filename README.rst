@@ -35,7 +35,7 @@ source bin/activate
 pip install twigs
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis,azure_cis,gcp_cis} ...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] {aws,azure,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -66,7 +66,7 @@ optional arguments:
 modes:
   Discovery modes supported
 
-  {aws,azure,docker,file,host,opensource,servicenow,dast,docker_cis,aws_cis,azure_cis,gcp_cis}
+{aws,azure,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
     aws                 Discover AWS instances
     azure               Discover Azure instances
     docker              Discover docker instances
@@ -75,11 +75,12 @@ modes:
     nmap                Fingerprint assets using nmap. Requires nmap to be installed.
     repo                Discover project repository as asset
     servicenow          Discover inventory from ServiceNow instance
-    dast                Discover and test web application using a DAST plugin
     docker_cis          Run docker CIS benchmarks
     aws_cis             Run AWS CIS benchmarks
     azure_cis           Run Azure CIS benchmarks
     gcp_cis             Run Google Cloud Platform CIS benchmarks
+    ssl_audit           Run SSL audit tests against your web URLs
+    dast                Discover and test web application using a DAST plugin
 
 Mode: aws
 $ twigs aws --help
@@ -244,21 +245,6 @@ optional arguments:
                         Enable recording ServiceNow specific information (like
                         ServiceNow instance name, etc.) as asset tags
 
-Mode: dast
-$ twigs dast --help
-usage: twigs dast [-h] --url URL --assetid ASSETID [--plugin PLUGIN] [--args ARGS] [--assetname ASSETNAME]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --url URL             Application URL
-  --assetid ASSETID     A unique ID to be assigned to the discovered webapp
-                        asset
-  --plugin PLUGIN       DAST plugin to be used. Default is skipfish. Requires
-                        the plugin to be installed separately.
-  --args ARGS           Optional extra arguments to be passed to the plugin
-  --assetname ASSETNAME
-                        Optional name/label to be assigned to the webapp asset
-
 Mode: docker_cis
 $ twigs docker_cis --help
 usage: twigs docker_cis [-h] [--assetid ASSETID] [--assetname ASSETNAME] [--docker_bench_home DOCKER_BENCH_HOME]
@@ -307,6 +293,35 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+
+Mode: ssl_audit
+$ twigs ssl_audit --help
+usage: twigs ssl_audit [-h] --url URL --assetid ASSETID [--args ARGS] [--assetname ASSETNAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --url URL             HTTPS URL
+  --assetid ASSETID     A unique ID to be assigned to the discovered web URL
+                        asset
+  --args ARGS           Optional extra arguments
+  --assetname ASSETNAME
+                        Optional name/label to be assigned to the web URL
+                        asset
+
+Mode: dast
+$ twigs dast --help
+usage: twigs dast [-h] --url URL --assetid ASSETID [--plugin PLUGIN] [--args ARGS] [--assetname ASSETNAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --url URL             Application URL
+  --assetid ASSETID     A unique ID to be assigned to the discovered webapp
+                        asset
+  --plugin PLUGIN       DAST plugin to be used. Default is skipfish. Requires
+                        the plugin to be installed separately.
+  --args ARGS           Optional extra arguments to be passed to the plugin
+  --assetname ASSETNAME
+                        Optional name/label to be assigned to the webapp asset
 
 Note: For Windows hosts, you can use provided PowerShell script (twigs.ps1) for discovery. It requires PowerShell 3.0 or higher.
 
