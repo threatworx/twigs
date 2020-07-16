@@ -25,7 +25,7 @@ def get_inventory(args):
         return None
 
     logging.info("Fingerprinting "+args.hosts)
-    cmdarr = [NMAP + ' -oX - -sV -T4 -F '+args.hosts]
+    cmdarr = [NMAP + ' -oX - -sV -PN -T4 -F '+args.hosts]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
     except subprocess.CalledProcessError:
