@@ -126,7 +126,10 @@ def check1_7():
         for entry in out_json:
             out_json_2 = gcp_cis_utils.run_gcloud_cmd("iam service-accounts keys list --iam-account %s --managed-by=user" % entry['email'])
             for entry_2 in out_json_2:
-                vat = datetime.datetime.strptime(entry_2['validAfterTime'], "%Y-%m-%dT%H:%M:%SZ")
+                entry_2_vat = entry_2['validAfterTime']
+                if '.' in entry_2_vat:
+                    entry_2_vat = entry_2_vat.split('.')[0] + 'Z'
+                vat = datetime.datetime.strptime(entry_2_vat, "%Y-%m-%dT%H:%M:%SZ")
                 if vat > last90days:
                     details.append("User managed service account [%s] has not rotated key in last 90 days. Key has been valid since %s" % (entry['email'], entry_2['validAfterTime']))
     if len(details) > 0:
@@ -195,6 +198,8 @@ def check1_10():
                     if int(rotationPeriod[:-1]) > rpd_entry[0]:
                         details.append("Rotation period for key [%s] in project [%s] exceeeds 90 days. Currently set to rotate every [%s] %s" % (entry_2['name'], p, rotationPeriod[:-1], rpd_entry[1]))
                 if nextRotationTime is not None:
+                    if '.' in nextRotationTime:
+                        nextRotationTime = nextRotationTime.split('.')[0] + 'Z'
                     nrt = datetime.datetime.strptime(nextRotationTime, "%Y-%m-%dT%H:%M:%SZ")
                     if nrt > next90days:
                         details.append("Next rotation time for key [%s] in project [%s] exceeds 90 days from now. Currently set to rotate next at [%s]" % (entry_2['name'], p, nextRotationTime))
