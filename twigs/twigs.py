@@ -20,6 +20,9 @@ import requests
 import time
 import json
 import traceback
+import pkg_resources
+import pkgutil
+import importlib
 
 import aws
 import linux
@@ -34,7 +37,6 @@ import docker_cis
 import aws_cis
 import azure_cis
 import gcp_cis
-import ssl_audit 
 import policy as policy_lib
 from __init__ import __version__
 
@@ -150,6 +152,19 @@ def add_asset_criticality_tag(assets, asset_criticality):
     asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
     add_asset_tags(assets, [asset_criticality_tag])
 
+def sub_pkg_get_inventory(args):
+    dist = "twigs_" + args.mode
+    try:
+        pkg_resources.get_distribution(dist)
+    except pkg_resources.DistributionNotFound:
+        logging.error("Error required package [%s] is not installed...", dist)
+        logging.error("Please install using command [sudo pip install %s]", dist)
+        sys.exit(1)
+    module = importlib.import_module('%s.%s' % (dist,dist))
+    get_inventory_func = getattr(module, "get_inventory")
+    assets = get_inventory_func(args)
+    return assets
+
 def main(args=None):
 
     try:
@@ -246,7 +261,7 @@ def main(args=None):
 
         # Arguments required for File-based discovery
         parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
-        parser_file.add_argument('--in', help='Absolute path to single input inventory file or a directory containing JSON files. Supported file formats are: PDF & JSON', required=True)
+        parser_file.add_argument('--input', help='Absolute path to single input inventory file or a directory containing JSON files. Supported file formats are: PDF & JSON', required=True)
         parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
         parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
         parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
@@ -283,7 +298,7 @@ def main(args=None):
         parser_gcp_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
         # Arguments required for ssl audit 
-        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs")
+        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed")
         parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
         parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
         parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
@@ -361,7 +376,10 @@ def main(args=None):
                 sys.exit(1)
 
         assets = []
-        if args.mode == 'aws':
+        sub_pkg_list = ['ssl_audit']
+        if args.mode in sub_pkg_list:
+            assets = sub_pkg_get_inventory(args)
+        elif args.mode == 'aws':
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)

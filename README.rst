@@ -79,7 +79,7 @@ modes:
     aws_cis             Run AWS CIS benchmarks
     azure_cis           Run Azure CIS benchmarks
     gcp_cis             Run Google Cloud Platform CIS benchmarks
-    ssl_audit           Run SSL audit tests against your web URLs
+    ssl_audit           Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed
     dast                Discover and test web application using a DAST plugin
 
 Mode: aws
@@ -145,11 +145,11 @@ optional arguments:
 
 Mode: file
 $ twigs file --help
-usage: twigs file [-h] --in IN [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
+usage: twigs file [-h] --input INPUT [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --in IN               Absolute path to single input inventory file or a
+  --input INPUT         Absolute path to single input inventory file or a
                         directory containing CSV files. Supported file formats
                         are: PDF & JSON
   --assetid ASSETID     A unique ID to be assigned to the discovered asset.

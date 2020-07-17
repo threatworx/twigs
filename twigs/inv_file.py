@@ -98,9 +98,7 @@ def check_and_update_scan(args, assets):
             args.mode = "file_repo" # update the mode to help trigger license scan
 
 def get_inventory(args):
-    # Note this is a workaround since 'in' is a reserved word and hence one cannot do args.in
-    temp_dict = vars(args)
-    in_file = temp_dict['in']
+    in_file = args.input
 
     if os.path.isdir(in_file):
         logging.info("Processing JSON files in specified directory [%s]", in_file)
