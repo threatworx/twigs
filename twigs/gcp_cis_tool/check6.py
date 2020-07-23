@@ -145,6 +145,8 @@ def check6_5():
                 ipConfig = settings.get("ipConfiguration")
                 if ipConfig is not None:
                     auth_nws = ipConfig.get('authorizedNetworks')
+                    if auth_nws is None:
+                        continue
                     for auth_nw in auth_nws:
                         if auth_nw.get('value') == "0.0.0.0/0":
                             details.append("Cloud SQL database instance [%s] in project [%s] is open to the world" % (entry['name'], p))

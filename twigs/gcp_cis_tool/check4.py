@@ -16,6 +16,8 @@ def check4_1():
         for entry in out_json:
             if (entry['name'].startswith('gke-') and entry.get('labels') is not None and 'goog-gke-node' in entry['labels'].keys()) or (entry.get('labels') is not None and 'cloud.google.com/gke-nodepool' in entry['labels'].keys()):
                 continue
+            if entry.get('serviceAccounts') is None:
+                continue
             for sa in entry['serviceAccounts']:
                 if sa['email'] == default_service_account:
                     details.append("Compute instance [%s] uses default service account [%s] in project [%s]" % (entry['name'], default_service_account, p))
@@ -36,6 +38,8 @@ def check4_2():
         out_json = compute_instances_by_projects[p]
         for entry in out_json:
             if (entry['name'].startswith('gke-') and entry.get('labels') is not None and 'goog-gke-node' in entry['labels'].keys()) or (entry.get('labels') is not None and 'cloud.google.com/gke-nodepool' in entry['labels'].keys()):
+                continue
+            if entry.get('serviceAccounts') is None:
                 continue
             for sa in entry['serviceAccounts']:
                 if sa['email'] == default_service_account and "https://www.googleapis.com/auth/cloud-platform" in sa['scopes']:
@@ -140,7 +144,7 @@ def check4_6():
         for entry in out_json:
             if (entry['name'].startswith('gke-') and entry.get('labels') is not None and 'goog-gke-node' in entry['labels'].keys()) or (entry.get('labels') is not None and 'cloud.google.com/gke-nodepool' in entry['labels'].keys()):
                 continue
-            if entry['canIpForward']:
+            if entry.get('canIpForward') is not None and entry['canIpForward']:
                 details.append("IP forrwarding is enabled on compute instance [%s] in project [%s]" % (entry['name'], p))
     if len(details) > 0:
         return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.6', '4.6 [Level 1] Ensure that IP forwarding is not enabled on Instances (Scored)', "\n".join(details), '4', '', '')
