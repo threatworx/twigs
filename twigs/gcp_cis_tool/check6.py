@@ -1,6 +1,6 @@
 import sys
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
   
 def check6_1_1():
     # 6.1.1 Ensure that a MySQL database instance does not allow anyone to connect with administrative privileges (Scored)

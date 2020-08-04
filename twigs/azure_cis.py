@@ -1,7 +1,7 @@
 import sys
 import os
 import csv
-import azure_cis_tool.azure_cis as azure_cis_tool
+from .azure_cis_tool import azure_cis as azure_cis_tool
 
 def get_issues_from_csv_file(config_issues_csv, assetid):
     findings = []

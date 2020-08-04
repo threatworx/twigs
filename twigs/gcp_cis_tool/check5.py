@@ -1,7 +1,7 @@
 import sys
 import json
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
 
 def check5_1():
     # 5.1 Ensure that Cloud Storage bucket is not anonymously or publicly accessible (Scored)

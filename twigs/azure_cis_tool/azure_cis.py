@@ -11,16 +11,15 @@ import logging
 import tempfile
 from html.parser import HTMLParser
 
-import az_cis_check1 as check1
-import az_cis_check2 as check2
-import az_cis_check3 as check3
-import az_cis_check4 as check4
-import az_cis_check5 as check5
-import az_cis_check6 as check6
-import az_cis_check7 as check7
-import az_cis_check8 as check8
-import az_cis_utils
-
+from . import az_cis_check1 as check1
+from . import az_cis_check2 as check2
+from . import az_cis_check3 as check3
+from . import az_cis_check4 as check4
+from . import az_cis_check5 as check5
+from . import az_cis_check6 as check6
+from . import az_cis_check7 as check7
+from . import az_cis_check8 as check8
+from . import az_cis_utils as az_cis_utils
 
 ################ CSV EXPORT HELPERS ###################
 # Use HTML Parser

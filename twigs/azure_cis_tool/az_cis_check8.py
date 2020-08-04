@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-import az_cis_utils
+from . import az_cis_utils as az_cis_utils
 
 def check80():
     logging.info("Processing 81 and 82...")

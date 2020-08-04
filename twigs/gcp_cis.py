@@ -1,6 +1,6 @@
 import sys
 import os
-import gcp_cis_tool.gcp_cis as gcp_cis_tool
+from .gcp_cis_tool import gcp_cis as gcp_cis_tool
 
 def run_gcp_cis_bench(args):
     asset = { }

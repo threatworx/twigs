@@ -15,8 +15,8 @@ import re
 import zipfile
 from xml.dom import minidom
 
-import utils as lib_utils
-import code_secrets as lib_code_secrets
+from . import utils as lib_utils
+from . import code_secrets as lib_code_secrets
 
 GIT_PATH = os.environ.get('GIT_PATH')
 if GIT_PATH is None:
@@ -56,7 +56,7 @@ def discover_pom_xml(args, localpath):
         try:
             xmldoc = minidom.parseString(contents)
         except Exception:
-            print "Error parsing pom.xml contents"
+            logging.error("Error parsing pom.xml contents")
             return None
         if prop_dict is None:
             prop_dict = { }
@@ -243,7 +243,7 @@ def discover_packages_config(args, localpath):
         try:
             xmldoc = minidom.parseString(contents)
         except Exception:
-            print "Error parsing package config contents"
+            logging.error("Error parsing package config contents")
             return None
         temp_plist = xmldoc.getElementsByTagName('package')
         for p in temp_plist:
@@ -574,7 +574,7 @@ def get_inventory(args):
             cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
             out = subprocess.check_output(cmdarr)
         except:
-            print traceback.format_exc()
+            logging.error(traceback.format_exc())
             logging.error('Error cloning repo locally')
             shutil.rmtree(path, onerror = on_rm_error)
             sys.exit(1)

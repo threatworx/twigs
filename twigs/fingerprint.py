@@ -5,7 +5,7 @@ import subprocess
 import logging
 from xml.dom.minidom import parse, parseString
 import csv
-import linux
+from . import linux
 
 NMAP = "/usr/bin/nmap"
 
@@ -28,6 +28,7 @@ def get_inventory(args):
     cmdarr = [NMAP + ' -oX - -sV -PN -T4 -F '+args.hosts]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
+        out = out.decode('utf-8')
     except subprocess.CalledProcessError:
         logging.error("Error determining OS release")
         return None 

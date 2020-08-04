@@ -24,20 +24,20 @@ def get_all_vms(params):
 # Prints details about subscriptions, resource groups and workspaces
 def print_details(token):
     allsubs = get_all_subscriptions(token)
-    print ""
-    print "Missing details for subscription/resource group/workspace...."
-    print "Available subscriptions with resource group and workspace details as below:"
+    print( "")
+    print("Missing details for subscription/resource group/workspace....")
+    print("Available subscriptions with resource group and workspace details as below:")
     for sub in allsubs:
-        print "Subscription: %s" % sub
+        print("Subscription: %s" % sub)
         resourcegroups = get_all_resourcegroups_for_subscription(sub, token)
         for res_group in resourcegroups:
-            print " ** Resource group: %s" % res_group
+            print(" ** Resource group: %s" % res_group)
         workspaces = get_all_workspaces_for_subscription(sub, token)
         for workspace in workspaces:
-            print " ** Workspace: %s" % workspace
-    print ""
-    print "Please re-run twigs with appropriate values for subscription, resource group and workspace."
-    print ""
+            print(" ** Workspace: %s" % workspace)
+    print("")
+    print("Please re-run twigs with appropriate values for subscription, resource group and workspace.")
+    print("")
     sys.exit(1)
 
 # Main entry point

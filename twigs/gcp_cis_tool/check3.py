@@ -1,6 +1,6 @@
 import sys
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
 
 def check3_1():
     # 3.1 Ensure that the default network does not exist in a project (Scored)

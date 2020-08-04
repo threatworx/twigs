@@ -4,15 +4,15 @@ import json
 import re
 import math
 import mmap
-import utils as lib_utils
-import code_secrets_defaults as cs_defaults
+from . import utils as lib_utils
+from . import code_secrets_defaults as cs_defaults
 
 BASE64_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
 HEX_CHARACTERS = "1234567890abcdefABCDEF"
 regex_rules = { }
 common_pwds = [ ]
 textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
-is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
+is_binary_string = lambda in_bytes: bool(in_bytes.translate(None, textchars))
 
 def shannon_entropy(data, iterator):
     if not data:
@@ -61,7 +61,7 @@ def hide_secrets(lines):
                 string = matched.group()
                 line_content = line_content.replace(string, "*" * len(string))
         for cp in common_pwds:
-            matched = cp.search(line)
+            matched = cp.search(line_content)
             if matched:
                 string = matched.group()[1:-1] # remove the qoutes
                 line_content = line_content.replace(string, "*" * len(string))
@@ -174,7 +174,9 @@ def scan_file_for_secrets(args, base_path, this_file, regex_rules):
             mm_file = mmap.mmap(fd.fileno(), 0, access=mmap.ACCESS_READ)
         else:
             mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
-        lines = mm_file.read(-1).split('\n')
+        lines = mm_file.read(-1)
+        lines = lines.decode('utf-8')
+        lines = lines.split('\n')
         line_no = 0
         stripped_file_path = this_file[len(base_path)+1:]
         for line in lines:
@@ -252,7 +254,7 @@ def scan_for_secrets(args, local_path, base_path):
 
     secret_records = []
     for this_file in final_files:
-        if os.path.islink(this_file) == False and os.stat(this_file).st_size > 0 and is_binary_string(open(this_file, 'r').read(1024)) == False:
+        if os.path.islink(this_file) == False and os.stat(this_file).st_size > 0 and is_binary_string(open(this_file, 'rb').read(1024)) == False:
             secret_records.extend(scan_file_for_secrets(args, base_path, this_file, regex_rules))
 
     return secret_records

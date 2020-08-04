@@ -3,7 +3,7 @@ import json
 import logging
 import datetime
 import sys
-import az_cis_utils
+from . import az_cis_utils as az_cis_utils
 
 def check31():
     logging.info("Processing 31...")

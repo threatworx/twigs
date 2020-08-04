@@ -1,7 +1,7 @@
 import sys
 import json
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
 
 def check7_1():
     # 7.1 Ensure that BigQuery datasets are not anonymously or publicly accessible (Scored)

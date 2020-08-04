@@ -8,7 +8,7 @@ import logging
 import json
 import tempfile
 import traceback
-import dast_plugins.skipfish as skipfish
+from .dast_plugins import skipfish as skipfish
 
 dast_plugins = ["skipfish"]
 

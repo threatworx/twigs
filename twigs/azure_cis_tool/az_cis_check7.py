@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-import az_cis_utils
+from . import az_cis_utils as az_cis_utils
 
 def check70(subid):
     logging.info("Processing 7x...")

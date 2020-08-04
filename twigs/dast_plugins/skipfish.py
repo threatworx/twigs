@@ -118,11 +118,11 @@ def get_object_id(pdir):
 def get_payload(pdir):
     out = ''
     if os.path.exists(pdir+'/request.dat'):
-        f = open(pdir+'/request.dat')
+        f = open(pdir+'/request.dat', encoding='latin1')
         out = out + '\nREQUEST\n'+f.read()
         f.close()
     if os.path.exists(pdir+'/response.dat'):
-        f = open(pdir+'/response.dat')
+        f = open(pdir+'/response.dat', encoding='latin1')
         out = out + '\nRESPONSE\n'+f.read()
         f.close()
     out = re.sub(r'[^\x00-\x7F]+','', out)

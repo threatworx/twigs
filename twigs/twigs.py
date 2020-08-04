@@ -24,21 +24,21 @@ import pkg_resources
 import pkgutil
 import importlib
 
-import aws
-import linux
-import repo
-import docker
-import azure
-import servicenow
-import inv_file
-import fingerprint
-import dast 
-import docker_cis
-import aws_cis
-import azure_cis
-import gcp_cis
-import policy as policy_lib
-from __init__ import __version__
+from . import aws
+from . import linux
+from . import repo
+from . import docker
+from . import azure
+from . import servicenow
+from . import inv_file
+from . import fingerprint
+from . import dast 
+from . import docker_cis
+from . import aws_cis
+from . import azure_cis
+from . import gcp_cis
+from . import policy as policy_lib
+from .__init__ import __version__
 
 
 GoDaddyCABundle = True
@@ -63,11 +63,11 @@ def push_asset_to_TW(asset, args):
         resp = requests.post(asset_url + auth_data, json=asset, verify=GoDaddyCABundle)
         if resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content)
+            logging.info("Response content: %s", resp.content.decode('utf-8'))
             return asset_id
         else:
             logging.error("Failed to create new asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content)
+            logging.error("Response details: %s", resp.content.decode('utf-8'))
             return None
     else:
         logging.info("Updating asset [%s]", asset_id)
@@ -75,11 +75,11 @@ def push_asset_to_TW(asset, args):
         resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset, verify=GoDaddyCABundle)
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content)
+            logging.info("Response content: %s", resp.content.decode('utf-8'))
             return asset_id
         else:
             logging.error("Failed to update existing asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content)
+            logging.error("Response details: %s", resp.content.decode('utf-8'))
             return None
 
 def push_assets_to_TW(assets, args):
@@ -122,7 +122,7 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started impact refresh...")
             else:
                 logging.error("Failed to start impact refresh")
-                logging.error("Response details: %s", resp.content)
+                logging.error("Response details: %s", resp.content.decode('utf-8'))
         if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo"):
             # Start license compliance assessment
             logging.info("Starting license compliance assessment for assets: %s", ",".join(asset_id_list))
@@ -138,7 +138,7 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started license compliance assessment...")
             else:
                 logging.error("Failed to start license compliance assessment")
-                logging.error("Response details: %s", resp.content)
+                logging.error("Response details: %s", resp.content.decode('utf-8'))
 
 def add_asset_tags(assets, tags):
     for asset in assets:

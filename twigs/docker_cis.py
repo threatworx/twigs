@@ -4,7 +4,7 @@ import subprocess
 import logging
 import re
 
-import utils
+from . import utils
 
 def run_docker_bench(args):
     DBENCH = "/docker-bench-security.sh"
@@ -26,6 +26,7 @@ def run_docker_bench(args):
     try:
         os.chdir(os.path.dirname(dbench_path))
         out = subprocess.check_output([dbench_path+" 2>/dev/null "], shell=True)
+        out = out.decode('utf-8')
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
         out = ansi_escape.sub('', out)
     except subprocess.CalledProcessError:

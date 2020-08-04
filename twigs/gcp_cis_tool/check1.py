@@ -1,7 +1,7 @@
 import sys
 import datetime
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
 
 def check1_1():
     # 1.1 Ensure that corporate login credentials are used (Scored)

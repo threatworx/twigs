@@ -1,6 +1,6 @@
 import sys
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
 
 def check4_1():
     # 4.1 Ensure that instances are not configured to use the default service account (Scored)

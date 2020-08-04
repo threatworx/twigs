@@ -11,7 +11,7 @@ import subprocess
 def run_cis_aws_bench(args):
     PROWLER_SH = '/prowler'
     asset_id = args.assetid
-    asset_name = asset_id if args.assetname is None else assetname
+    asset_name = asset_id if args.assetname is None else args.assetname
     prowler_path = args.prowler_home + PROWLER_SH
     if not os.path.isfile(prowler_path) or not os.access(prowler_path, os.X_OK):
         logging.error('AWS CIS Bench script not found')

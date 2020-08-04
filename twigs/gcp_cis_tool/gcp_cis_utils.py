@@ -14,6 +14,7 @@ _services_by_projects = None
 def run_cmd(cmd):
     try:
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
+        cmd_output = cmd_output.decode('utf-8')
     except subprocess.CalledProcessError:
         logging.error("Error running command [%s]", cmd)
         cmd_output = ""
@@ -23,6 +24,7 @@ def run_gcloud_cmd(cmd):
     cmd = 'gcloud ' + cmd + ' --format=json --quiet'
     try:
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
+        cmd_output = cmd_output.decode('utf-8')
         ret_json = json.loads(cmd_output)
     except subprocess.CalledProcessError:
         logging.error("Error running gcloud command [%s]", cmd)

@@ -1,6 +1,6 @@
 import sys
 import logging
-import gcp_cis_utils
+from . import gcp_cis_utils as gcp_cis_utils
 
 def check2_1():
     # 2.1 Ensure that Cloud Audit Logging is configured properly across all services and all users from a project (Scored)

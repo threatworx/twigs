@@ -4,21 +4,7 @@ import re
 import logging
 import pysnow
 
-def get_asset_type(os):
-    if "CentOS" in os:
-        return "CentOS"
-    elif "Red Hat" in os:
-        return "Red Hat"
-    elif "Ubuntu" in os:
-        return "Ubuntu"
-    elif "Debian" in os:
-        return "Debian"
-    elif "Amazon Linux AMI" in os:
-        return "Amazon Linux"
-    elif "Windows" in os:
-        return "Windows"
-    else:
-        return "Other"
+from . import utils as utils
 
 def get_product_version(asset_display_name):
     temp_product_details = re.findall(r'(.*)\((.*)\)',asset_display_name)
@@ -73,7 +59,9 @@ def get_asset_inventory(args):
             host = {}
             host['id'] = host_id
             host['name'] = snow_host['ip_address']
-            host['type'] = get_asset_type(snow_host['os'])
+            host['type'] = utils.get_asset_type(snow_host['os'])
+            if host['type'] is None:
+                host['type'] = 'Other'
             host['owner'] = args.handle
             products = []
             products.append(snow_host['os'])

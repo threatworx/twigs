@@ -13,6 +13,7 @@ def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
         try:
             dev_null_device = open(os.devnull, "w")
             pkgout = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
+            pkgout = pkgout.decode('utf-8')
             dev_null_device.close()
         except subprocess.CalledProcessError:
             if logging_enabled:
@@ -123,8 +124,10 @@ def get_asset_type(os):
         return "OpenBSD"
     elif "Mac OS" in os:
         return "Mac OS"
+    elif "Windows" in os:
+        return "Windows"
     else:
-        logging.error('Not a supported OS type')
+        logging.error("Not a supported OS type [%s]" % os)
         return None
 
 

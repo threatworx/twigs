@@ -14,7 +14,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
-import utils
+from . import utils
 
 def check_host_up(host):
     if not host['remote']:
@@ -192,7 +192,7 @@ def discover(args):
                     f = Fernet(key)
                     try:
                         epass = row['userpwd'].replace('__SECURE__:','')
-                        row['userpwd'] = f.decrypt(epass)
+                        row['userpwd'] = f.decrypt(epass.encode('utf-8'))
                     except:
                         logging.error("Failed to decrypt login details for "+row['hostname'])
                         return None 
@@ -208,8 +208,12 @@ def discover(args):
                             continue
                         logging.info("Enumerating IPs based on specified range [%s]", iprange)
                         try:
-                            startip = ipaddress.IPv4Address(unicode(tokens[0]))
-                            endip = ipaddress.IPv4Address(unicode(tokens[1]))
+                            if sys.version_info[0] < 3:
+                                startip = ipaddress.IPv4Address(unicode(tokens[0]))
+                                endip = ipaddress.IPv4Address(unicode(tokens[1]))
+                            else:
+                                startip = ipaddress.IPv4Address(tokens[0])
+                                endip = ipaddress.IPv4Address(tokens[1])
                             cidrs = []
                             cidrs = [ipaddr for ipaddr in ipaddress.summarize_address_range(startip,endip)]
                         except Exception as e:
@@ -220,7 +224,10 @@ def discover(args):
                     if '/' in row['hostname']:
                         logging.info("Enumerating IPs based on specified CIDR [%s]", row['hostname'])
                         try:
-                            cidrs = [ipaddress.ip_network(unicode(row['hostname'],"ascii"))]
+                            if sys.version_info[0] < 3:
+                                cidrs = [ipaddress.ip_network(unicode(row['hostname'],"ascii"))]
+                            else:
+                                cidrs = [ipaddress.ip_network(row['hostname'])]
                         except Exception as e:
                             logging.error("Encountered exception: %s",e)
                             logging.error("Invalid CIDR [%s] specified. Skipping it...", row['hostname'])
@@ -281,7 +288,7 @@ def discover(args):
                 writer.writeheader()
                 for h in remote_hosts:
                     if h['userpwd'] != '' and not h['userpwd'].startswith('__SECURE__:'):
-                        h['userpwd'] = '__SECURE__:'+f.encrypt(h['userpwd'])
+                        h['userpwd'] = '__SECURE__:'+f.encrypt(h['userpwd'].encode('utf-8')).decode('utf-8')
                     del h['remote']
                     writer.writerow(h)
             logging.info("Host list file secured")
@@ -384,6 +391,7 @@ def run_ssh_audit(args, assetid, ip):
         cmdarr = [cmd]
         dev_null_device = open(os.devnull, "w")
         audit_out = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
+        audit_out = audit_out.decode('utf-8')
         dev_null_device.close()
     except subprocess.CalledProcessError as e:
         logging.error("Error running ssh audit: %s" % str(e))

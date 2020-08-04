@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import requests
-import az_cis_utils
+from . import az_cis_utils as az_cis_utils
 
 def check21():
     logging.info("Processing 21...")

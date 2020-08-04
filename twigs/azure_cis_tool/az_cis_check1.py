@@ -3,7 +3,7 @@ import json
 import logging
 import requests
 import sys
-import az_cis_utils
+from . import az_cis_utils as az_cis_utils
 
 def check11(subid):
     logging.info("Processing 11...")
