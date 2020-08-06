@@ -87,8 +87,9 @@ def parse_inventory(email,data,params):
             asset_map['vmuuid'] = vmuuid
             if data[i][1] == 'Update': #ApplicationType for MS patches
                 patch = parse_patch(data[i])
-                patches.append(patch)
-                asset_map['patch_tracker'][patch['id']] = patch['id']
+                if patch is not None:
+                    patches.append(patch)
+                    asset_map['patch_tracker'][patch['id']] = patch['id']
             if data[i][1] == 'Package' or data[i][1] == 'Application': #ApplicationType for Linux packages
                 pname = data[i][0]
                 pversion =  data[i][3]
@@ -117,7 +118,7 @@ def parse_inventory(email,data,params):
                     patches = asset['patches']
                     if data[i][1] == 'Update': #ApplicationType for MS patches
                         patch = parse_patch(data[i])
-                        if asset['patch_tracker'].get(patch['id']) is None:
+                        if patch is not None and asset['patch_tracker'].get(patch['id']) is None:
                             patches.append(patch)
                             asset['patches'] = patches
                             asset['patch_tracker'][patch['id']] = patch['id']
@@ -134,6 +135,8 @@ def parse_inventory(email,data,params):
 
 def parse_patch(data):
     patch_id = re.findall(r'(KB[0-9]+)', data[0])
+    if len(patch_id) == 0:
+        return None
     patch = {}
     patch['url'] = ''
     patch['id'] = patch_id[0]
