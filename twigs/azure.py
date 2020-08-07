@@ -216,7 +216,7 @@ def get_os_details(host, vmuuid, params):
         alt_vmuuid = alt_vmuuid + '-%s-%s' % (tokens[3], tokens[4])
         vm_id = all_vms.get(alt_vmuuid)
         if vm_id is None:
-            return None
+            return None, None
 
     headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % params['access_token'] }
     url = "https://management.azure.com" + vm_id + "/instanceView?api-version=2018-06-01"
@@ -227,7 +227,7 @@ def get_os_details(host, vmuuid, params):
         return response.get('osName'), response.get('osVersion')
     else:
         logging.warn("Warning unable to get OS version details for VM [%s]. It might not be running..." % host)
-        return None
+        return None, None
 
 # Get details for all VMs
 def get_vms(access_token, subscription, resource_group):
