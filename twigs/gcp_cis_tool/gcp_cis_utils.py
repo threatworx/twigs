@@ -11,10 +11,20 @@ _iam_policies_by_projects = None
 _compute_instances_by_projects = None
 _services_by_projects = None
 
+_encoding = None
+
+def set_encoding(encoding):
+    global _encoding
+    _encoding = encoding
+
+def get_encoding():
+    global _encoding
+    return _encoding
+
 def run_cmd(cmd):
     try:
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
-        cmd_output = cmd_output.decode('utf-8')
+        cmd_output = cmd_output.decode(get_encoding())
     except subprocess.CalledProcessError:
         logging.error("Error running command [%s]", cmd)
         cmd_output = ""
@@ -24,7 +34,7 @@ def run_gcloud_cmd(cmd):
     cmd = 'gcloud ' + cmd + ' --format=json --quiet'
     try:
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
-        cmd_output = cmd_output.decode('utf-8')
+        cmd_output = cmd_output.decode(get_encoding())
         ret_json = json.loads(cmd_output)
     except subprocess.CalledProcessError:
         logging.error("Error running gcloud command [%s]", cmd)

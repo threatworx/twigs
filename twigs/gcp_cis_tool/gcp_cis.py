@@ -9,8 +9,10 @@ from . import check4 as check4
 from . import check5 as check5
 from . import check6 as check6
 from . import check7 as check7
+from . import gcp_cis_utils as gcp_cis_utils
 
-def run_tests():
+def run_tests(args):
+    gcp_cis_utils.set_encoding(args.encoding)
     config_issues = []
     config_issues.extend(check1.run_checks())
     config_issues.extend(check2.run_checks())

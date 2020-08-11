@@ -21,7 +21,7 @@ def start_docker_container(args):
     out = ''
     try:
         out = subprocess.check_output(cmdarr, shell=True)
-        out = out.decode('utf-8')
+        out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error starting docker container: "+args.image)
         sys.exit(1)
@@ -49,7 +49,7 @@ def get_os_release(args, container_id):
     cmdarr = [base_cmd + cmd]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
-        out = out.decode('utf-8')
+        out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error determining os type for container ID: %s", container_id)
 
@@ -59,7 +59,7 @@ def get_os_release(args, container_id):
         cmdarr = [base_cmd + cmd]
         try:
             out = subprocess.check_output(cmdarr, shell=True)
-            out = out.decode('utf-8')
+            out = out.decode(args.encoding)
         except subprocess.CalledProcessError:
             logging.error("Error determining os type for container ID: %s", container_id)
 
@@ -69,7 +69,7 @@ def get_os_release(args, container_id):
             cmdarr = [base_cmd + cmd]
             try:
                 out = subprocess.check_output(cmdarr, shell=True)
-                out = out.decode('utf-8')
+                out = out.decode(args.encoding)
             except subprocess.CalledProcessError:
                 logging.error("Error determining os type for container ID: %s", container_id)
 
@@ -100,7 +100,7 @@ def get_image_id(args):
     out = ''
     try:
         out = subprocess.check_output(cmdarr)
-        out = out.decode('utf-8')
+        out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error getting image details: "+args.image)
         return None 
@@ -119,13 +119,13 @@ def discover_rh(args, container_id):
     yumout = ''
     try:
         yumout = subprocess.check_output(cmdarr, shell=True)
-        yumout = yumout.decode('utf-8')
+        yumout = yumout.decode(args.encoding)
     except subprocess.CalledProcessError:
         cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/bin/rpm -qa"']
         rpmout = ''
         try:
             rpmout = subprocess.check_output(cmdarr, shell=True)
-            rpmout = rpmout.decode('utf-8')
+            rpmout = rpmout.decode(args.encoding)
         except subprocess.CalledProcessError:
             logging.error("Error running inventory for container ID [%s]", container_id)
             return None
@@ -179,7 +179,7 @@ def discover_ubuntu(args, container_id):
     yumout = ''
     try:
         yumout = subprocess.check_output(cmdarr, shell=True)
-        yumout = yumout.decode('utf-8')
+        yumout = yumout.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error running inventory for container ID: "+container_id)
         return None 
@@ -209,7 +209,7 @@ def discover_openbsd(args, container_id):
     logging.info("Retrieving product details from image")
     try:
         pkgout = subprocess.check_output(cmdarr, shell=True)
-        pkgout = pkgout.decode('utf-8')
+        pkgout = pkgout.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error running inventory for container ID: %s",container_id)
         return None
@@ -231,7 +231,7 @@ def discover_freebsd(args, container_id):
     logging.info("Retrieving product details from image")
     try:
         pkgout = subprocess.check_output(cmdarr, shell=True)
-        pkgout = pkgout.decode('utf-8')
+        pkgout = pkgout.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error running inventory for container ID: %s",container_id)
         return None
@@ -316,7 +316,7 @@ def run_docker_bench(args):
     try:
         os.chdir(os.path.dirname(args.docker_bench_home))
         out = subprocess.check_output([dbench_path+" 2>/dev/null "], shell=True)
-        out = out.decode('utf-8')
+        out = out.decode(args.encoding)
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
         out = ansi_escape.sub('', out)
     except subprocess.CalledProcessError:

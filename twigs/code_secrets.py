@@ -175,7 +175,7 @@ def scan_file_for_secrets(args, base_path, this_file, regex_rules):
         else:
             mm_file = mmap.mmap(fd.fileno(), 0, prot=mmap.PROT_READ)
         lines = mm_file.read(-1)
-        lines = lines.decode('utf-8')
+        lines = lines.decode(args.encoding)
         lines = lines.split('\n')
         line_no = 0
         stripped_file_path = this_file[len(base_path)+1:]

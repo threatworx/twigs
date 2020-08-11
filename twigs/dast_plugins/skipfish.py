@@ -115,14 +115,21 @@ def get_object_id(pdir):
         f.close()
     return oid 
 
-def get_payload(pdir):
+def tw_open(in_file, in_encoding):
+    if sys.version_info[0] < 3:
+        f = open(in_file)
+    else:
+        f = open(in_file, encoding=in_encoding)
+    return f
+
+def get_payload(pdir, encoding):
     out = ''
     if os.path.exists(pdir+'/request.dat'):
-        f = open(pdir+'/request.dat', encoding='latin1')
+        f = tw_open(pdir+'/request.dat', encoding)
         out = out + '\nREQUEST\n'+f.read()
         f.close()
     if os.path.exists(pdir+'/response.dat'):
-        f = open(pdir+'/response.dat', encoding='latin1')
+        f = tw_open(pdir+'/response.dat', encoding)
         out = out + '\nRESPONSE\n'+f.read()
         f.close()
     out = re.sub(r'[^\x00-\x7F]+','', out)
@@ -154,7 +161,7 @@ def parse_skipout(skipout, args):
                             oid = str(hash(i['dir']))
                         issue['object_id'] = oid
                         issue['object_meta'] = ''
-                        issue['details'] = get_payload(os.path.join(root, i['dir']))
+                        issue['details'] = get_payload(os.path.join(root, i['dir']), args.encoding)
                         findings.append(issue)
                 f.close()
     return findings

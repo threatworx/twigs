@@ -10,7 +10,7 @@ def run_gcp_cis_bench(args):
     asset['owner'] = args.handle
     asset['products'] = []
     asset['tags'] = ['Google Cloud Platform', 'CIS']
-    asset['config_issues'] = gcp_cis_tool.run_tests()
+    asset['config_issues'] = gcp_cis_tool.run_tests(args)
     args.no_scan = True
     return asset
 

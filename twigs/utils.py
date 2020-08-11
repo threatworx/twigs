@@ -13,7 +13,7 @@ def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
         try:
             dev_null_device = open(os.devnull, "w")
             pkgout = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
-            pkgout = pkgout.decode('utf-8')
+            pkgout = pkgout.decode(args.encoding)
             dev_null_device.close()
         except subprocess.CalledProcessError:
             if logging_enabled:

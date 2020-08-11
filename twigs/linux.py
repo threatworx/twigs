@@ -391,7 +391,7 @@ def run_ssh_audit(args, assetid, ip):
         cmdarr = [cmd]
         dev_null_device = open(os.devnull, "w")
         audit_out = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
-        audit_out = audit_out.decode('utf-8')
+        audit_out = audit_out.decode(args.encoding)
         dev_null_device.close()
     except subprocess.CalledProcessError as e:
         logging.error("Error running ssh audit: %s" % str(e))

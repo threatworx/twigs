@@ -63,11 +63,11 @@ def push_asset_to_TW(asset, args):
         resp = requests.post(asset_url + auth_data, json=asset, verify=GoDaddyCABundle)
         if resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content.decode('utf-8'))
+            logging.info("Response content: %s", resp.content.decode(args.encoding))
             return asset_id
         else:
             logging.error("Failed to create new asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content.decode('utf-8'))
+            logging.error("Response details: %s", resp.content.decode(args.encoding))
             return None
     else:
         logging.info("Updating asset [%s]", asset_id)
@@ -75,11 +75,11 @@ def push_asset_to_TW(asset, args):
         resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset, verify=GoDaddyCABundle)
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content.decode('utf-8'))
+            logging.info("Response content: %s", resp.content.decode(args.encoding))
             return asset_id
         else:
             logging.error("Failed to update existing asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content.decode('utf-8'))
+            logging.error("Response details: %s", resp.content.decode(args.encoding))
             return None
 
 def push_assets_to_TW(assets, args):
@@ -122,7 +122,7 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started impact refresh...")
             else:
                 logging.error("Failed to start impact refresh")
-                logging.error("Response details: %s", resp.content.decode('utf-8'))
+                logging.error("Response details: %s", resp.content.decode(args.encoding))
         if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo"):
             # Start license compliance assessment
             logging.info("Starting license compliance assessment for assets: %s", ",".join(asset_id_list))
@@ -138,7 +138,7 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started license compliance assessment...")
             else:
                 logging.error("Failed to start license compliance assessment")
-                logging.error("Response details: %s", resp.content.decode('utf-8'))
+                logging.error("Response details: %s", resp.content.decode(args.encoding))
 
 def add_asset_tags(assets, tags):
     for asset in assets:
@@ -195,6 +195,7 @@ def main(args=None):
         parser.add_argument('--quiet', action='store_true', help='Disable verbose logging')
         if sys.platform != 'win32':
             parser.add_argument('--schedule', help='Run this twigs command at specified schedule (crontab format)')
+        parser.add_argument('--encoding', help='Specify the encoding. Default is "latin-1"', default='latin-1')
         parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS)
         # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
@@ -243,7 +244,7 @@ def main(args=None):
         parser_repo = subparsers.add_parser ("repo", help = "Discover project repository as asset")
         parser_repo.add_argument('--repo', help='Local path or git repo url for project', required=True)
         parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
-        parser_repo.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shalllow')
+        parser_repo.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shallow')
         parser_repo.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
         parser_repo.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
         # Switches related to secrets scan for repo
