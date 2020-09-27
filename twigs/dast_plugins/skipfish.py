@@ -184,7 +184,7 @@ def run(args):
         params = " " + params + " " + rparams + " " + args.url
     else:
         params = " " + rparams + " " + args.url
-    logging.info("skipfish command line: "+SKIPFISH + " " + params)
+    #logging.info("skipfish command line: "+SKIPFISH + " " + params)
     cmdarr = [SKIPFISH + " " + params]
     try:
         out = subprocess.check_output(cmdarr, shell=True)

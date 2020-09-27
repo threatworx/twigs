@@ -9,8 +9,9 @@ import json
 import tempfile
 import traceback
 from .dast_plugins import skipfish as skipfish
+from .dast_plugins import arachni as arachni 
 
-dast_plugins = ["skipfish"]
+dast_plugins = ["skipfish", "arachni"]
 
 def get_inventory(args):
     if args.plugin not in dast_plugins:
@@ -44,7 +45,9 @@ def get_inventory(args):
 
 def run_dast(args):
     findings = []
-    if args.plugin == 'skipfish':
+    if args.plugin == 'arachni':
+        findings = arachni.run(args)
+    elif args.plugin == 'skipfish':
         findings = skipfish.run(args)
     #print json.dumps(findings, indent=4)
     return findings
