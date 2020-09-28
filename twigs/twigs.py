@@ -301,8 +301,9 @@ def main(args=None):
         # Arguments required for ssl audit 
         parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed")
         parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
-        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
         parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
+        parser_ssl_audit.add_argument('--info', help='Report LOW / INFO level issues', action='store_true')
+        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
         parser_ssl_audit.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
 
         # Arguments required for web-app discovery and testing
