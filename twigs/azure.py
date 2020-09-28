@@ -67,12 +67,17 @@ def parse_inventory(email,data,params):
     hosts = []
     assets = []
     asset_map = {}
+    not_running_vms = {}
     for i in range(len(data)):
         if data[i][4] == 'WindowsServices': #ConfigDataType
             continue
         host = data[i][5]
         vmuuid = data[i][6]
         publisher = data[i][2]
+
+        # If VM is known to be not running, then skip it
+        if not_running_vms.get(vmuuid) == 1:
+            continue
 
         if host not in hosts  and publisher != '0':
             patches = []
@@ -96,7 +101,11 @@ def parse_inventory(email,data,params):
                 products.append(pname+' ' + pversion)
             asset_map['products'] = products
             asset_map['patches'] = patches
-            os, os_version = get_os_details(host, vmuuid, params)
+            vm_running, os, os_version = get_os_details(host, vmuuid, params)
+            if vm_running == False:
+                # skip vm's which are not running
+                not_running_vms[vmuuid] = 1
+                continue
             asset_map['type'] = get_os_type(os)
             if len(asset_map['type']) > 0:
                 asset_map['tags'].append(asset_map['type'])
@@ -200,6 +209,19 @@ def get_access_token(params):
 
     return token
 
+def is_vm_running(vm_json):
+    statuses = vm_json.get('statuses')
+    if statuses is None:
+        return False
+    for status in statuses:
+        status_code = status.get('code')
+        if status_code is not None and status_code.startswith('PowerState/'):
+            if status_code.split('/')[1] == "running":
+                return True
+            else:
+                return False
+    return False
+
 # Try to get OS details for given VM
 def get_os_details(host, vmuuid, params):
     all_vms = get_all_vms(params)
@@ -216,7 +238,7 @@ def get_os_details(host, vmuuid, params):
         alt_vmuuid = alt_vmuuid + '-%s-%s' % (tokens[3], tokens[4])
         vm_id = all_vms.get(alt_vmuuid)
         if vm_id is None:
-            return None, None
+            return False, None, None
 
     headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % params['access_token'] }
     url = "https://management.azure.com" + vm_id + "/instanceView?api-version=2018-06-01"
@@ -224,10 +246,13 @@ def get_os_details(host, vmuuid, params):
     resp = requests.get(url, headers=headers)
     if resp.status_code == 200:
         response = resp.json()
-        return response.get('osName'), response.get('osVersion')
+        if is_vm_running(response):
+            return True, response.get('osName'), response.get('osVersion')
+        else:
+            return False, None, None
     else:
         logging.warn("Warning unable to get OS version details for VM [%s]. It might not be running..." % host)
-        return None, None
+        return False, None, None
 
 # Get details for all VMs
 def get_vms(access_token, subscription, resource_group):
