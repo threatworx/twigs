@@ -297,30 +297,34 @@ optional arguments:
 
 Mode: ssl_audit
 $ twigs ssl_audit --help
-usage: twigs ssl_audit [-h] --url URL --assetid ASSETID [--args ARGS] [--assetname ASSETNAME]
+usage: twigs ssl_audit [-h] --url URL [--args ARGS] [--info] --assetid ASSETID [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
   --url URL             HTTPS URL
+  --args ARGS           Optional extra arguments
+  --info                Report LOW / INFO level issues
   --assetid ASSETID     A unique ID to be assigned to the discovered web URL
                         asset
-  --args ARGS           Optional extra arguments
   --assetname ASSETNAME
                         Optional name/label to be assigned to the web URL
                         asset
 
 Mode: dast
 $ twigs dast --help
-usage: twigs dast [-h] --url URL --assetid ASSETID [--plugin PLUGIN] [--args ARGS] [--assetname ASSETNAME]
+usage: twigs dast [-h] --url URL [--plugin {arachni,skipfish}] [--pluginpath PLUGINPATH] [--args ARGS] --assetid ASSETID [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --url URL             Application URL
+  --url URL             Web application URL
+  --plugin PLUGIN       DAST plugin to be used. Default is arachni. Requires
+                        the plugin to be installed separately.
+  --pluginpath PLUGINPATH
+                        Path where the DAST plugin is installed to be used.
+                        Default is /usr/bin.
+  --args ARGS           Optional extra arguments to be passed to the plugin
   --assetid ASSETID     A unique ID to be assigned to the discovered webapp
                         asset
-  --plugin PLUGIN       DAST plugin to be used. Default is skipfish. Requires
-                        the plugin to be installed separately.
-  --args ARGS           Optional extra arguments to be passed to the plugin
   --assetname ASSETNAME
                         Optional name/label to be assigned to the webapp asset
 

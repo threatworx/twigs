@@ -309,7 +309,7 @@ def main(args=None):
         # Arguments required for web-app discovery and testing
         parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
         parser_webapp.add_argument('--url', help='Web application URL', required=True)
-        parser_webapp.add_argument('--plugin', help='DAST plugin to be used. Default is arachni. Requires the plugin to be installed separately.', default='arachni')
+        parser_webapp.add_argument('--plugin', choices=['arachni', 'skipfish'], help='DAST plugin to be used. Default is arachni. Requires the plugin to be installed separately.', default='arachni')
         parser_webapp.add_argument('--pluginpath', help='Path where the DAST plugin is installed to be used. Default is /usr/bin.', default='/usr/bin')
         parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
         parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
