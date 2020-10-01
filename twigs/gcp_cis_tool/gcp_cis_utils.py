@@ -123,6 +123,14 @@ def get_compute_instances_by_projects():
         _compute_instances_by_projects[p] = out_json
     return _compute_instances_by_projects
 
+def get_compute_instances_with_os_inventory_by_projects():
+    compute_instances_by_projects = { }
+    projects = get_compute_enabled_projects()
+    for p in projects:
+        out_json = run_gcloud_cmd("compute instances os-inventory --project=%s list-instances" % p)
+        compute_instances_by_projects[p] = out_json
+    return compute_instances_by_projects
+
 def add_members_with_role(entry, role, add_to_set):
     if entry['role'] == role:
         for m in entry['members']:

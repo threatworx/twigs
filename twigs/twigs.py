@@ -29,6 +29,7 @@ from . import linux
 from . import repo
 from . import docker
 from . import azure
+from . import gcp
 from . import servicenow
 from . import inv_file
 from . import fingerprint
@@ -218,6 +219,10 @@ def main(args=None):
         parser_azure.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
         parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
+        # Arguments required for Google Cloud Platform discovery
+        parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform (GCP) instances")
+        parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)
+
         # Arguments required for docker discovery 
         parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
         parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.')
@@ -386,6 +391,8 @@ def main(args=None):
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)
+        elif args.mode == 'gcp':
+            assets = gcp.get_inventory(args)
         elif args.mode == 'servicenow':
             assets = servicenow.get_inventory(args)
         elif args.mode == 'repo':

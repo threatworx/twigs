@@ -106,25 +106,28 @@ def get_os_release(args, host=None):
 
 
 def get_asset_type(os):
-    if "CentOS" in os:
+    os = os.lower()
+    if "centos" in os:
         return "CentOS"
-    elif "Red Hat" in os:
+    elif "red hat" in os:
         return "Red Hat"
-    elif "Ubuntu" in os:
+    elif "ubuntu" in os:
         return "Ubuntu"
-    elif "Debian" in os:
+    elif "debian" in os:
         return "Debian"
-    elif "Amazon Linux" in os:
+    elif "amazon linux" in os:
         return "Amazon Linux"
-    elif "Oracle Linux" in os:
+    elif "oracle linux" in os:
         return "Oracle Linux"
-    elif "FreeBSD" in os:
+    elif "freebsd" in os:
         return "FreeBSD"
-    elif "OpenBSD" in os:
+    elif "openbsd" in os:
         return "OpenBSD"
-    elif "Mac OS" in os:
+    elif "suse" in os:
+        return "Suse"
+    elif "mac os" in os:
         return "Mac OS"
-    elif "Windows" in os:
+    elif "windows" in os:
         return "Windows"
     else:
         logging.error("Not a supported OS type [%s]" % os)

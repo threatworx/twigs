@@ -35,7 +35,7 @@ source bin/activate
 pip install twigs
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -70,6 +70,7 @@ modes:
 {aws,azure,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
     aws                 Discover AWS instances
     azure               Discover Azure instances
+    gcp                 Discover Google Cloud Platform (GCP) instances
     docker              Discover docker instances
     file                Discover inventory from file
     host                Discover linux host assets
@@ -127,6 +128,16 @@ optional arguments:
   --enable_tracking_tags
                         Enable recording Azure specific information (like
                         Azure Tenant ID, etc.) as asset tags
+
+Mode: gcp
+$ twigs gcp --help
+usage: twigs gcp [-h] [--enable_tracking_tags]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --enable_tracking_tags
+                        Enable recording GCP specific information (like
+                        Project ID, etc.) as asset tags
 
 Mode: docker
 $ twigs docker --help
