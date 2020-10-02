@@ -34,6 +34,13 @@ def get_installed_packages(ci_json):
             logging.error("Error: Compute instance [%s] has unknown package type [%s]", ci_json['SystemInformation']['LongName'], ptype)
     return plist
 
+def is_compute_running(project, ci_name, ci_zone):
+    ci_status_cmd = "compute instances --project=%s describe %s --zone=%s" % (project, ci_name, ci_zone)
+    ci_json = gcp_cis_utils.run_gcloud_cmd(ci_status_cmd)
+    if ci_json['status'] == 'RUNNING':
+        return True
+    return False
+
 def process_compute_inventory_json(args, project_id, ci_id, ci_json):
     ci_name = ci_json['SystemInformation']['Hostname']
     asset_os = ci_json['SystemInformation']['LongName']
@@ -69,6 +76,11 @@ def get_inventory(args):
             ci_id = compute_instance['id']
             ci_name = compute_instance['name']
             ci_zone = compute_instance['zone'].split('/')[-1]
+
+            if is_compute_running(project, ci_name, ci_zone) == False:
+                # Do not refresh assets which are not running anymore
+                continue
+
             ci_inventory_cmd = "compute instances os-inventory --project=%s describe %s --zone=%s" % (project, ci_name, ci_zone)
             ci_inventory_json = gcp_cis_utils.run_gcloud_cmd(ci_inventory_cmd)
             asset = process_compute_inventory_json(args, project, ci_id, ci_inventory_json)
