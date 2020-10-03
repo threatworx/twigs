@@ -142,6 +142,9 @@ class EC2Impl(AWS):
                         s = f.read()
                         #print s
                         data.append(json.loads(s))
+                    if data[0].get('InstanceStatus') == 'Terminated':
+                        # skip instances which are not running
+                        continue
                     asset = {}
                     asset['id'] = data[0]['resourceId']
                     asset['name'] = data[0]['ComputerName']
