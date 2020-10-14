@@ -40,7 +40,7 @@ def parse_arachni(outjson, args):
     for i in issues:
         idict = {}
         idict['asset_id'] = args.assetid
-        idict['twc_id'] = 'ARACHNI-' + hashlib.md5(i['name']).hexdigest()
+        idict['twc_id'] = 'ARACHNI-' + hashlib.md5(str(i['name']).encode('utf-8')).hexdigest()
         idict['twc_title'] = i['name']
         idict['rating'] = get_rating(i['severity'])
         idict['object_id'] = i['page']['dom']['url'] 
