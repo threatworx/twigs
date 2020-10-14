@@ -95,8 +95,9 @@ def discover_macos(args, host):
         # Home brew is present
         cmdarr = ["brew list --versions"]
         pkgout = utils.run_cmd_on_host(args, host, cmdarr)
-        for l in pkgout.splitlines():
-            plist.append(l.strip())
+        if pkgout is not None:
+            for l in pkgout.splitlines():
+                plist.append(l.strip())
         
     logging.info("Completed retrieval of product details")
     return plist
