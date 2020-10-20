@@ -60,6 +60,7 @@ def get_issues_from_csv_file(csv_file_path, asset_id):
                 issue['asset_id'] = asset_id
                 issue['twc_title'] = row['LEVEL'] + ' ' + row['TITLE_TEXT']
                 issue['details'] = row['NOTES']
+                issue['type'] = 'AWS CIS'
                 if row['LEVEL'] == 'Level 1':
                     issue['rating'] = '4'
                 else:

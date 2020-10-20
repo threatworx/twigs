@@ -80,6 +80,7 @@ def run_docker_bench(args):
             else:
                 rating = '2'
             issue['rating'] = rating 
+            issue['type'] = 'Docker CIS'
             issue['object_id'] = ''
             issue['object_meta'] = ''
             details = ''

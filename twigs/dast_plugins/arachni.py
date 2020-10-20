@@ -44,6 +44,7 @@ def parse_arachni(outjson, args):
         idict['twc_title'] = i['name']
         idict['rating'] = get_rating(i['severity'])
         idict['object_id'] = i['page']['dom']['url'] 
+        idict['type'] = 'DAST'
         idict['object_meta'] = ''
         idict['details'] = i['description'] 
         findings.append(idict)

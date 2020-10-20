@@ -133,6 +133,41 @@ def get_asset_type(os):
         logging.error("Not a supported OS type [%s]" % os)
         return None
 
+# reference: https://gist.github.com/bencord0/7690953
+def get_unique_asset_id(args, host, asset_type):
+
+    output = run_cmd_on_host(args, host, ["cat /var/lib/dbus/machine-id"], False)
+    if output is not None and len(output.strip()) > 0:
+        return output.strip()
+
+    output = run_cmd_on_host(args, host, ["cat /sys/class/dmi/id/product_uuid"], False)
+    if output is not None and len(output.strip()) > 0:
+        return output.strip()
+
+    # For FreeBSD
+    output = run_cmd_on_host(args, host, ["sysctl kern.hostuuid"], False)
+    if output is not None and len(output.strip()) > 0:
+        return output.strip()
+
+    # For Mac OS
+    output = run_cmd_on_host(args, host, ["sysctl kern.uuid"], False)
+    if output is not None and len(output.strip()) > 0:
+        return output.strip()
+
+    # If nothing worked, then try to get MAC Address
+    return get_mac_address(args, host, asset_type)
+
+def get_mac_address(args, host, asset_type):
+    if asset_type in ['Ubuntu', 'CentOS', 'Red Hat', 'Suse', 'Debian']:
+        interface = 'eth0:' if asset_type != 'Debian' else 'ens4'
+        output = run_cmd_on_host(args, host, ["ip link"], True)
+        lines = output.splitlines()
+        for i in range(len(lines)):
+            if 'eth0:' in lines[i]:
+                return lines[i+1].split()[1]
+    elif asset_type == 'Mac OS':
+        return run_cmd_on_host(args, host, ["ifconfig en1 | awk '/ether/{print $2}'"], True)
+    return None
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

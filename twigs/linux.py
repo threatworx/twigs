@@ -240,7 +240,6 @@ def discover(args):
 
                             # Remove hard-coded asset ID and name for CIDR, as it will overwrite same asset
                             # These will based on host IP address automatically
-                            trow['assetid'] = None
                             trow['assetname'] = None
                         
                             remote_hosts.append(trow)
@@ -284,7 +283,7 @@ def discover(args):
                         return None
             # secure the new rows in the file
             with open(host_list_file, mode='w') as csvfile:
-                fieldnames = ['hostname','userlogin','userpwd','privatekey','assetid','assetname']
+                fieldnames = ['hostname','userlogin','userpwd','privatekey','assetname']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_NONE, escapechar='\\')
                 writer.writeheader()
                 for h in remote_hosts:
@@ -300,6 +299,7 @@ def discover(args):
         host = { }
         host['assetid'] = utils.get_ip() if args.assetid is None else args.assetid
         host['assetname'] = host['assetid'] if args.assetname is None else args.assetname
+        host['hostname'] = host['assetid']
         host['remote'] = False
         hosts = [ host ]
         return discover_hosts(args, hosts)
@@ -312,7 +312,7 @@ def discover_hosts(args, hosts):
             if args.no_ssh_audit == False and host['remote'] == True:
                 ssh_config_issues = []
                 try:
-                    ssh_config_issues = run_ssh_audit(args, args.assetid, host['hostname'])
+                    ssh_config_issues = run_ssh_audit(args, asset['id'], host['hostname'])
                 except Exception as e:
                     logging.error("Error parsing ssh audit: %s" % str(e))
                     logging.error(traceback.format_exc())
@@ -324,30 +324,35 @@ def discover_hosts(args, hosts):
 
 def discover_host(args, host):
 
-    asset_id = host['assetid'] if host.get('assetid') is not None and len(host['assetid']) > 0 else host['hostname']
-    asset_name = host['assetname'] if host.get('assetname') is not None and len(host['assetname']) > 0 else asset_id
-
-    asset_id = asset_id.replace('/','-')
-    asset_id = asset_id.replace(':','-')
-    asset_name = asset_name.replace('/','-')
-    asset_name = asset_name.replace(':','-')
-
-    logging.info("Checking if host [%s] is reachable", asset_id)
+    logging.info("Checking if host [%s] is reachable", host['hostname'])
     if not check_host_up(host):
-        logging.error("Host is not reachable [%s]", asset_id)
+        logging.error("Host is not reachable [%s]", host['hostname'])
         return None
 
-    logging.info("Started inventory discovery for asset [%s]", asset_id)
+    logging.info("Started inventory discovery for asset [%s]", host['hostname'])
 
     os = utils.get_os_release(args, host)
     if os is None:
-        logging.error("Failed to identify OS for asset [%s]", asset_id)
+        logging.error("Failed to identify OS for asset [%s]", host['hostname'])
         return None
 
     atype = utils.get_asset_type(os)
     if atype is None:
-        logging.error("Could not determine asset type for asset [%s]", asset_id)
+        logging.error("Could not determine asset type for asset [%s]", host['hostname'])
         return None
+
+    asset_id = utils.get_unique_asset_id(args, host, atype)
+    if asset_id is None:
+        logging.warning("Could not get Identifier for Asset [%s]", host['hostname'])
+        # Fallback to IP
+        asset_id = host['hostname']
+        logging.warning("Using Hostname/IP [%s] for Asset [%s] as Identifier", asset_id, host['hostname'])
+
+    asset_name = host['assetname'] if host.get('assetname') is not None and len(host['assetname']) > 0 else asset_id
+
+    asset_id = asset_id.replace(':','')
+    asset_name = asset_name.replace('/','-')
+    asset_name = asset_name.replace(':','-')
 
     plist = None
     if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
@@ -420,6 +425,7 @@ def run_ssh_audit(args, assetid, ip):
             issue['asset_id'] = assetid
             issue['object_id'] = ip
             issue['object_meta'] = ''
+            issue['type'] = 'SSH'
             issue_list.append(issue)
         elif rtype in ['(kex)','(key)','(enc)','(mac)']:
             algo = larr[1]

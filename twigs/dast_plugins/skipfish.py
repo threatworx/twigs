@@ -160,6 +160,7 @@ def parse_skipout(skipout, args):
                         if oid == None:
                             oid = str(hash(i['dir']))
                         issue['object_id'] = oid
+                        issue['type'] = 'DAST'
                         issue['object_meta'] = ''
                         issue['details'] = get_payload(os.path.join(root, i['dir']), args.encoding)
                         findings.append(issue)

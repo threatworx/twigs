@@ -52,6 +52,7 @@ def create_issue(twc_id, twc_title, details, rating, object_id, object_meta):
     issue['rating'] = rating
     issue['object_id'] = object_id
     issue['object_meta'] = object_meta
+    issue['type'] = 'GCP CIS'
     return issue
 
 def append_issue(config_issues, issue):

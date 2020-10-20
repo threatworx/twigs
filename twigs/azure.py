@@ -85,7 +85,7 @@ def parse_inventory(email,data,params):
             asset_map = {}
             asset_map['owner'] = email
             asset_map['host'] = host
-            asset_map['id'] = host
+            asset_map['id'] = vmuuid
             asset_map['name'] = host
             asset_map['tags'] = [ ]
             asset_map['patch_tracker'] = { } # To help remove duplicate patches

@@ -15,6 +15,7 @@ def get_issues_from_csv_file(config_issues_csv, assetid):
             issue['asset_id'] = assetid
             issue['twc_title'] = row['CHECK']
             issue['details'] = row['DETAILS']
+            issue['type'] = 'Azure CIS'
             issue['rating'] = '4'
             issue['object_id'] = row['SUBSCRIPTION']
             issue['object_meta'] = ''
