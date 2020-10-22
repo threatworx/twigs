@@ -225,6 +225,31 @@ def discover_openbsd(args, container_id):
     logging.info("Completed retrieval of product details from image")
     return plist
 
+def discover_alpine(args, container_id):
+    plist = []
+    cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/ash -c "/sbin/apk list"']
+    logging.info("Retrieving product details from image")
+    try:
+        pkgout = subprocess.check_output(cmdarr, shell=True)
+        pkgout = pkgout.decode(args.encoding)
+    except subprocess.CalledProcessError:
+        logging.error("Error running inventory for container ID: %s",container_id)
+        return None
+
+    begin = False
+    for l in pkgout.splitlines():
+        if l.startswith('WARNING:'):
+            continue
+        pkg = l.split()[0]
+        ps = pkg.split('-')
+        ver = ps[-2] + '-' + ps[-1]
+        pkg = pkg.replace('-'+ver, '')
+        pkg = pkg + ' ' + ver
+        logging.debug("Found product [%s]", pkg)
+        plist.append(pkg)
+    logging.info("Completed retrieval of product details")
+    return plist
+
 def discover_freebsd(args, container_id):
     plist = []
     cmdarr = [docker_cli+' exec -i -t '+container_id+' /bin/sh -c "/usr/sbin/pkg info"']
@@ -275,6 +300,8 @@ def discover(args, atype, os_release, container_id):
         plist = discover_freebsd(args, container_id)
     elif atype == 'OpenBSD':
         plist = discover_openbsd(args, container_id)
+    elif atype == 'Alpine':
+        plist = discover_alpine(args, container_id)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory container ID: "+container_id)

@@ -79,7 +79,7 @@ def discover_alpine(args, host):
         ps = pkg.split('-')
         ver = ps[-2] + '-' + ps[-1]
         pkg = pkg.replace('-'+ver, '')
-        pkg = pkg + ' ' ver
+        pkg = pkg + ' ' + ver
         logging.debug("Found product [%s]", pkg)
         plist.append(pkg)
     logging.info("Completed retrieval of product details")
