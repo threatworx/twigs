@@ -48,7 +48,6 @@ def discover_openbsd(args, host):
     logging.info("Completed retrieval of product details")
     return plist
 
-
 def discover_freebsd(args, host):
     plist = []
     cmdarr = ["/usr/sbin/pkg info"]
@@ -61,6 +60,26 @@ def discover_freebsd(args, host):
         pkgline = lsplit[0]
         ldash = pkgline.rfind('-')
         pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
+        logging.debug("Found product [%s]", pkg)
+        plist.append(pkg)
+    logging.info("Completed retrieval of product details")
+    return plist
+
+def discover_alpine(args, host):
+    plist = []
+    cmdarr = ["/sbin/apk list"]
+    logging.info("Retrieving product details")
+    pkgout = utils.run_cmd_on_host(args, host, cmdarr)
+
+    begin = False
+    for l in pkgout.splitlines():
+        if l.startswith('WARNING:'):
+            continue
+        pkg = l.split()[0]
+        ps = pkg.split('-')
+        ver = ps[-2] + '-' + ps[-1]
+        pkg = pkg.replace('-'+ver, '')
+        pkg = pkg + ' ' ver
         logging.debug("Found product [%s]", pkg)
         plist.append(pkg)
     logging.info("Completed retrieval of product details")
@@ -365,6 +384,8 @@ def discover_host(args, host):
         plist = discover_openbsd(args, host)
     elif atype == "Mac OS":
         plist = discover_macos(args, host)
+    elif atype == "Alpine":
+        plist = discover_alpine(args, host)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory asset [%s]", asset_id)

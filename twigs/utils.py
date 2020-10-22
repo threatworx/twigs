@@ -129,6 +129,8 @@ def get_asset_type(os):
         return "Mac OS"
     elif "windows" in os:
         return "Windows"
+    elif "alpine" in os:
+        return "Alpine"
     else:
         logging.error("Not a supported OS type [%s]" % os)
         return None
