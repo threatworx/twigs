@@ -384,7 +384,7 @@ def discover_host(args, host):
         plist = discover_openbsd(args, host)
     elif atype == "Mac OS":
         plist = discover_macos(args, host)
-    elif atype == "Alpine":
+    elif atype == "Alpine Linux":
         plist = discover_alpine(args, host)
 
     if plist == None or len(plist) == 0:

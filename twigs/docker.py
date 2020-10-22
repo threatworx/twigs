@@ -300,7 +300,7 @@ def discover(args, atype, os_release, container_id):
         plist = discover_freebsd(args, container_id)
     elif atype == 'OpenBSD':
         plist = discover_openbsd(args, container_id)
-    elif atype == 'Alpine':
+    elif atype == 'Alpine Linux':
         plist = discover_alpine(args, container_id)
 
     if plist == None or len(plist) == 0:
