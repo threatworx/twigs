@@ -229,6 +229,7 @@ def main(args=None):
         parser_docker.add_argument('--containerid', help='The container ID of a running docker container which needs to be inspected.')
         parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
         parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_docker.add_argument('--tmp_dir', help='Temporary directory to discover container', required=False)
 
         # Arguments required for Host discovery on Linux
         parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")

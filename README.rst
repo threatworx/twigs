@@ -141,7 +141,7 @@ optional arguments:
 
 Mode: docker
 $ twigs docker --help
-usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME] [--tmp_dir TMP_DIR]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -154,6 +154,7 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
+  --tmp_dir TMP_DIR     Temporary directory to discover container
 
 Mode: file
 $ twigs file --help
