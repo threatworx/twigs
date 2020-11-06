@@ -30,6 +30,7 @@ from . import repo
 from . import docker
 from . import azure
 from . import gcp
+from . import gcr
 from . import servicenow
 from . import inv_file
 from . import fingerprint
@@ -94,23 +95,22 @@ def push_assets_to_TW(assets, args):
 def run_scan(asset_id_list, pj_json, args):
     if args.no_scan is not True:
         if len(asset_id_list) == 0:
-            logging.info("No assets to scan...")
+            logging.info("No assets to scan")
             return 
         run_va_scan = True
         run_lic_scan = True
         if pj_json is not None:
             for policy in pj_json['policy_json']:
                 if policy['type'] == 'vulnerability':
-                    logging.info("Impact assessment performed as part of policy evaluation...")
+                    logging.info("Impact assessment performed as part of policy evaluation")
                     run_va_scan = False # VA scan already done, so don't do it again
                 elif policy['type'] == 'license':
-                    logging.info("License compliance performed as part of policy evaluation...")
+                    logging.info("License compliance performed as part of policy evaluation")
                     run_lic_scan = False # License scan already done, so don't do it again
 
         scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
         if run_va_scan:
             # Start VA
-            logging.info("Starting impact refresh for assets: %s", ",".join(asset_id_list))
             scan_payload = { }
             scan_payload['scan_type'] = 'full' 
             scan_payload['assets'] = asset_id_list
@@ -120,13 +120,12 @@ def run_scan(asset_id_list, pj_json, args):
                 scan_payload['mode'] = 'email'
             resp = requests.post(scan_api_url, json=scan_payload, verify=GoDaddyCABundle)
             if resp.status_code == 200:
-                logging.info("Started impact refresh...")
+                logging.info("Started impact refresh")
             else:
                 logging.error("Failed to start impact refresh")
                 logging.error("Response details: %s", resp.content.decode(args.encoding))
         if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo"):
             # Start license compliance assessment
-            logging.info("Starting license compliance assessment for assets: %s", ",".join(asset_id_list))
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
             scan_payload['license_scan'] = True
@@ -136,7 +135,7 @@ def run_scan(asset_id_list, pj_json, args):
                 scan_payload['mode'] = 'email'
             resp = requests.post(scan_api_url, json=scan_payload, verify=GoDaddyCABundle)
             if resp.status_code == 200:
-                logging.info("Started license compliance assessment...")
+                logging.info("Started license compliance assessment")
             else:
                 logging.error("Failed to start license compliance assessment")
                 logging.error("Response details: %s", resp.content.decode(args.encoding))
@@ -158,7 +157,7 @@ def sub_pkg_get_inventory(args):
     try:
         pkg_resources.get_distribution(dist)
     except pkg_resources.DistributionNotFound:
-        logging.error("Error required package [%s] is not installed...", dist)
+        logging.error("Error required package [%s] is not installed", dist)
         logging.error("Please install using command [sudo pip install %s]", dist)
         sys.exit(1)
     module = importlib.import_module('%s.%s' % (dist,dist))
@@ -223,13 +222,53 @@ def main(args=None):
         parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform (GCP) instances")
         parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)
 
+        # Arguments required for Google Cloud Registry container discovery 
+        parser_gcr = subparsers.add_parser ("gcr", help = "Discover Google Cloud Registry (GCR) container images")
+        parser_gcr.add_argument('--repository', help='The GCR image respository url which needs to be inspected.')
+        parser_gcr.add_argument('--image', help='The fully qualified image name (with tag / digest) which needs to be inspected. If tag / digest is not given, latest will be determined and used.')
+        parser_gcr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
+        parser_gcr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
+        parser_gcr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
+        parser_gcr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
+        parser_gcr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_gcr.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+
         # Arguments required for docker discovery 
         parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
         parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.')
         parser_docker.add_argument('--containerid', help='The container ID of a running docker container which needs to be inspected.')
-        parser_docker.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+        parser_docker.add_argument('--assetid', help=argparse.SUPPRESS)
         parser_docker.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_docker.add_argument('--tmp_dir', help='Temporary directory to discover container', required=False)
+        parser_docker.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', default='/tmp')
+        parser_docker.add_argument('--start_instance', action='store_true', help='If image inventory fails, try starting a container instance to inventory contents. Use with caution', required=False)
+        parser_docker.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_docker.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_docker.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+
 
         # Arguments required for Host discovery on Linux
         parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
@@ -338,7 +377,7 @@ def main(args=None):
         if args.insecure:
             GoDaddyCABundle = False
 
-        logging.info('Started new run...')
+        logging.info('Started new run')
         logging.debug('Arguments: %s', str(args))
 
         if args.handle is None:
@@ -346,13 +385,13 @@ def main(args=None):
             if temp is None:
                 logging.error('Error: Missing "--handle" argument and "TW_HANDLE" environment variable is not set as well')
                 sys.exit(1)
-            logging.info('Using handle specified in "TW_HANDLE" environment variable...')
+            logging.info('Using handle specified in "TW_HANDLE" environment variable')
             args.handle = temp
 
         if args.token is None:
             temp = os.environ.get('TW_TOKEN')
             if temp is not None:
-                logging.info('Using token specified in "TW_TOKEN" environment variable...')
+                logging.info('Using token specified in "TW_TOKEN" environment variable')
                 args.token = temp
 
         if args.token is None and args.apply_policy is not None:
@@ -362,7 +401,7 @@ def main(args=None):
         if args.instance is None:
             temp = os.environ.get('TW_INSTANCE')
             if temp is not None:
-                logging.info('Using instance specified in "TW_INSTANCE" environment variable...')
+                logging.info('Using instance specified in "TW_INSTANCE" environment variable')
                 args.instance = temp
             elif args.token is not None:
                 # missing instance but token is specified
@@ -374,7 +413,7 @@ def main(args=None):
 #        sys.exit(1)
 
         if (args.token is None or len(args.token) == 0) and args.out is None:
-            logging.error('[token] argument is not specified and [out] argument is not specified. Unable to share discovered assets...exiting....')
+            logging.error('[token] argument is not specified and [out] argument is not specified. Unable to share discovered assets.')
             sys.exit(1)
 
         if args.schedule is not None and sys.platform != 'win32':
@@ -394,6 +433,8 @@ def main(args=None):
             assets = azure.get_inventory(args)
         elif args.mode == 'gcp':
             assets = gcp.get_inventory(args)
+        elif args.mode == 'gcr':
+            assets = gcr.get_inventory(args)
         elif args.mode == 'servicenow':
             assets = servicenow.get_inventory(args)
         elif args.mode == 'repo':
@@ -486,13 +527,13 @@ def main(args=None):
                         njob.setall(args.schedule)
                         logging.info("Added to crontab with comment [%s]", cron_comment)
 
-        logging.info('Run completed...')
+        logging.info('Run completed')
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
             sys.exit(exit_code)
 
     except Exception as e:
-        logging.error("Something went wrong with this twigs run...")
+        logging.error("Something went wrong with this twigs run")
         st = traceback.format_exc()
         logging.error("Exception trace details: %s", st)
         sys.exit(1)

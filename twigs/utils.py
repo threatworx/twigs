@@ -104,7 +104,6 @@ def get_os_release(args, host=None):
                 return l.split('=')[1].replace('"','')
     return None
 
-
 def get_asset_type(os):
     os = os.lower()
     if "centos" in os:

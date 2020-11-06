@@ -14,6 +14,7 @@ import importlib
 import io
 
 from . import utils
+from . import repo 
 
 docker_cli = ""
 
@@ -45,7 +46,7 @@ def untar(tar_file, untar_directory):
             out = subprocess.check_output(cmdarr, shell=True)
             return
         except subprocess.CalledProcessError:
-            logging.warning("Unable to untar container image tar file")
+            logging.error("Unable to untar container image tar file")
             tar_failed = True
 
     if tar_cmd is None or tar_failed:
@@ -98,7 +99,7 @@ def save_image(args, working_dir):
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.warning("Unable to save container image as tar archive")
+        logging.error("Unable to save container image as tar archive")
         return None
     return container_tar
 
@@ -111,7 +112,7 @@ def export_container(args, working_dir):
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.warning("Unable to export container file system as tar archive")
+        logging.error("Unable to export container file system as tar archive")
         return None
     return container_tar
 
@@ -124,7 +125,7 @@ def start_docker_container(args):
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.warning("Unable to  start docker container: "+args.image)
+        logging.error("Unable to start container: "+args.image)
         return None
     container_id = out[:12]
     logging.info("Started container with ID ["+container_id+"] from image ["+args.image+"] for discovery")
@@ -141,6 +142,15 @@ def stop_docker_container(args, container_id):
         logging.error("Error stopping docker container with container ID ["+container_id+"]")
         return
     logging.info("Stopped container with ID ["+container_id+"]")
+
+def remove_image(args):
+    cmdarr = [docker_cli, "image", "rm", "-f", args.image]
+    try:
+        out = subprocess.check_output(cmdarr)
+    except subprocess.CalledProcessError:
+        logging.error("Error removing docker image: "+args.image)
+        return False
+    return True
 
 def pull_image(args):
     cmdarr = [docker_cli, "pull", args.image]
@@ -181,8 +191,6 @@ def create_asset(args, os_release, atype, plist):
         asset_name = args.assetname
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
-    asset_name = asset_name.replace('/','-')
-    asset_name = asset_name.replace(':','-')
 
     asset_data = {}
     asset_data['id'] = asset_id
@@ -192,6 +200,7 @@ def create_asset(args, os_release, atype, plist):
     asset_data['products'] = plist
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_release)
+    asset_tags.append('IMAGE_NAME:' + asset_name)
     asset_tags.append('Docker')
     asset_tags.append('Container')
     asset_tags.append('Linux')
@@ -218,13 +227,13 @@ def discover_rh_from_container_image(container_fs):
     try:
         pkg_resources.get_distribution('rpm')
     except pkg_resources.DistributionNotFound as err:
-        logging.warning("Warning: %s", err)
-        logging.warning("Warning: python-rpm module not found. Please install [python2-rpm] or [python3-rpm] from your distro package manager")
+        logging.warning("%s", err)
+        logging.warning("python-rpm module not found. Please install [python2-rpm] or [python3-rpm] from your distro package manager")
         return []
     try:
         rpm_module = importlib.import_module('rpm')
     except ImportError as err:
-        logging.warning("Warning: %s", err)
+        logging.warning("%s", err)
         return []
 
     if hasattr(rpm_module, 'addMacro') == False:
@@ -291,11 +300,20 @@ def discover_alpine_from_container_image(container_fs):
                 ver = line.split(':')[1].strip()
     return plist
 
+def create_open_source_asset(args, container_fs):
+    args.repo = container_fs
+    oa = repo.discover_inventory(args, container_fs)
+    if oa != None:
+        oa[0]['id'] = oa[0]['id']+'-opensource'
+        oa[0]['tags'].append('IMAGE_NAME:'+args.assetname)
+    return oa
+
 def discover_container_from_image(args):
+    casset = None
     temp_dir = None
     try:
         temp_dir = make_temp_directory(args.tmp_dir)
-        logging.info("Retrieving container filesystem for inventory...")
+        logging.info("Retrieving container filesystem")
         if args.image is not None:
             container_tar = save_image(args, temp_dir)
             container_fs = get_container_fs(container_tar)
@@ -304,39 +322,48 @@ def discover_container_from_image(args):
             container_fs = unpack_container_fs(container_tar)
 
         if container_fs is None:
-            logging.warning("Unable to analyze container filesystem...")
+            logging.warning("Unable to analyze container filesystem")
             shutil.rmtree(temp_dir, onerror = on_rm_error)
             return None
 
-        logging.info("Analyzing container filesystem for inventory...")
+        oa = create_open_source_asset(args, container_fs)
+        if oa != None:
+            casset = [] + oa
+
+        logging.info("Analyzing container filesystem")
         os_release = get_os_release_from_container_image(args, container_fs)
         if os_release is None:
             shutil.rmtree(temp_dir, onerror = on_rm_error)
-            return None
+            return casset 
 
         atype = utils.get_asset_type(os_release)
         if atype is None:
             shutil.rmtree(temp_dir, onerror = on_rm_error)
-            return None
+            return casset 
 
         plist = None
-        logging.info("Retrieving product details from container image")
         if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
             plist = discover_rh_from_container_image(container_fs)
         elif atype == 'Ubuntu' or atype == 'Debian':
             plist = discover_ubuntu_from_container_image(container_fs)
         elif atype == 'Alpine Linux':
             plist = discover_alpine_from_container_image(container_fs)
-        logging.info("Completed retrieval of product details from container image")
 
         shutil.rmtree(temp_dir, onerror = on_rm_error)
         if plist is None or len(plist) == 0:
-            return None
+            return casset 
 
-        return create_asset(args, os_release, atype, plist)
+        basset = create_asset(args, os_release, atype, plist)
+        if casset:
+            casset = casset + basset 
+        else:
+            casset = basset
+
+        return casset
 
     except Exception:
         logging.warning("Unable to discover container from image")
+        print(traceback.format_exc())
         if args.containerid is not None:
             logging.error(traceback.format_exc())
         if temp_dir is not None:
@@ -353,7 +380,7 @@ def get_os_release_from_container_instance(args, container_id):
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.error("Error determining os type for container ID: %s", container_id)
+        logging.error("Unable to determine os type for container ID: %s", container_id)
 
     if out is None or out.strip() == '':
         # try FreeBSD
@@ -363,7 +390,7 @@ def get_os_release_from_container_instance(args, container_id):
             out = subprocess.check_output(cmdarr, shell=True)
             out = out.decode(args.encoding)
         except subprocess.CalledProcessError:
-            logging.error("Error determining os type for container ID: %s", container_id)
+            logging.error("Unable to determine os type for container ID: %s", container_id)
 
         if out is not None and 'FreeBSD' not in out:
             # try OpenBSD
@@ -373,10 +400,10 @@ def get_os_release_from_container_instance(args, container_id):
                 out = subprocess.check_output(cmdarr, shell=True)
                 out = out.decode(args.encoding)
             except subprocess.CalledProcessError:
-                logging.error("Error determining os type for container ID: %s", container_id)
+                logging.error("Unable to determine os type for container ID: %s", container_id)
 
     if out is None:
-        logging.error("Failed to get os-release")
+        logging.error("Failed to get os type for container")
         return None
 
     if 'FreeBSD' in out or 'OpenBSD' in out:
@@ -402,7 +429,7 @@ def discover_rh_from_container_instance(args, container_id):
             rpmout = subprocess.check_output(cmdarr, shell=True)
             rpmout = rpmout.decode(args.encoding)
         except subprocess.CalledProcessError:
-            logging.error("Error running inventory for container ID [%s]", container_id)
+            logging.error("Unable to run inventory for container ID [%s]", container_id)
             return None
         for l in rpmout.splitlines():
             tokens = l.split('-')
@@ -413,7 +440,6 @@ def discover_rh_from_container_instance(args, container_id):
             else:
                 version = tokens[length-2]+'-'+tokens[length-1]
                 pname = "-".join(tokens[:-2])
-            logging.debug("Found product [%s %s]", pname, version)
             plist.append(pname+' '+version)
         return plist
 
@@ -436,7 +462,6 @@ def discover_rh_from_container_instance(args, container_id):
         if ':' in ver:
             ver = ver.split(':')[1]
         ver = ver + "." + arch
-        logging.debug("Found product [%s %s]", pkg, ver)
         pkg_ver = pkg+' '+ver
         pkg_ver = pkg_ver.replace('\x1b[1m','')
         pkg_ver = pkg_ver.replace('\x1b[1','')
@@ -457,7 +482,7 @@ def discover_ubuntu_from_container_instance(args, container_id):
         yumout = subprocess.check_output(cmdarr, shell=True)
         yumout = yumout.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.error("Error running inventory for container ID: "+container_id)
+        logging.error("Unable to run inventory for container ID: "+container_id)
         return None 
 
     begin = False
@@ -474,7 +499,6 @@ def discover_ubuntu_from_container_instance(args, container_id):
         pkg = pkg.replace('\x1b[32m','')
         pkg = pkg.replace('\x1b[0m','')
         ver = lsplit[1]
-        logging.debug("Found product [%s %s]", pkg, ver)
         plist.append(pkg+' '+ver)
     return plist
 
@@ -485,7 +509,7 @@ def discover_openbsd_from_container_instance(args, container_id):
         pkgout = subprocess.check_output(cmdarr, shell=True)
         pkgout = pkgout.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.error("Error running inventory for container ID: %s",container_id)
+        logging.error("Unable to run inventory for container ID: %s",container_id)
         return None
 
     begin = False
@@ -494,7 +518,6 @@ def discover_openbsd_from_container_instance(args, container_id):
         pkgline = lsplit[0]
         ldash = pkgline.rfind('-')
         pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
-        logging.debug("Found product [%s]", pkg)
         plist.append(pkg)
     return plist
 
@@ -505,7 +528,7 @@ def discover_alpine_from_container_instance(args, container_id):
         pkgout = subprocess.check_output(cmdarr, shell=True)
         pkgout = pkgout.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.error("Error running inventory for container ID: %s",container_id)
+        logging.error("Unable to run inventory for container ID: %s",container_id)
         return None
 
     begin = False
@@ -517,7 +540,6 @@ def discover_alpine_from_container_instance(args, container_id):
         ver = ps[-2] + '-' + ps[-1]
         pkg = pkg.replace('-'+ver, '')
         pkg = pkg + ' ' + ver
-        logging.debug("Found product [%s]", pkg)
         plist.append(pkg)
     return plist
 
@@ -528,7 +550,7 @@ def discover_freebsd_from_container_instance(args, container_id):
         pkgout = subprocess.check_output(cmdarr, shell=True)
         pkgout = pkgout.decode(args.encoding)
     except subprocess.CalledProcessError:
-        logging.error("Error running inventory for container ID: %s",container_id)
+        logging.error("Unable to run inventory for container ID: %s",container_id)
         return None
 
     begin = False
@@ -537,7 +559,6 @@ def discover_freebsd_from_container_instance(args, container_id):
         pkgline = lsplit[0]
         ldash = pkgline.rfind('-')
         pkg = pkgline[:ldash] + ' ' + pkgline[ldash + 1:]
-        logging.debug("Found product [%s]", pkg)
         plist.append(pkg)
     return plist
 
@@ -549,14 +570,13 @@ def discover_container_from_instance(args):
     os_release = get_os_release_from_container_instance(args, container_id)
     if os_release is None:
         stop_docker_container(args, container_id)
-        sys.exit(1)
+        return None
     atype = utils.get_asset_type(os_release)
     if atype is None:
         stop_docker_container(args, container_id)
-        sys.exit(1)
+        return None
 
     plist = None
-    logging.info("Retrieving product details from container instance")
     if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
         plist = discover_rh_from_container_instance(args, container_id)
     elif atype == 'Ubuntu' or atype == 'Debian':
@@ -567,7 +587,6 @@ def discover_container_from_instance(args):
         plist = discover_openbsd_from_container_instance(args, container_id)
     elif atype == 'Alpine Linux':
         plist = discover_alpine_from_container_instance(args, container_id)
-    logging.info("Completed retrieval of product details from container instance")
 
     stop_docker_container(args, container_id)
     if plist == None or len(plist) == 0:
@@ -583,13 +602,13 @@ def run_docker_bench(args):
     os_release = utils.get_os_release(args, None)
     if os_release == None:
         logging.error('Unsupported OS type for running docker bench')
-        sys.exit(1) 
+        return None
     atype = utils.get_asset_type(os_release)
 
     dbench_path = args.docker_bench_home + DBENCH
     if not os.path.isfile(dbench_path) or not os.access(dbench_path, os.X_OK):
         logging.error('Docker bench script not found')
-        sys.exit(1) 
+        return None
     logging.info('Running docker bench script: '+dbench_path)
     try:
         os.chdir(os.path.dirname(args.docker_bench_home))
@@ -598,9 +617,8 @@ def run_docker_bench(args):
         ansi_escape = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
         out = ansi_escape.sub('', out)
     except subprocess.CalledProcessError:
-        logging.error("Error running docker bench script")
+        logging.error("Unable to run docker bench script")
         return None 
-    logging.info("docker bench run completed")
 
     asset_data = {}
     asset_data['id'] = asset_id
@@ -652,35 +670,43 @@ def get_inventory(args):
 
     if os.geteuid() != 0:
         logging.error("Docker operations need root privilege. Please run as 'sudo' or 'root'")
-        sys.exit(1)
+        return None
 
     docker_cli = docker_available()
     if not docker_cli:
-        sys.exit(1)
+        logging.error("Docker CLI not available")
+        return None
 
     if args.image is None and args.containerid is None:
-        logging.error("Error either docker image (--image) or running container id (--containerid) parameter needs to be specified")
-        sys.exit(1)
+        logging.error("Either docker image (--image) or running container id (--containerid) parameter needs to be specified")
+        return None
 
     if args.tmp_dir is not None and os.path.isdir(args.tmp_dir) == False:
-        logging.error("Error specified temporary directory [%s] does not exist!", args.tmp_dir)
-        sys.exit(1)
+        logging.error("Specified temporary directory [%s] does not exist!", args.tmp_dir)
+        return None
 
+    del_image = False
     if args.image is not None:
         if not get_image_id(args):
             if not pull_image(args):
-                sys.exit(1)
+                logging.error("Failed to pull image: "+args.image)
+                return None
+            else:
+                del_image = True
         assets = discover_container_from_image(args)
-        if assets is None:
+        if assets is None and args.start_instance:
             assets = discover_container_from_instance(args)
     elif args.containerid is not None:
         assets = discover_container_from_instance(args)
         if assets is None:
             assets = discover_container_from_image(args)
 
+    # if image was downloaded by twigs then remove it
+    if del_image:
+        remove_image(args)
+
     if assets is None:
-        logging.error("Error unable to discover container")
-        sys.exit(1)
+        logging.error("Unable to inventory container")
+        return None
 
     return assets
-

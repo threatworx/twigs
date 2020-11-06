@@ -56,7 +56,7 @@ def discover_pom_xml(args, localpath):
         try:
             xmldoc = minidom.parseString(contents)
         except Exception:
-            logging.error("Error parsing pom.xml contents")
+            logging.error("Unable to parse pom.xml")
             return None
         if prop_dict is None:
             prop_dict = { }
@@ -156,13 +156,12 @@ def process_package_json_files(files, level, localpath):
         contents = fp.read()
         contents = contents.strip()
         if len(contents) == 0:
-            logging.error("Error empty file [%s]...skipping it!", file_path)
             continue
         cjson = ''
         try:
             cjson = json.loads(contents)
         except Exception:
-            logging.error("Error parsing package.json contents - %s", file_path)
+            logging.error("Unable to parse package.json contents")
             continue
         if 'name' in cjson and 'version' in cjson:
             if localpath.startswith('/tmp/'):
@@ -243,7 +242,7 @@ def discover_packages_config(args, localpath):
         try:
             xmldoc = minidom.parseString(contents)
         except Exception:
-            logging.error("Error parsing package config contents")
+            logging.error("Unable to parse package config")
             return None
         temp_plist = xmldoc.getElementsByTagName('package')
         for p in temp_plist:
@@ -373,7 +372,7 @@ def discover_python(args, localpath):
                     if prod not in plist:
                         plist.append(prod)
         except:
-            logging.error("Error parsing python dependencies (requirements.txt)")
+            logging.error("Unable to parse python dependencies")
             continue
     return plist, None
 
@@ -393,8 +392,7 @@ def get_dll_version(path):
         else:
             return None
     except Exception as e:
-        logging.error("Error parsing DLL file [%s]: %s", path, e)
-        logging.error("Skipping the DLL file...")
+        logging.error("Unable to parse DLL file. Skipping.")
         return None
 
 def discover_dll(args, localpath):
@@ -451,7 +449,7 @@ def discover_jar(args, localpath):
 def discover_specified_type(repo_type, args, localpath):
     if repo_type not in SUPPORTED_TYPES:
         logging.error("Type not supported")
-        sys.exit(1) 
+        return [], None
 
     plist = []
     if repo_type == 'pip':
@@ -506,9 +504,6 @@ def discover_inventory(args, localpath):
     asset_id = asset_id.replace(' ','-')
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
-    asset_name = asset_name.replace(' ','-')
-    asset_name = asset_name.replace('/','-')
-    asset_name = asset_name.replace(':','-')
 
     atype = 'Source Repository'
     plist = []
@@ -536,11 +531,8 @@ def discover_inventory(args, localpath):
         asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
-        if args.type is not None:
-            logging.error("Unable to identify any dependencies of [%s] type in specified repo [%s]", args.type, args.repo)
-            sys.exit(1)
-        else:
-            logging.warn("Unable to identify any dependencies of all supported types in specified repo [%s]", args.repo)
+        logging.warning("Unable to identify any source code components")
+        return None
 
     asset_data = {}
     asset_data['id'] = asset_id
@@ -564,20 +556,18 @@ def get_inventory(args):
     if args.repo.startswith('http'):
         if os.path.isfile(GIT_PATH) == False:
             logging.error("git executable does not exist at [%s]", GIT_PATH)
-            logging.info("You can set GIT_PATH environment variable to absolute path of git executable and run twigs again.")
-            sys.exit(1)
+            return None
         path = tempfile.mkdtemp()
         base_path = path
         new_repo = None
         try:
-            logging.info("Cloning repo to temporary local directory...")
             cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
             out = subprocess.check_output(cmdarr)
         except:
             logging.error(traceback.format_exc())
             logging.error('Error cloning repo locally')
             shutil.rmtree(path, onerror = on_rm_error)
-            sys.exit(1)
+            return None
     elif os.path.isdir(args.repo):
         path = args.repo
         base_path = os.path.abspath(path)
@@ -585,14 +575,12 @@ def get_inventory(args):
             base_path = "" # handle directory contained in root directory
     else:
         logging.error('Not a valid repo')
-        sys.exit(1) 
+        return None
 
-    logging.info("Performing asset discovery...")
     assets = discover_inventory(args, path)
     if args.secrets_scan:
-        logging.info("Discovering secrets in source code. This may take some time...")
+        logging.info("Discovering secrets/sensitive information. This may take some time.")
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
-        logging.info("Secrets discovery complete.")
         assets[0]['secrets'] = secret_records
 
     if args.repo.startswith('http'):
