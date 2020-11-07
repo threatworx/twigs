@@ -578,7 +578,7 @@ def get_inventory(args):
         return None
 
     assets = discover_inventory(args, path)
-    if args.secrets_scan:
+    if assets and len(assets) > 0 and args.secrets_scan:
         logging.info("Discovering secrets/sensitive information. This may take some time.")
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         assets[0]['secrets'] = secret_records
