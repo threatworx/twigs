@@ -156,7 +156,7 @@ optional arguments:
 
 Mode: docker
 $ twigs docker --help
-usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME] [--tmp_dir TMP_DIR]
+usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME] [--tmp_dir TMP_DIR] [--start_instance]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -170,6 +170,8 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
   --tmp_dir TMP_DIR     Temporary directory to discover container
+  --start_instance      If image inventory fails, try starting a container
+                        instance to inventory contents. Use with caution
 
 Mode: file
 $ twigs file --help
