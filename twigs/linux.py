@@ -10,10 +10,13 @@ import getpass
 import base64
 import json
 import traceback
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.fernet import Fernet
+import warnings
+with warnings.catch_warnings():
+   warnings.simplefilter("ignore", category=Warning)
+   from cryptography.hazmat.backends import default_backend
+   from cryptography.hazmat.primitives import hashes
+   from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+   from cryptography.fernet import Fernet
 from . import utils
 
 def check_host_up(host):

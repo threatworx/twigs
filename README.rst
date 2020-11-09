@@ -35,7 +35,7 @@ source bin/activate
 pip install twigs
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}...
+usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}...
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -67,10 +67,11 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{aws,azure,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+{aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
     aws                 Discover AWS instances
     azure               Discover Azure instances
     gcp                 Discover Google Cloud Platform (GCP) instances
+    gcr                 Discover Google Cloud Registry (GCR) container images
     docker              Discover docker instances
     file                Discover inventory from file
     host                Discover linux host assets
@@ -138,6 +139,20 @@ optional arguments:
   --enable_tracking_tags
                         Enable recording GCP specific information (like
                         Project ID, etc.) as asset tags
+
+Mode: gcr
+$ twigs gcr --help
+usage: twigs gcr [-h] [--repository REPOSITORY] [--image IMAGE] [--tmp_dir TMP_DIR]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --repository REPOSITORY
+                        The GCR image respository url which needs to be
+                        inspected.
+  --image IMAGE         The fully qualified image name (with tag / digest)
+                        which needs to be inspected. If tag / digest is not
+                        given, latest will be determined and used.
+  --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
 
 Mode: docker
 $ twigs docker --help
