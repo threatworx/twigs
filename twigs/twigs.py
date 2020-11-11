@@ -66,11 +66,11 @@ def push_asset_to_TW(asset, args):
         if resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content.decode(args.encoding))
-            return asset_id
+            return asset_id, True
         else:
             logging.error("Failed to create new asset [%s]", asset_id)
             logging.error("Response details: %s", resp.content.decode(args.encoding))
-            return None
+            return None, False
     else:
         logging.info("Updating asset [%s]", asset_id)
         # asset exists so update it with PUT
@@ -78,19 +78,25 @@ def push_asset_to_TW(asset, args):
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content.decode(args.encoding))
-            return asset_id
+            resp_json = resp.json()
+            if 'No product updates' in resp_json['status']:
+                return asset_id, False
+            return asset_id, True
         else:
             logging.error("Failed to update existing asset [%s]", asset_id)
             logging.error("Response details: %s", resp.content.decode(args.encoding))
-            return None
+            return None, False
 
 def push_assets_to_TW(assets, args):
     asset_id_list = []
+    scan_asset_id_list = []
     for asset in assets:
-        asset_id = push_asset_to_TW(asset, args)
+        asset_id, scan = push_asset_to_TW(asset, args)
         if asset_id is not None:
             asset_id_list.append(asset_id)
-    return asset_id_list
+        if scan:
+            scan_asset_id_list.append(asset_id)
+    return asset_id_list, scan_asset_id_list
 
 def run_scan(asset_id_list, pj_json, args):
     if args.no_scan is not True:
@@ -480,7 +486,7 @@ def main(args=None):
                     export_assets_to_file(assets, args.out)
 
                 if args.token is not None and len(args.token) > 0:
-                    asset_id_list = push_assets_to_TW(assets, args)
+                    asset_id_list, scan_asset_id_list = push_assets_to_TW(assets, args)
 
                 pj_json = None
                 if args.apply_policy is not None:
@@ -493,7 +499,7 @@ def main(args=None):
                             break
 
                 if args.token is not None and len(args.token) > 0:
-                    run_scan(asset_id_list, pj_json, args)
+                    run_scan(scan_asset_id_list, pj_json, args)
             
                 if args.schedule is not None and sys.platform != 'win32':
                     from crontab import CronTab

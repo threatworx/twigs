@@ -40,6 +40,11 @@ default_regex_rules = {
     "HTTP Authorization Bearer": "Authorization:\sBearer\s[a-zA-Z0-9_\-\.=:_\+\/]+"
 }
 
+default_exclude_patterns = [
+    "\.git\/",
+    "\.svn\/"
+]
+
 common_passwords = [
 "123456",
 "password",

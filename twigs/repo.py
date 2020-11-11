@@ -532,7 +532,6 @@ def discover_inventory(args, localpath):
 
     if plist == None or len(plist) == 0:
         logging.warning("Unable to identify any source code components")
-        return None
 
     asset_data = {}
     asset_data['id'] = asset_id
@@ -578,7 +577,7 @@ def get_inventory(args):
         return None
 
     assets = discover_inventory(args, path)
-    if assets and len(assets) > 0 and args.secrets_scan:
+    if args.secrets_scan:
         logging.info("Discovering secrets/sensitive information. This may take some time.")
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         assets[0]['secrets'] = secret_records
@@ -586,4 +585,7 @@ def get_inventory(args):
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)
 
+    if len(assets[0]['products']) == 0 and (assets[0].get('secrets')!= None and len(assets[0]['secrets']) == 0):
+        logging.warning("No products idenitified nor any code secrets found.")
+        return [] # if there are no products nor secrets then no assets to report
     return assets

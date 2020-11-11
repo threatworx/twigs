@@ -219,7 +219,12 @@ def scan_for_secrets(args, local_path, base_path):
 
     include_patterns = read_patterns(args.include_patterns, args.include_patterns_file, "Both include_patterns and include_patterns_file options are specified. Only include_patterns_file will be considered")
 
-    exclude_patterns = read_patterns(args.exclude_patterns, args.exclude_patterns_file, "Both exclude_patterns and exclude_patterns_file options are specified. Only exclude_patterns_file will be considered")
+    exclude_patterns = []
+    # Load default_exclude_patterns
+    for dp in cs_defaults.default_exclude_patterns:
+        exclude_patterns.append(re.compile(dp))
+    user_exclude_patterns = read_patterns(args.exclude_patterns, args.exclude_patterns_file, "Both exclude_patterns and exclude_patterns_file options are specified. Only exclude_patterns_file will be considered")
+    exclude_patterns.extend(user_exclude_patterns)
 
     final_files = []
     for this_file in all_files:
