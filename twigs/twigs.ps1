@@ -89,7 +89,7 @@ if (!$token -and !$instance -and !$out) {
 }
 
 if ($no_scan -and $email_report) {
-    Write-Host "Error conflicting options [no_scan] and [email_report] as specified!"
+    Write-Host "Error conflicting options [no_scan] and [email_report] are specified!"
     exit
 }
 
@@ -270,6 +270,10 @@ if ($token -and $instance) {
     }
     else {
         Write-Host 'Successfully updated asset'
+        if (-not $no_scan -and $response.status -Match 'No product updates') {
+            Write-Host 'Asset products are not updated. No need for impact refresh.'
+            $no_scan = $true
+        }
     }
 
     if (-not $no_scan) {
@@ -285,9 +289,9 @@ if ($token -and $instance) {
             $payload["mode"] = "email"
         }
         $body = (ConvertTo-Json -Depth 100 $payload)
-        Write-Host 'Starting impact refresh'
+        Write-Host 'Starting impact refresh...'
         $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $body
-        Write-Host 'Started impact refresh...'
+        Write-Host 'Started impact refresh.'
     }
 }
 
@@ -304,8 +308,8 @@ Remove-Item -force -path $product_csv_file
 # SIG # Begin signature block
 # MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUbqvFxT6a4Q7b4EEMUh06y497
-# L+KgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUGobnJtd7VQ4WuDZE+1JSgIfl
+# ssugggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
 # AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
 # CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
 # MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
@@ -332,11 +336,11 @@ Remove-Item -force -path $product_csv_file
 # b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
 # DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
 # DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQUxEhMn2QYObqaZSTgY6bFeXUNC7swDQYJKoZIhvcNAQEBBQAE
-# ggEAhJ+9kJdtOQw165WeIkIzCe4SyIRmIQW3NtUG2qypWZifRK13OninaKYIpplC
-# zjXQBTaacBBGmMlfjw89eVrROT/ZTpQaydm5KxhgmHS0QIYk0bteLAUmv/wiQl9g
-# 84VGXgHcxRZopRI1pHRoPHUJ7gwCc3i1db5uA4lkf9sFCDzlMwWCH4B1i5FW+DVK
-# 3tjmWifE4Hq2wbcYD9IgPabKkSE+0o+wGBV3BLylzoNLylBk4re2UMR9XtAF/t2a
-# j1DxMlAAGjnVr67jQ1fSOyhCAO/Op34BgK4ONR5q7IDDN1kVqn/Ib/BEmycPiyH2
-# P45yMrHU4K1CJYSb9ELb5ut0kQ==
+# hkiG9w0BCQQxFgQUbbRVepE+cYz+WJwXrdc5BPGmMbEwDQYJKoZIhvcNAQEBBQAE
+# ggEAczJjoe0KPECjB/LNU3lpZFuVHX/4uMW1+DUo7lVP+aJFo6pxSZtBUTFKZk/v
+# 2vAhQ0QIbjhQ4UqtuL8Pfz6VMEyw4kAKT/zakAmZzAP8fUdC/p299HPnm44DY2Wv
+# likRm5BGZS1wtrqgU8Mp9vFz5V20pgRzjKnP5xovKiKTfYLB5nJDk92YY+3xjMEl
+# vHxjOqqJNVNCU3NhZZf6Rj4Z6s5arQwnsHaO16GBgBlq66FRj5h32KzGmTAsB6Cv
+# 9eCxKeKQR7o1Pc5ryqgprzsepHnV5z2N39YqjncofjCSBtnwBLlyPcbJ9LgSL+5q
+# KAG2ULmwKDJnkKTkbH5K/w2a4g==
 # SIG # End signature block
