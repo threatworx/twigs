@@ -495,6 +495,7 @@ def run_ssh_audit(args, assetid, ip):
         issue['object_id'] = k
         issue['asset_id'] = assetid
         issue['object_meta'] = '' 
+        issue['type'] = 'SSH'
         issue_list.append(issue)
 
     logging.info("ssh audit completed "+ip)
