@@ -9,6 +9,8 @@ import ipaddress
 import getpass
 import base64
 import json
+import pkg_resources
+import importlib
 import traceback
 import warnings
 with warnings.catch_warnings():
@@ -321,17 +323,25 @@ def discover(args):
         host = { }
         host['assetid'] = utils.get_ip() if args.assetid is None else args.assetid
         host['assetname'] = host['assetid'] if args.assetname is None else args.assetname
-        host['hostname'] = host['assetid']
+        host['hostname'] = utils.get_ip()
         host['remote'] = False
         hosts = [ host ]
         return discover_hosts(args, hosts)
 
 def discover_hosts(args, hosts):
     assets = []
+    host_bm_pkg_missing = False
+    host_bm_pn = "twigs_host_benchmark"
+    try:
+        pkg_resources.get_distribution(host_bm_pn)
+    except pkg_resources.DistributionNotFound:
+        logging.warning("[twigs_host_benchmark] package is not installed. Unable to run host benchmark assessment")
+        logging.warning("Please install using command [sudo (pip|pip3) install twigs_host_benchmark]")
+        host_bm_pkg_missing = True
     for host in hosts:
         asset = discover_host(args, host)
         if asset is not None:
-            if args.no_ssh_audit == False and host['remote'] == True:
+            if args.no_ssh_audit == False:
                 ssh_config_issues = []
                 try:
                     ssh_config_issues = run_ssh_audit(args, asset['id'], host['hostname'])
@@ -341,6 +351,19 @@ def discover_hosts(args, hosts):
                 asset['config_issues'] = ssh_config_issues
                 if len(ssh_config_issues) != 0:
                     asset['tags'].append('SSH Audit')
+
+            if args.no_host_benchmark == False and host_bm_pkg_missing == False:
+                # Run host benchmark
+                host_bm_module = importlib.import_module("%s.%s" % (host_bm_pn, host_bm_pn))
+                run_host_benchmark = getattr(host_bm_module, "run_host_benchmark")
+                host_bm_issues = run_host_benchmark(host, asset['id'], args)
+                if len(host_bm_issues) > 0:
+                    asset['tags'].append('Host Benchmark')
+                    if asset.get('config_issues') is None:
+                        asset['config_issues'] = host_bm_issues
+                    else:
+                        asset['config_issues'].extend(host_bm_issues)
+
             assets.append(asset)
     return assets
 

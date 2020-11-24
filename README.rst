@@ -194,7 +194,7 @@ optional arguments:
 
 Mode: host
 $ twigs host --help
-usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME] [--no_ssh_audit] [--no_host_benchmark]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -218,6 +218,7 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
   --no_ssh_audit        Skip ssh audit
+  --no_host_benchmark   Skip host benchmark audit
 
 Mode: nmap
 $ twigs nmap --help

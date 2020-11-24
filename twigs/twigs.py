@@ -285,6 +285,7 @@ def main(args=None):
         parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
         parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
         parser_linux.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
+        parser_linux.add_argument('--no_host_benchmark', action='store_true', help='Skip host benchmark audit')
 
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
