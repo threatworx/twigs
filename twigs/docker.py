@@ -304,7 +304,9 @@ def create_open_source_asset(args, container_fs):
     args.repo = container_fs
     oa = repo.discover_inventory(args, container_fs)
     if oa != None:
+        oa[0]['name'] = oa[0]['id']+'-container-app'
         oa[0]['id'] = oa[0]['id']+'-opensource'
+        oa[0]['type'] = 'Container App'
         oa[0]['tags'].append('IMAGE_NAME:'+args.assetname)
     return oa
 

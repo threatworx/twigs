@@ -48,21 +48,20 @@ def get_inventory(args):
         return allassets
     else:
         image = args.image.split('/')[-1]
-        if ':' in image or '@' in image:
-            assets = docker.get_inventory(args)
-        else:
+        if ':' not in image and '@' not in image:
             tag = get_latest_tag(args.image)
             if tag == None:
                 logging.error("Unable to determine latest tag / digest for image")
                 return None 
             logging.info("Using tag/digest '"+tag[1:]+"'")
             args.image = args.image + tag
-            args.assetid = args.image
-            args.assetid = args.assetid.replace('/','-')
-            args.assetid = args.assetid.replace(':','-')
-            args.assetname = args.image
-            logging.info("Discovering image "+args.image)
-            assets = docker.get_inventory(args)
-        for a in assets:
-            a['tags'].append('GCR')
+        args.assetid = args.image
+        args.assetid = args.assetid.replace('/','-')
+        args.assetid = args.assetid.replace(':','-')
+        args.assetname = args.image
+        logging.info("Discovering image "+args.image)
+        assets = docker.get_inventory(args)
+        if assets != None:
+            for a in assets:
+                a['tags'].append('GCR')
         return assets 
