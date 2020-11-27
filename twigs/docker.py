@@ -302,12 +302,16 @@ def discover_alpine_from_container_image(container_fs):
 
 def create_open_source_asset(args, container_fs):
     args.repo = container_fs
+    if args.assetid == None:
+        args.assetid = args.image
     oa = repo.discover_inventory(args, container_fs)
-    if oa != None:
+    if oa != None and len(oa[0]['products']) != 0:
         oa[0]['name'] = oa[0]['id']+'-container-app'
         oa[0]['id'] = oa[0]['id']+'-opensource'
         oa[0]['type'] = 'Container App'
-        oa[0]['tags'].append('IMAGE_NAME:'+args.assetname)
+        oa[0]['tags'].append('IMAGE_NAME:'+args.image)
+    else:
+        return None
     return oa
 
 def discover_container_from_image(args):

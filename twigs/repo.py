@@ -421,10 +421,10 @@ def discover_jar(args, localpath):
             metafile = zf.read('META-INF/MANIFEST.MF')
             if metafile:
                 for l in metafile.splitlines():
-                    if l.startswith("Bundle-Version:"):
-                        ver = l.split(':')[1].strip()
-                    if l.startswith("Bundle-Name:"):
-                        prod = l.split(':')[1].strip().lower().replace(' ','-')
+                    if l.startswith(b"Bundle-Version:"):
+                        ver = l.split(b':')[1].strip()
+                    if l.startswith(b"Bundle-Name:"):
+                        prod = l.split(b':')[1].strip().lower().replace(b' ',b'-')
         except KeyError:
             #print "Error: No manifest found"
             pass
@@ -438,7 +438,7 @@ def discover_jar(args, localpath):
             else:
                 ver = match[0]
                 prod = jfile.split(ver)[0][:-1]
-        prod = prod + ' ' + ver
+        prod = str(prod) + ' ' + str(ver)
         if localpath.startswith('/tmp/'):
             file_path = file_path.replace(localpath+'/','')
         prod = prod.strip() + " source:"+file_path
