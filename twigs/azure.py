@@ -71,6 +71,7 @@ def parse_inventory(email,data,params):
     for i in range(len(data)):
         if data[i][4] == 'WindowsServices': #ConfigDataType
             continue
+        #logging.debug("Parsing inventory from data below:\n%s", json.dumps(data[i], indent=2))
         host = data[i][5]
         vmuuid = data[i][6]
         publisher = data[i][2]
@@ -80,6 +81,7 @@ def parse_inventory(email,data,params):
             continue
 
         if host not in hosts  and publisher != '0':
+            logging.debug("Found new asset - host [%s] vmuuid [%s]", host, vmuuid)
             patches = []
             products = []
             asset_map = {}
@@ -154,17 +156,19 @@ def parse_patch(data):
     return patch
             
 def get_os_type(ostype):
+    asset_type = ''
     if ostype is None:
-        return ''
+        asset_type = ''
     elif 'Microsoft' in  ostype or 'Windows' in ostype:
-        return 'Windows'
+        asset_type = 'Windows'
     elif 'Red Hat' in ostype or 'redhat' in ostype:
-        return 'Red Hat'
+        asset_type = 'Red Hat'
     elif 'Ubuntu' in ostype or 'ubuntu' in ostype:
-        return 'Ubuntu'
+        asset_type = 'Ubuntu'
     elif 'Oracle' in ostype or 'oracle' in ostype:
-        return "Oracle Linux"
-    return ''
+        asset_type = "Oracle Linux"
+    logging.debug("Mapped OS [%s] to Asset Type [%s]", ostype, asset_type)
+    return asset_type
 
 def retrieve_inventory(params):
     email = params['handle']
@@ -243,9 +247,12 @@ def get_os_details(host, vmuuid, params):
     headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % params['access_token'] }
     url = "https://management.azure.com" + vm_id + "/instanceView?api-version=2018-06-01"
 
+    logging.debug("Getting OS details for host [%s] vmuuid [%s]", host, vmuuid)
+    logging.debug("Using URL [%s]", url)
     resp = requests.get(url, headers=headers)
     if resp.status_code == 200:
         response = resp.json()
+        logging.debug("Got response:\n%s", json.dumps(response, indent=2))
         if is_vm_running(response):
             return True, response.get('osName'), response.get('osVersion')
         else:

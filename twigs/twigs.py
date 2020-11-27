@@ -187,7 +187,7 @@ def main(args=None):
         parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and project repositories')
         subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
         # Required arguments
-        parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
+        parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
         parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
@@ -198,7 +198,9 @@ def main(args=None):
         parser.add_argument('--out', help='Specify name of the JSON file to hold the exported asset information.')
         parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
         parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
-        parser.add_argument('--quiet', action='store_true', help='Disable verbose logging')
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument('-q','--quiet', action='store_true', help='Disable verbose logging')
+        group.add_argument('-v','--verbosity', action='count', default=0, help='Specify the verbosity level. Use multiple times to increase verbosity level')
         if sys.platform != 'win32':
             parser.add_argument('--schedule', help='Run this twigs command at specified schedule (crontab format)')
         parser.add_argument('--encoding', help='Specify the encoding. Default is "latin-1"', default='latin-1')
@@ -370,11 +372,15 @@ def main(args=None):
 
         args = parser.parse_args()
 
-        logging_level = logging.INFO
+        logging_level = logging.WARNING
+        if args.verbosity >= 1:
+            logging_level = logging.INFO
+        if args.verbosity >= 2:
+            logging_level = logging.DEBUG
         if args.quiet:
             logging_level = logging.ERROR
         # Setup the logger
-        logging.basicConfig(filename=logfilename, level=logging.INFO, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        logging.basicConfig(filename=logfilename, level=logging_level, filemode='w', format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         console = logging.StreamHandler()
         console.setLevel(logging_level)
         console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))

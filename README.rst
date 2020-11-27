@@ -35,13 +35,13 @@ source bin/activate
 pip install twigs
 
 $ twigs --help
-usage: twigs [-h] [-v] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [--quiet] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}...
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
 optional arguments:
   -h, --help            show this help message and exit
-  -v, --version         show program's version number and exit
+  --version         show program's version number and exit
   --handle HANDLE       The ThreatWatch registered email id/handle of the
                         user. Note this can set as "TW_HANDLE" environment
                         variable
@@ -61,6 +61,8 @@ optional arguments:
   --email_report        After impact refresh is complete email scan report to
                         self
   --quiet               Disable verbose logging
+  -v, --verbosity       Specify the verbosity level. Use multiple times to
+                        increase verbosity level
   --schedule SCHEDULE   Run this twigs command at specified schedule (crontab format)
   --encoding ENCODING   Specify the encoding. Default is "latin-1"
 
