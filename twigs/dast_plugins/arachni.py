@@ -62,13 +62,13 @@ def run(args):
         logging.error('arachni CLI not found')
         sys.exit(1) 
 
-    logging.warn("Running arachni plugin. This could take a while")
+    logging.info("Running arachni plugin. This could take a while")
     path = tempfile.mkdtemp()
     outafr = path+"/"+args.assetid+".afr"
     outjson = path+"/"+args.assetid+".json"
     rparams = " --report-save-path "+outafr
-    logging.warn("Using reporting options: "+rparams)
-    logging.warn("Please do not override the reporting options")
+    logging.info("Using reporting options: "+rparams)
+    logging.info("Please do not override the reporting options")
 
     params = args.args
     if params != None:

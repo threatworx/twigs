@@ -17,6 +17,7 @@ from xml.dom import minidom
 
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
+from . import sast
 
 GIT_PATH = os.environ.get('GIT_PATH')
 if GIT_PATH is None:
@@ -581,6 +582,11 @@ def get_inventory(args):
         logging.info("Discovering secrets/sensitive information. This may take some time.")
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         assets[0]['secrets'] = secret_records
+
+    if args.sast:
+        logging.info("Performing static analysis. This may take some time.")
+        sast_records = sast.run_sast(args, path, base_path)
+        assets[0]['sast'] = sast_records
 
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)

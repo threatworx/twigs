@@ -253,6 +253,7 @@ def main(args=None):
         parser_gcr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
 
         # Arguments required for docker discovery 
         parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
@@ -276,6 +277,7 @@ def main(args=None):
         parser_docker.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
         parser_docker.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
         parser_docker.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
 
 
         # Arguments required for Host discovery on Linux
@@ -313,6 +315,7 @@ def main(args=None):
         parser_repo.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
         parser_repo.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
         parser_repo.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_repo.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
 
         # Arguments required for File-based discovery
         parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
