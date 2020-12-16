@@ -66,5 +66,5 @@ def run_sast(args, path, base_path):
         finding['description'] = get_description(r)
         findings.append(finding)
 
-    print json.dumps(findings, indent=4)
+    #print json.dumps(findings, indent=4)
     return findings
