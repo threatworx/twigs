@@ -16,7 +16,6 @@ import sys
 import os
 import logging
 import argparse
-import requests
 import time
 import json
 import traceback
@@ -39,11 +38,10 @@ from . import docker_cis
 from . import aws_cis
 from . import azure_cis
 from . import gcp_cis
+from . import utils
 from . import policy as policy_lib
 from .__init__ import __version__
 
-
-GoDaddyCABundle = True
 
 def export_assets_to_file(assets, json_file):
     logging.info("Exporting assets to JSON file [%s]", json_file)
@@ -58,11 +56,11 @@ def push_asset_to_TW(asset, args):
         auth_data = auth_data + "&esr=true" # email secrets report (esr)
     asset_id = asset['id']
 
-    resp = requests.get(asset_url + asset_id + "/" + auth_data, verify=GoDaddyCABundle)
+    resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
     if resp.status_code != 200:
         logging.info("Creating new asset [%s]", asset_id)
         # Asset does not exist so create one with POST
-        resp = requests.post(asset_url + auth_data, json=asset, verify=GoDaddyCABundle)
+        resp = utils.requests_post(asset_url + auth_data, json=asset)
         if resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content.decode(args.encoding))
@@ -74,7 +72,7 @@ def push_asset_to_TW(asset, args):
     else:
         logging.info("Updating asset [%s]", asset_id)
         # asset exists so update it with PUT
-        resp = requests.put(asset_url + asset_id + "/" + auth_data, json=asset, verify=GoDaddyCABundle)
+        resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content.decode(args.encoding))
@@ -124,7 +122,7 @@ def run_scan(asset_id_list, pj_json, args):
             #    scan_payload['mode'] = 'email-purge'
             if args.email_report:
                 scan_payload['mode'] = 'email'
-            resp = requests.post(scan_api_url, json=scan_payload, verify=GoDaddyCABundle)
+            resp = utils.requests_post(scan_api_url, json=scan_payload)
             if resp.status_code == 200:
                 logging.info("Started impact refresh")
             else:
@@ -139,7 +137,7 @@ def run_scan(asset_id_list, pj_json, args):
             #    scan_payload['mode'] = 'email-purge'
             if args.email_report:
                 scan_payload['mode'] = 'email'
-            resp = requests.post(scan_api_url, json=scan_payload, verify=GoDaddyCABundle)
+            resp = utils.requests_post(scan_api_url, json=scan_payload)
             if resp.status_code == 200:
                 logging.info("Started license compliance assessment")
             else:
@@ -178,9 +176,8 @@ def main(args=None):
         if args is None:
             args = sys.argv[1:]
 
-        global GoDaddyCABundle
         if sys.platform != 'win32':
-            GoDaddyCABundle = os.path.dirname(os.path.realpath(__file__)) + os.sep + 'gd-ca-bundle.crt'
+            utils.set_requests_verify(os.path.dirname(os.path.realpath(__file__)) + os.sep + 'gd-ca-bundle.crt')
         logfilename = "twigs.log"
         logging_level = logging.WARN
 
@@ -319,7 +316,7 @@ def main(args=None):
 
         # Arguments required for File-based discovery
         parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
-        parser_file.add_argument('--input', help='Absolute path to single input inventory file or a directory containing JSON files. Supported file formats are: PDF & JSON', required=True)
+        parser_file.add_argument('--input', help='Absolute path to single input inventory file or a directory containing JSON or CSV files. Supported file formats are: CSV, JSON & PDF', required=True)
         parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
         parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
         parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
@@ -391,7 +388,7 @@ def main(args=None):
 
         # In insecure mode, we want to set verify=False for requests
         if args.insecure:
-            GoDaddyCABundle = False
+            utils.set_requests_verify(False)
 
         logging.info('Started new run')
         logging.debug('Arguments: %s', str(args))

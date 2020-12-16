@@ -4,6 +4,9 @@ import socket
 import subprocess
 import paramiko
 import logging
+import requests
+
+GoDaddyCABundle = True
 
 def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
     if host and host['remote']:
@@ -217,3 +220,21 @@ def get_rating(cvss_score):
     elif s <= 10:
         rating = '5'
     return rating
+
+def set_requests_verify(verify):
+    global GoDaddyCABundle
+    GoDaddyCABundle = verify
+
+def get_requests_verify():
+    global GoDaddyCABundle
+    return GoDaddyCABundle
+
+def requests_get(url):
+    return requests.get(url, verify=get_requests_verify())
+
+def requests_post(url, json):
+    return requests.post(url, json=json, verify=get_requests_verify())
+
+def requests_put(url, json):
+    return requests.put(url, json=json, verify=get_requests_verify())
+

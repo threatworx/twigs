@@ -182,8 +182,8 @@ usage: twigs file [-h] --input INPUT [--assetid ASSETID] [--assetname ASSETNAME]
 optional arguments:
   -h, --help            show this help message and exit
   --input INPUT         Absolute path to single input inventory file or a
-                        directory containing CSV files. Supported file formats
-                        are: PDF & JSON
+                        directory containing JSON or CSV files. Supported file
+                        formats are: CSV, JSON & PDF
   --assetid ASSETID     A unique ID to be assigned to the discovered asset.
                         Defaults to input filename if not specified. Applies
                         only for PDF files.
