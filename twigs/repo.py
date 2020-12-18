@@ -14,6 +14,8 @@ import requirements
 import re
 import zipfile
 from xml.dom import minidom
+import toml
+import re
 
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
@@ -26,7 +28,7 @@ if GIT_PATH is None:
     else:
         GIT_PATH = '/usr/bin/git'
 
-SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar']
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar', 'cargo']
 
 def cleanse_semver_version(pv):
     pv = pv.replace('"','')
@@ -43,6 +45,35 @@ def cleanse_semver_version(pv):
         version = version.replace('*','0')
         pv = temp_tokens[0] + ' ' + version
     return pv
+
+def discover_cargo_toml(args, localpath):
+    plist = []
+    files = lib_utils.find_files(localpath, 'Cargo.toml')
+    prop_dict = None
+    for file_path in files:
+        fp = open(file_path, 'r')
+        if fp == None:
+            continue
+        contents = fp.read()
+        tdict = toml.loads(contents)
+        fp.close()
+        if localpath.startswith('/tmp/'):
+            file_path = file_path.replace(localpath+'/','')
+        if 'dependencies' in tdict:
+            for d in tdict['dependencies']:
+                vers = str(tdict['dependencies'][d])
+                if vers.startswith('{'):
+                    if 'version' in tdict['dependencies'][d]:
+                        ver = tdict['dependencies'][d]['version']
+                    else:
+                        continue
+                else:
+                    ver = tdict['dependencies'][d]
+                prod = d + " " + ver
+                prod = cleanse_semver_version(prod)
+                prod = prod + " source:"+file_path
+                plist.append(prod)
+    return plist, None
 
 def discover_pom_xml(args, localpath):
     plist = []
@@ -471,6 +502,8 @@ def discover_specified_type(repo_type, args, localpath):
         plist, p1list = discover_dll(args, localpath)
     elif repo_type == 'jar':
         plist, p1list = discover_jar(args, localpath)
+    elif repo_type == 'cargo':
+        plist, p1list = discover_cargo_toml(args, localpath)
 
     return plist, p1list
 
