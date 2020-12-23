@@ -64,6 +64,13 @@ def run_sast(args, path, base_path):
         finding['lineno_start'] = r['start']['line']
         finding['lineno_end'] = r['end']['line']
         finding['description'] = get_description(r)
+        finding['cwe'] = ''
+        finding['owasp'] = ''
+        if 'metadata' in r['extra']:
+            if 'cwe' in r['extra']['metadata']:
+                finding['cwe'] = r['extra']['metadata']['cwe']
+            if 'owasp' in r['extra']['metadata']:
+                finding['owasp'] = r['extra']['metadata']['owasp']
         findings.append(finding)
 
     #print json.dumps(findings, indent=4)
