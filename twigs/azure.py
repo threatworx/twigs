@@ -68,8 +68,13 @@ def parse_inventory(email,data,params):
     assets = []
     asset_map = {}
     not_running_vms = {}
+    temp_assets = set()
+    all_assets = { }
     for i in range(len(data)):
+        all_assets[data[i][5]] = data[i][6]
         if data[i][4] == 'WindowsServices': #ConfigDataType
+            #logging.warning("Logging WindowsServices data below:\n%s", json.dumps(data[i], indent=2))
+            temp_assets.add(data[i][5])
             continue
         #logging.debug("Parsing inventory from data below:\n%s", json.dumps(data[i], indent=2))
         host = data[i][5]
@@ -142,6 +147,14 @@ def parse_inventory(email,data,params):
     for asset in assets:
         asset.pop('patch_tracker', None)
         asset.pop('vmuuid', None)
+        if asset['host'] in temp_assets:
+            temp_assets.remove(asset['host'])
+    logging.warning("Total assets reported: %s", len(all_assets))
+    logging.warning("Assets with s/w packages and patches: %s", len(assets))
+    logging.warning("Assets with only Windows Service: %s", len(temp_assets))
+    if (len(temp_assets)>0):
+        logging.warning("Sample asset with only Windows Service: %s", list(temp_assets)[0])
+    logging.warning("Not running VMs: %s", len(not_running_vms))
     return assets
 
 def parse_patch(data):
