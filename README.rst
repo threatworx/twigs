@@ -30,17 +30,27 @@ Note:
 1. twigs supports python 2.7 onwards and python 3.x versions
 2. It is recommended to use virtual environments to create isolated Python environments and reduce dependency conflicts. Please use the following commands to create new virtual environment and install twigs:
 
-Python 2.7 Virtual Environment
+Python 2.7 Virtual Environment:
+
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
+
 cd twigs_env_2_7
+
 source bin/activate
+
 pip install twigs
 
-Python 3.x Virtual Environment
+
+Python 3.x Virtual Environment:
+
 python3 -m venv twigs_env
+
 cd twigs_env
+
 source bin/activate
+
 pip3 install twigs
+
 
 $ twigs --help
 usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
