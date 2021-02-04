@@ -27,12 +27,20 @@ Features
 twigs.py - A python script to discover various types of assets (cloud-based, Linux hosts, containers, repositories and more).
 
 Note:
-1. twigs requires python 2.7 
+1. twigs supports python 2.7 onwards and python 3.x versions
 2. It is recommended to use virtual environments to create isolated Python environments and reduce dependency conflicts. Please use the following commands to create new virtual environment and install twigs:
+
+Python 2.7 Virtual Environment
 python -m virtualenv --python=/usr/bin/python2.7 twigs_env_2_7
 cd twigs_env_2_7
 source bin/activate
 pip install twigs
+
+Python 3.x Virtual Environment
+python3 -m venv twigs_env
+cd twigs_env
+source bin/activate
+pip3 install twigs
 
 $ twigs --help
 usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
@@ -107,6 +115,8 @@ optional arguments:
                         Enable recording AWS specific information (like AWS
                         Account ID, etc.) as asset tags
 
+Help video: https://youtu.be/pYzHU7izRdU
+
 Mode: azure
 $ twigs azure --help
 usage: twigs azure [-h]  --azure_tenant_id AZURE_TENANT_ID --azure_application_id AZURE_APPLICATION_ID --azure_application_key AZURE_APPLICATION_KEY [--azure_subscription AZURE_SUBSCRIPTION] [--azure_resource_group AZURE_RESOURCE_GROUP] [--azure_workspace AZURE_WORKSPACE] [--enable_tracking_tags]
@@ -132,6 +142,8 @@ optional arguments:
                         Enable recording Azure specific information (like
                         Azure Tenant ID, etc.) as asset tags
 
+Help video: https://youtu.be/DyMrxYscADw
+
 Mode: gcp
 $ twigs gcp --help
 usage: twigs gcp [-h] [--enable_tracking_tags]
@@ -141,6 +153,8 @@ optional arguments:
   --enable_tracking_tags
                         Enable recording GCP specific information (like
                         Project ID, etc.) as asset tags
+
+Help video: https://youtu.be/tGgKZcGFfZ4
 
 Mode: gcr
 $ twigs gcr --help
@@ -221,6 +235,8 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
   --no_ssh_audit        Skip ssh audit
   --no_host_benchmark   Skip host benchmark audit
+
+Help video: https://youtu.be/OKJ-DxXwanA
 
 Mode: nmap
 $ twigs nmap --help

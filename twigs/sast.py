@@ -11,6 +11,10 @@ import traceback
 
 sast_plugin = "/usr/local/bin/semgrep"
 
+def on_rm_error( func, path, exc_info):
+    os.chmod( path, stat.S_IWRITE )
+    os.unlink( path )
+
 def get_rating(severity):
     if severity == 'ERROR':
         return '4'
