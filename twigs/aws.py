@@ -55,10 +55,10 @@ class EC2Impl(AWS):
         for obj in self.bucket_object_list:
             if 'AWS:WindowsUpdate' in obj.key and host in obj.key:
                 splits = obj.key.rsplit('/')
-                prefix = splits[0].split(':')[1]
-                fname = tempfile.gettempdir() + os.path.sep + prefix + '-' +  splits[-1]
-                if os.path.isfile(fname) == False:
-                    self.s3_bucket.download_file(obj.key,fname)
+                fname = tempfile.gettempdir() + os.path.sep + 'WindowsUpdate-' +  splits[-1]
+                if os.path.isfile(fname) == True:
+                    os.remove(fname)
+                self.s3_bucket.download_file(obj.key,fname)
                 try:
                     data = []
                     with codecs.open(fname,'rU','utf-8') as f:
@@ -85,10 +85,10 @@ class EC2Impl(AWS):
         for obj in self.bucket_object_list:
             if 'AWS:Application' in obj.key and host in obj.key:
                 splits = obj.key.rsplit('/')
-                prefix = splits[0].split(':')[1]
-                fname = tempfile.gettempdir() + os.path.sep + prefix + '-' +  splits[-1]
-                if os.path.isfile(fname) == False:
-                    self.s3_bucket.download_file(obj.key,fname)
+                fname = tempfile.gettempdir() + os.path.sep + 'Application-' +  splits[-1]
+                if os.path.isfile(fname) == True:
+                    os.remove(fname)
+                self.s3_bucket.download_file(obj.key,fname)
                 try:
                     data = []
                     with codecs.open(fname,'rU','utf-8') as f:
@@ -133,8 +133,9 @@ class EC2Impl(AWS):
         for obj in self.bucket_object_list:
             if 'AWS:InstanceInformation' in obj.key:
                 splits = obj.key.rsplit('/')
-                prefix = splits[0].split(':')[1]
-                fname = tempfile.gettempdir() + os.path.sep + prefix + '-' +  splits[-1]
+                fname = tempfile.gettempdir() + os.path.sep + 'InstanceInformation-' +  splits[-1]
+                if os.path.isfile(fname) == True:
+                    os.remove(fname)
                 self.s3_bucket.download_file(obj.key,fname)
                 try:
                     data = []
