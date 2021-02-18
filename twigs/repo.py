@@ -44,6 +44,9 @@ def cleanse_semver_version(pv):
         version = version.replace('x','0')
         version = version.replace('*','0')
         pv = temp_tokens[0] + ' ' + version
+        # Add any remaining tokens following version (like source)
+        for token_index in range(2, len(temp_tokens)):
+            pv = pv + " " + temp_tokens[token_index]
     return pv
 
 def discover_cargo_toml(args, localpath):
