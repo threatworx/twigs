@@ -87,7 +87,9 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+{login,logout,aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+    login               Login to twigs
+    logout              Logout from twigs
     aws                 Discover AWS instances
     azure               Discover Azure instances
     gcp                 Discover Google Cloud Platform (GCP) instances
@@ -104,6 +106,18 @@ modes:
     gcp_cis             Run Google Cloud Platform CIS benchmarks
     ssl_audit           Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed
     dast                Discover and test web application using a DAST plugin
+
+Mode: login
+usage: twigs login [-h]
+
+optional arguments:
+  -h, --help  show this help message and exit
+
+Mode: logout
+usage: twigs logout [-h]
+
+optional arguments:
+  -h, --help  show this help message and exit
 
 Mode: aws
 $ twigs aws --help

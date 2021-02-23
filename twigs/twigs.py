@@ -22,6 +22,8 @@ import traceback
 import pkg_resources
 import pkgutil
 import importlib
+import getpass
+from os.path import expanduser
 
 from . import aws
 from . import linux
@@ -169,6 +171,69 @@ def sub_pkg_get_inventory(args):
     assets = get_inventory_func(args)
     return assets
 
+def authenticate_user(tw_user, tw_pwd, tw_instance):
+    payload = { }
+    payload["handle"] = tw_user
+    payload["password"] = tw_pwd
+    twigs_auth_url = "https://" + tw_instance + "/api/v1/twigsauth/"
+    resp = utils.requests_post(twigs_auth_url, json=payload)
+    if resp.status_code == 200:
+        logging.info("User logged in successfully")
+        return resp.json()["token"]
+    else:
+        logging.error("User authentication failed")
+        logging.debug("Response: %s", resp.content)
+        sys.exit(1)
+
+def login_user(args):
+    if sys.version_info.major < 3:
+        tw_user = raw_input("Enter email of ThreatWatch user: ")
+    else:
+        tw_user = input("Enter email of ThreatWatch user: ")
+    temp_pwd = getpass.getpass(prompt='Enter password: ')
+    if sys.version_info.major < 3:
+        tw_instance = raw_input("Enter ThreatWatch instance [threatwatch.io]: ")
+    else:
+        tw_instance = input("Enter ThreatWatch instance [threatwatch.io]: ")
+    if tw_instance == "":
+        tw_instance = "threatwatch.io"
+    tw_token = authenticate_user(tw_user, temp_pwd, tw_instance)
+    auth_dict = {}
+    auth_dict['handle'] = tw_user
+    auth_dict['token'] = tw_token
+    auth_dict['instance'] = tw_instance
+    user_home_dir = expanduser("~")
+    tw_dir = user_home_dir + os.path.sep + '.tw'
+    if os.path.isdir(tw_dir) == False:
+        os.mkdir(tw_dir, 0o700)
+    auth_file = tw_dir + os.path.sep + 'auth.json'
+    if os.path.exists(auth_file):
+        os.remove(auth_file)
+    with open(auth_file, "w") as fd:
+        json.dump(auth_dict, fd)
+    os.chmod(auth_file, 0o600)
+    sys.exit(0)
+
+def logout_user(args):
+    user_home_dir = expanduser("~")
+    tw_dir = user_home_dir + os.path.sep + '.tw'
+    if os.path.isdir(tw_dir):
+        auth_file = tw_dir + os.path.sep + 'auth.json'
+        if os.path.exists(auth_file):
+            os.remove(auth_file)
+    sys.exit(0)
+
+def get_logged_in_user_details():
+    ret_dict = { }
+    user_home_dir = expanduser("~")
+    tw_dir = user_home_dir + os.path.sep + '.tw'
+    if os.path.isdir(tw_dir):
+        auth_file = tw_dir + os.path.sep + 'auth.json'
+        if os.path.exists(auth_file):
+            with open(auth_file, "r") as fd:
+                ret_dict = json.load(fd)
+    return ret_dict
+
 def main(args=None):
 
     try:
@@ -185,7 +250,7 @@ def main(args=None):
         subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
         # Required arguments
         parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
-        parser.add_argument('--handle', help='The ThreatWatch registered email id/handle of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
+        parser.add_argument('--handle', help='The ThreatWatch registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
@@ -203,6 +268,13 @@ def main(args=None):
         parser.add_argument('--encoding', help='Specify the encoding. Default is "latin-1"', default='latin-1')
         parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS)
         # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
+
+
+        # Arguments required for Login
+        parser_login = subparsers.add_parser("login", help = "Login to twigs")
+
+        # Arguments required for Logout
+        parser_logout = subparsers.add_parser("logout", help = "Logout from twigs")
 
         # Arguments required for AWS discovery
         parser_aws = subparsers.add_parser ("aws", help = "Discover AWS instances")
@@ -393,33 +465,54 @@ def main(args=None):
         logging.info('Started new run')
         logging.debug('Arguments: %s', str(args))
 
+        if args.mode == "login":
+            login_user(args)
+        elif args.mode == "logout":
+            logout_user(args)
+
+        logged_in_user_dict = { }
+
         if args.handle is None:
-            temp = os.environ.get('TW_HANDLE')
+            logged_in_user_dict = get_logged_in_user_details()
+            temp = logged_in_user_dict.get('handle')
             if temp is None:
-                logging.error('Error: Missing "--handle" argument and "TW_HANDLE" environment variable is not set as well')
-                sys.exit(1)
-            logging.info('Using handle specified in "TW_HANDLE" environment variable')
+                temp = os.environ.get('TW_HANDLE')
+                if temp is None:
+                    logging.error('Error: Missing "--handle" argument, user not logged in twigs and "TW_HANDLE" environment variable is not set as well')
+                    sys.exit(1)
+                logging.info('Using handle specified in "TW_HANDLE" environment variable')
+            else:
+                logging.info('Using handle of logged in user')
             args.handle = temp
 
         if args.token is None:
-            temp = os.environ.get('TW_TOKEN')
-            if temp is not None:
-                logging.info('Using token specified in "TW_TOKEN" environment variable')
-                args.token = temp
+            temp = logged_in_user_dict.get('token')
+            if temp is None:
+                temp = os.environ.get('TW_TOKEN')
+                if temp is not None:
+                    logging.info('Using token specified in "TW_TOKEN" environment variable')
+            else:
+                logging.info('Using token of logged in user')
+            args.token = temp
 
         if args.token is None and args.apply_policy is not None:
             logging.error('Error: Policy cannot be applied since "--token" argument is missing and "TW_TOKEN" environment variable is not set as well!')
             sys.exit(1)
 
         if args.instance is None:
-            temp = os.environ.get('TW_INSTANCE')
-            if temp is not None:
-                logging.info('Using instance specified in "TW_INSTANCE" environment variable')
+            temp = logged_in_user_dict.get('instance')
+            if temp is None:
+                temp = os.environ.get('TW_INSTANCE')
+                if temp is not None:
+                    logging.info('Using instance specified in "TW_INSTANCE" environment variable')
+                    args.instance = temp
+                elif args.token is not None:
+                    # missing instance but token is specified
+                    logging.error('Error: Missing "--instance" argument and "TW_INSTANCE" environment variable is not set as well')
+                    sys.exit(1)
+            else:
+                logging.info('Using instance of logged in user')
                 args.instance = temp
-            elif args.token is not None:
-                # missing instance but token is specified
-                logging.error('Error: Missing "--instance" argument and "TW_INSTANCE" environment variable is not set as well')
-                sys.exit(1)
 
 #    if args.purge_assets == True and args.email_report == False:
 #        logging.error('Purge assets option (--purge_assets) is used with Email report (--email_report)')
