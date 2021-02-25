@@ -186,15 +186,19 @@ def authenticate_user(tw_user, tw_pwd, tw_instance):
         sys.exit(1)
 
 def login_user(args):
-    if sys.version_info.major < 3:
-        tw_user = raw_input("Enter email of ThreatWatch user: ")
-    else:
-        tw_user = input("Enter email of ThreatWatch user: ")
-    temp_pwd = getpass.getpass(prompt='Enter password: ')
-    if sys.version_info.major < 3:
-        tw_instance = raw_input("Enter ThreatWatch instance [threatwatch.io]: ")
-    else:
-        tw_instance = input("Enter ThreatWatch instance [threatwatch.io]: ")
+    try:
+        if sys.version_info.major < 3:
+            tw_user = raw_input("Enter email of ThreatWatch user: ")
+        else:
+            tw_user = input("Enter email of ThreatWatch user: ")
+        temp_pwd = getpass.getpass(prompt='Enter password: ')
+        if sys.version_info.major < 3:
+            tw_instance = raw_input("Enter ThreatWatch instance [threatwatch.io]: ")
+        else:
+            tw_instance = input("Enter ThreatWatch instance [threatwatch.io]: ")
+    except KeyboardInterrupt:
+        print("")
+        sys.exit(1)
     if tw_instance == "":
         tw_instance = "threatwatch.io"
     tw_token = authenticate_user(tw_user, temp_pwd, tw_instance)
@@ -412,7 +416,7 @@ def main(args=None):
         parser_aws_cis.add_argument('--aws_secret_key', help='AWS secret key', required=True)
         parser_aws_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to current directory', default='.')
+        parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to current directory')
 
         # Arguments required for Azure CIS benchmarks
         parser_az_cis = subparsers.add_parser("azure_cis", help = "Run Azure CIS benchmarks")
