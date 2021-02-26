@@ -22,7 +22,7 @@ def run_cis_aws_bench(args):
         sys.exit(1)
 
     logging.info("Running AWS CIS Bench script [%s]", prowler_path)
-    logging.info("This may take sometime...")
+    logging.info("This may take some time...")
     cwd = os.getcwd()
     os.chdir(os.path.dirname(prowler_path))
     cmd = 'AWS_ACCESS_KEY_ID=' + args.aws_access_key + ' AWS_SECRET_ACCESS_KEY=' + args.aws_secret_key

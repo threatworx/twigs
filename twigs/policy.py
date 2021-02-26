@@ -14,7 +14,7 @@ def apply_policy(policy_names, asset_id_list, args):
     if resp.status_code == 200:
         logging.info("Applying specified policy....")
         policy_job_id = resp.json()['policy_job_id']
-        logging.info("Policy job started...job id is [%s]. This may take sometime...", policy_job_id)
+        logging.info("Policy job started...job id is [%s]. This may take some time...", policy_job_id)
         return policy_job_id
     else:
         logging.error("Error applying specified policy")
