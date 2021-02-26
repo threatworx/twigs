@@ -28,7 +28,7 @@ printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install 
 chmod 755 /usr/local/bin/twigs-update.sh
 
 # Setup crontab for automatic upgrades of twigs components
-printf "0 1 * * 0 /usr/local/bin/twigs-update.sh" | crontab -
+printf "0 1 * * 0 /usr/local/bin/twigs-update.sh\n" | crontab -
 
 # Setup twigs update systemd service
 printf "[Unit]\nAfter=network.service\n[Service]\nExecStart=/usr/local/bin/twigs-update.sh\n[Install]\nWantedBy=default.target\n" > /etc/systemd/system/twigs-update.service
@@ -45,7 +45,13 @@ pip install awscli detect-secrets
 
 # Clone prowler repo
 rm -rf $HOME/prowler
-git clone https://github.com/toniblyx/prowler $HOME/prowler
+git clone https://github.com/toniblyx/prowler /usr/share/prowler
+
+# Setup PROWLER_HOME in bashrc
+if ! grep -q "PROWLER_HOME" $HOME/.bashrc
+then
+    printf "\nexport \$PROWLER_HOME=/usr/share/prowler\n" >> $HOME/.bashrc
+fi
 
 # Setup one-time login script
 rm -rf /opt/threatwatch
