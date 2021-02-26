@@ -22,17 +22,17 @@ pip install twigs
 pip install twigs_host_benchmark
 pip install twigs_ssl_audit
 
-# Setup crontab for automatic upgrades of twigs components
-printf "0 1 * * 0 /usr/bin/pip install twigs --upgrade\n0 1 * * 0 /usr/bin/pip install twigs_host_benchmark --upgrade\n0 1 * * 0 /usr/bin/pip install twigs_ssl_audit --upgrade\n" | crontab -
-
-# Setup twigs update systemd service
-printf "[Unit]\nAfter=network.service\n[Service]\nExecStart=/usr/local/bin/twigs-update.sh\n[Install]\nWantedBy=default.target\n" > /etc/systemd/system/twigs-update.service
-chmod 664 /etc/systemd/system/twigs-update.service
-
 # Setup twigs update script
 printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install --upgrade twigs_host_benchmark\n/usr/bin/pip install twigs_ssl_audit --upgrade\n" > /usr/local/bin/twigs-update.sh
 
 chmod 755 /usr/local/bin/twigs-update.sh
+
+# Setup crontab for automatic upgrades of twigs components
+printf "0 1 * * 0 /usr/local/bin/twigs-update.sh" | crontab -
+
+# Setup twigs update systemd service
+printf "[Unit]\nAfter=network.service\n[Service]\nExecStart=/usr/local/bin/twigs-update.sh\n[Install]\nWantedBy=default.target\n" > /etc/systemd/system/twigs-update.service
+chmod 664 /etc/systemd/system/twigs-update.service
 
 # Install semgrep
 pip install semgrep
@@ -50,7 +50,7 @@ git clone https://github.com/toniblyx/prowler $HOME/prowler
 # Setup one-time login script
 rm -rf /opt/threatwatch
 mkdir -p /opt/threatwatch
-printf "#!/bin/bash\n\nif [ ! -f '$HOME/.tw/auth' ];then\n    /usr/local/bin/twigs login\nfi\n" > /opt/threatwatch/twigs-login.sh
+printf "#!/bin/bash\n\nif [ ! -f '$HOME/.tw/auth.json' ];then\n    /usr/local/bin/twigs login\nfi\n" > /opt/threatwatch/twigs-login.sh
 chmod 755 /opt/threatwatch/twigs-login.sh
 
 # Setup login script in bashrc
