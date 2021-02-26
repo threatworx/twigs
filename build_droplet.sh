@@ -50,7 +50,7 @@ git clone https://github.com/toniblyx/prowler /usr/share/prowler
 # Setup PROWLER_HOME in bashrc
 if ! grep -q "PROWLER_HOME" $HOME/.bashrc
 then
-    printf "\nexport \$PROWLER_HOME=/usr/share/prowler\n" >> $HOME/.bashrc
+    printf "\nexport PROWLER_HOME=/usr/share/prowler\n" >> $HOME/.bashrc
 fi
 
 # Setup one-time login script
