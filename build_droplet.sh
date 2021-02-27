@@ -65,3 +65,10 @@ if ! grep -q "twigs-login.sh" $HOME/.bashrc
 then
     printf "\n/opt/threatwatch/twigs-login.sh\n" >> $HOME/.bashrc
 fi
+
+# Setup ufw
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw enable
+
