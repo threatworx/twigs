@@ -203,9 +203,9 @@ def discover(args):
                     if args.password is None:
                         if password is None:
                             password = getpass.getpass(prompt="Enter password: ")
+                            password = password.encode()
                     else:
                         password = args.password
-                    password = password.encode()
                     salt = base64.b64encode(password)
                     kdf = PBKDF2HMAC(
                             algorithm=hashes.SHA256(),
