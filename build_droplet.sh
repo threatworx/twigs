@@ -33,6 +33,7 @@ printf "0 1 * * 0 /usr/local/bin/twigs-update.sh\n" | crontab -
 # Setup twigs update systemd service
 printf "[Unit]\nAfter=network.service\n[Service]\nExecStart=/usr/local/bin/twigs-update.sh\n[Install]\nWantedBy=default.target\n" > /etc/systemd/system/twigs-update.service
 chmod 664 /etc/systemd/system/twigs-update.service
+systemctl enable twigs-update
 
 # Install semgrep
 pip install semgrep
@@ -44,7 +45,7 @@ apt-get install -y docker.io
 pip install awscli detect-secrets
 
 # Clone prowler repo
-rm -rf $HOME/prowler
+rm -rf /usr/share/prowler
 git clone https://github.com/toniblyx/prowler /usr/share/prowler
 
 # Setup PROWLER_HOME in bashrc
