@@ -78,6 +78,10 @@ ufw default allow outgoing
 ufw allow ssh
 ufw enable
 
+# Replace motd
+cp -f twigs_do_motd /etc/motd
+chmod 600 /etc/update-motd.d/*
+
 # Clear logs
 > /var/log/alternatives.log
 > /var/log/auth.log

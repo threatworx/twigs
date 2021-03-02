@@ -1,0 +1,21 @@
+
+ ________                __ _      __     __      __ 
+/_  __/ /  _______ ___ _/ /| | /| / /__ _/ /_____/ / 
+ / / / _ \/ __/ -_) _ `/ __/ |/ |/ / _ `/ __/ __/ _ \
+/_/ /_//_/_/  \__/\_,_/\__/|__/|__/\_,_/\__/\__/_//_/
+                                                     
+
+twigs integrated discovery platform 
+
+A compact linux image with everything you need to discover all your assets using twigs.
+
+You will be prompted for your ThreatWatch credentials to set up authorization 
+for twigs if you have not already done so.
+You can set up authorization at any time later using the 'twigs login' command.
+
+Please check the twigs user guide for more information on this
+https://threatwatch.io/twigs-user-guide/
+
+Setup your trial account by visiting https://threatwatch.io
+
+
