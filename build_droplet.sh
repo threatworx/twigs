@@ -8,6 +8,12 @@
 apt-get -y update
 apt-get -y upgrade
 
+# Setup gcloud sdk
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+apt-get install -y apt-transport-https ca-certificates gnupg
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+apt-get -y update && sudo apt-get install -y google-cloud-sdk
+
 # Link python3 as default python
 ln -fs /usr/bin/python3 /usr/bin/python
 
@@ -72,3 +78,13 @@ ufw default allow outgoing
 ufw allow ssh
 ufw enable
 
+# Clear logs
+> /var/log/alternatives.log
+> /var/log/auth.log
+> /var/log/cloud-init-output.log
+> /var/log/cloud-init.log
+> /var/log/dpkg.log
+> /var/log/kern.log
+> /var/log/ufw.log
+> /var/log/cloud-init.log
+> /var/log/unattended-upgrades/unattended-upgrades-shutdown.log
