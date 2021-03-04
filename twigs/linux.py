@@ -437,7 +437,10 @@ def discover_host(args, host):
 def run_ssh_audit(args, assetid, ip):
     logging.info("Running ssh audit for "+ip)
     issue_list = []
-    SSH_AUDIT_PATH = "python " + os.path.dirname(os.path.realpath(__file__)) + '/ssh-audit.py'
+    python_cmd = "python3"
+    if sys.version_info.major < 3:
+        python_cmd = "python"
+    SSH_AUDIT_PATH = python_cmd + " " + os.path.dirname(os.path.realpath(__file__)) + '/ssh-audit.py'
     audit_out = ''
     try:
         cmd = SSH_AUDIT_PATH + ' -nv ' +ip

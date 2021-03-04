@@ -149,12 +149,14 @@ def parse_inventory(email,data,params):
         asset.pop('vmuuid', None)
         if asset['host'] in temp_assets:
             temp_assets.remove(asset['host'])
+    """
     logging.warning("Total assets reported: %s", len(all_assets))
     logging.warning("Assets with s/w packages and patches: %s", len(assets))
     logging.warning("Assets with only Windows Service: %s", len(temp_assets))
     if (len(temp_assets)>0):
         logging.warning("Sample asset with only Windows Service: %s", list(temp_assets)[0])
     logging.warning("Not running VMs: %s", len(not_running_vms))
+    """
     return assets
 
 def parse_patch(data):
