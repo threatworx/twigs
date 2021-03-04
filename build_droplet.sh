@@ -8,6 +8,12 @@
 apt-get -y update
 apt-get -y upgrade
 
+# Setup gcloud sdk
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+apt-get install -y apt-transport-https ca-certificates gnupg
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+apt-get -y update && sudo apt-get install -y google-cloud-sdk
+
 # Link python3 as default python
 ln -fs /usr/bin/python3 /usr/bin/python
 
@@ -33,6 +39,7 @@ printf "0 1 * * 0 /usr/local/bin/twigs-update.sh\n" | crontab -
 # Setup twigs update systemd service
 printf "[Unit]\nAfter=network.service\n[Service]\nExecStart=/usr/local/bin/twigs-update.sh\n[Install]\nWantedBy=default.target\n" > /etc/systemd/system/twigs-update.service
 chmod 664 /etc/systemd/system/twigs-update.service
+systemctl enable twigs-update
 
 # Install semgrep
 pip install semgrep
@@ -44,7 +51,7 @@ apt-get install -y docker.io
 pip install awscli detect-secrets
 
 # Clone prowler repo
-rm -rf $HOME/prowler
+rm -rf /usr/share/prowler
 git clone https://github.com/toniblyx/prowler /usr/share/prowler
 
 # Setup PROWLER_HOME in bashrc
@@ -64,3 +71,24 @@ if ! grep -q "twigs-login.sh" $HOME/.bashrc
 then
     printf "\n/opt/threatwatch/twigs-login.sh\n" >> $HOME/.bashrc
 fi
+
+# Setup ufw
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw enable
+
+# Replace motd
+cp -f twigs_do_motd /etc/motd
+chmod 600 /etc/update-motd.d/*
+
+# Clear logs
+> /var/log/alternatives.log
+> /var/log/auth.log
+> /var/log/cloud-init-output.log
+> /var/log/cloud-init.log
+> /var/log/dpkg.log
+> /var/log/kern.log
+> /var/log/ufw.log
+> /var/log/cloud-init.log
+> /var/log/unattended-upgrades/unattended-upgrades-shutdown.log
