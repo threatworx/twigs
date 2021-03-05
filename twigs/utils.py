@@ -152,12 +152,12 @@ def get_unique_asset_id(args, host, asset_type):
     # For FreeBSD
     output = run_cmd_on_host(args, host, ["sysctl kern.hostuuid"], False)
     if output is not None and len(output.strip()) > 0:
-        return output.strip()
+        return output.strip().split(' ')[1]
 
     # For Mac OS
     output = run_cmd_on_host(args, host, ["sysctl kern.uuid"], False)
     if output is not None and len(output.strip()) > 0:
-        return output.strip()
+        return output.strip().split(' ')[1]
 
     # If nothing worked, then try to get MAC Address
     return get_mac_address(args, host, asset_type)
