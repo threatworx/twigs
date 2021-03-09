@@ -1,0 +1,38 @@
+About 'twigs'
+
+'twigs' (short for 'ThreatWatch Information Gathering Script') is python based open source (https://github.com/threatwatch/twigs) script to discover your entire attack surface to be secured by ThreatWatch. 
+
+A subscription to ThreatWatch is required to scan your assets for vulnerabilities once they are discovered by twigs. Please visit https://threatwatch.io for more details. 
+You can subscribe to a free trial of ThreatWatch here:
+https://threatwatch.io/getfree 
+
+A complete user guide for twigs is available here:
+https://threatwatch.io/twigs-user-guide/
+
+A short video on twigs and its capabilities is available here:
+https://youtu.be/TkMe7VL3bvA
+
+About this image
+
+This image is compact linux distribution (currently based on Ubuntu 20.04 LTS) which contains 'twigs' and all its dependencies. It also contains all the plugins required by twigs in order to discover different asset classes. It will be available on all major cloud provider marketplaces in the form of server and container images. Details on how to deploy this image within various cloud providers are given below
+
+Deploying on AWS
+
+Any suitable instance type (including free-tier, 1 VCPU 1GB RAM) can be used to deploy this image. The default OS user is 'ubuntu'. Please use appropriate ssh key-pair while creating the instance. 
+
+Once an instance is created using the image, please login to it using your ssh key as follows:
+$ ssh -i <your private key from the keypair> ubuntu@<instance-ip>
+
+Once you login to the instance you can explore twigs and all its options using:
+$ twigs -h
+
+You can also set up authentication with a ThreatWatch instance that you have subscribed to using:
+$ twigs login
+
+You will be prompted to enter credentials to your ThreatWatch account. Once the authentication is set up, you may discover different kinds of assets and report them to your ThreatWatch account for vulnerability assessment.
+
+For e.g. a quick link to the user guide to discover AWS assets is here:
+https://threatwatch.io/twigs-user-guide/#aws-discovery
+
+A short video describing this is available here:
+https://www.youtube.com/watch?v=pYzHU7izRdU
