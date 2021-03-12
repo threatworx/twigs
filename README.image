@@ -36,3 +36,25 @@ https://threatwatch.io/twigs-user-guide/#aws-discovery
 
 A short video describing this is available here:
 https://www.youtube.com/watch?v=pYzHU7izRdU
+
+Deploying on DigitalOcean as a droplet 
+
+1. Search for the 'twigs' app in the Digital Ocean Marketplace https://marketplace.digitalocean.com/
+
+2. Select the 'twigs' app to create a droplet https://marketplace.digitalocean.com/apps/twigs
+
+3. Choose an appropriate plan for your droplet. Minimum required is 1 VCPU, 1GB RAM, 25GB SSD disk
+
+4. Choose an appropriate authentication mechanism (SSH Keys or root password)
+
+5. Choose other options like datacenter region etc. and create the droplet
+
+6. Login to your droplet using SSH based on your selected authentication mechanism. The default user is 'root'
+$ ssh -i <your private key from the keypair> root@<droplet-ip>
+
+7. Once you login to the instance you can explore twigs and all its options using:
+$ twigs -h
+
+8. You can also set up authentication with a ThreatWatch instance that you have subscribed to using:
+$ twigs login
+You will be prompted to enter credentials to your ThreatWatch account. Once the authentication is set up, you may discover different kinds of assets and report them to your ThreatWatch account for vulnerability assessment.
