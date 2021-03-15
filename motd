@@ -9,10 +9,6 @@ twigs integrated discovery platform
 
 A compact linux image with everything you need to discover all your assets using twigs.
 
-You will be prompted for your ThreatWatch credentials to set up authorization 
-for twigs if you have not already done so.
-You can set up authorization at any time later using the 'twigs login' command.
-
 Please check the twigs user guide for more information on this
 https://threatwatch.io/twigs-user-guide/
 
