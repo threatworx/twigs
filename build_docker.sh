@@ -55,18 +55,6 @@ then
     printf "\nexport PROWLER_HOME=/usr/share/prowler\n" >> $HOME/.bashrc
 fi
 
-# Setup one-time login script
-rm -rf /opt/threatwatch
-mkdir -p /opt/threatwatch
-printf "#!/bin/bash\n\nif [ ! -f '$HOME/.tw/auth.json' ];then\n    /usr/local/bin/twigs login\nfi\n" > /opt/threatwatch/twigs-login.sh
-chmod 755 /opt/threatwatch/twigs-login.sh
-
-# Setup login script in bashrc
-if ! grep -q "twigs-login.sh" $HOME/.bashrc
-then
-    printf "\n/opt/threatwatch/twigs-login.sh\n" >> $HOME/.bashrc
-fi
-
 # Replace motd
 cp -f /tmp/motd /etc/motd
 chmod 600 /etc/update-motd.d/*
