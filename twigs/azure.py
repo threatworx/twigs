@@ -51,7 +51,7 @@ def get_inventory(args):
     params['resource_group'] = args.azure_resource_group
     params['workspace'] = args.azure_workspace
     params['enable_tracking_tags'] = args.enable_tracking_tags
-    token = get_access_token(params)
+    token = get_access_token(params, "https://management.azure.com/")
     if token is None:
         return
     params['access_token'] = token
@@ -190,9 +190,9 @@ def retrieve_inventory(params):
     sub_id = params['subscription']
     resource_group = params['resource_group']
     workspace_id = params['workspace']
-    token = params['access_token']
+    token = get_access_token(params, "https://api.loganalytics.io/")
     headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
-    url = 'https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.OperationalInsights/workspaces/%s/api/query?api-version=2017-01-01-preview' % (sub_id,resource_group,workspace_id)
+    url = 'https://api.loganalytics.io/v1/workspaces/%s/query' % workspace_id
     json_data = {"query":"ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer, VMUUID"}
 
     logging.info("Retrieving inventory details from Azure...") 
@@ -200,24 +200,24 @@ def retrieve_inventory(params):
     resp = requests.post(url, headers=headers, json=json_data)
     if resp.status_code == 200:
         response = resp.json()
-        if response.get('Tables'):
-            tables = response['Tables']
-            return parse_inventory(email,tables[0]['Rows'],params)
+        if response.get('tables'):
+            tables = response['tables']
+            return parse_inventory(email,tables[0]['rows'],params)
     else:
         logging.error("Error could not get asset inventory details from Azure...")
         logging.error("Response content: %s" % resp.text)
         sys.exit(1)
 
 #Get access token using  an AAD, an app id associted with that AAD and the API key/secret for that app
-def get_access_token(params):         
+def get_access_token(params, resource):
     aad_id = params['tenant_id']
     aad_app_id = params['app_id']
     app_key = params['app_key']
     url = "https://login.microsoftonline.com/" + aad_id + "/oauth2/token"
 
-    logging.info("Getting access token...") 
+    logging.info("Getting access token for resource [%s]...", resource) 
 
-    resp = requests.post(url, data={"grant_type":"client_credentials", "client_id": aad_app_id, "client_secret": app_key, "resource":"https://management.azure.com/"})
+    resp = requests.post(url, data={"grant_type":"client_credentials", "client_id": aad_app_id, "client_secret": app_key, "resource":resource})
     if resp.status_code == 200:
         response = resp.json()
         token = response['access_token']
@@ -341,7 +341,7 @@ def get_all_workspaces_for_subscription(subid,token):
         workspaces = resp.json()
         wlist = workspaces['value']
         for w in wlist:
-            allworkspaces.append(w['name'])
+            allworkspaces.append(w['properties']['customerId'])
     else:
         logging.error("API call to get all workspaces failed")
         logging.error("Response content: %s" % resp.text)

@@ -77,7 +77,7 @@ def push_asset_to_TW(asset, args):
         resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
         if resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content.decode(args.encoding))
+            logging.debug("Response content: %s", resp.content.decode(args.encoding))
             resp_json = resp.json()
             if 'No product updates' in resp_json['status']:
                 return asset_id, False
@@ -101,7 +101,7 @@ def push_assets_to_TW(assets, args):
 def run_scan(asset_id_list, pj_json, args):
     if args.no_scan is not True:
         if len(asset_id_list) == 0:
-            logging.info("No assets to scan")
+            logging.debug("No asset scan required")
             return 
         run_va_scan = True
         run_lic_scan = True
@@ -296,7 +296,7 @@ def main(args=None):
         parser_azure.add_argument('--azure_application_key', help='Azure Application Key', required=True)
         parser_azure.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
         parser_azure.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
-        parser_azure.add_argument('--azure_workspace', help='Azure Workspace. If not specified, then available values will be displayed', required=False)
+        parser_azure.add_argument('--azure_workspace', help='Azure Workspace ID. If not specified, then available values will be displayed', required=False)
         parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
         # Arguments required for Google Cloud Platform discovery
