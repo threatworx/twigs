@@ -180,6 +180,8 @@ def get_os_type(ostype):
         asset_type = 'Red Hat'
     elif 'Ubuntu' in ostype or 'ubuntu' in ostype:
         asset_type = 'Ubuntu'
+    elif 'CentOS' in ostype or 'centos' in ostype:
+        asset_type = 'CentOS'
     elif 'Oracle' in ostype or 'oracle' in ostype:
         asset_type = "Oracle Linux"
     logging.debug("Mapped OS [%s] to Asset Type [%s]", ostype, asset_type)
