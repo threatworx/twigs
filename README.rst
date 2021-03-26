@@ -53,7 +53,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -87,11 +87,12 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,azure,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+{login,logout,aws,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
     azure               Discover Azure instances
+    acr                 Discover Azure Container Registry (ACR) container images
     gcp                 Discover Google Cloud Platform (GCP) instances
     gcr                 Discover Google Cloud Registry (GCR) container images
     docker              Discover docker instances
@@ -167,6 +168,19 @@ optional arguments:
                         Azure Tenant ID, etc.) as asset tags
 
 Help video: https://youtu.be/DyMrxYscADw
+
+Mode: acr
+$ twigs acr --help
+usage: twigs.py acr [-h] [--registry REGISTRY] [--image IMAGE] [--tmp_dir TMP_DIR]
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --registry REGISTRY  The Azure Container Registry which needs to be
+                       inspected.
+  --image IMAGE        The fully qualified image name (with tag) which needs
+                       to be inspected. If tag is not given, latest will be
+                       determined and used.
+  --tmp_dir TMP_DIR    Temporary directory. Defaults to /tmp
 
 Mode: gcp
 $ twigs gcp --help

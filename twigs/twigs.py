@@ -30,6 +30,7 @@ from . import linux
 from . import repo
 from . import docker
 from . import azure
+from . import acr
 from . import gcp
 from . import gcr
 from . import servicenow
@@ -299,6 +300,31 @@ def main(args=None):
         parser_azure.add_argument('--azure_workspace', help='Azure Workspace ID. If not specified, then available values will be displayed', required=False)
         parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
+        # Arguments required for Azure Container Registry container discovery 
+        parser_acr = subparsers.add_parser ("acr", help = "Discover Azure Container Registry (ACR) container images")
+        parser_acr.add_argument('--registry', help='The Azure Container Registry which needs to be inspected.')
+        parser_acr.add_argument('--image', help='The fully qualified image name (with tag) which needs to be inspected. If tag is not given, latest will be determined and used.')
+        parser_acr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
+        parser_acr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
+        parser_acr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
+        parser_acr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
+        parser_acr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_acr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_acr.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
+
         # Arguments required for Google Cloud Platform discovery
         parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform (GCP) instances")
         parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)
@@ -541,6 +567,8 @@ def main(args=None):
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)
+        elif args.mode == 'acr':
+            assets = acr.get_inventory(args)
         elif args.mode == 'gcp':
             assets = gcp.get_inventory(args)
         elif args.mode == 'gcr':
