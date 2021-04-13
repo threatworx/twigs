@@ -20,6 +20,7 @@ import re
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
 from . import sast
+from . import iac
 
 GIT_PATH = os.environ.get('GIT_PATH')
 if GIT_PATH is None:
@@ -620,9 +621,14 @@ def get_inventory(args):
         assets[0]['secrets'] = secret_records
 
     if args.sast:
+        code_issues = []
         logging.info("Performing static analysis. This may take some time.")
         sast_records = sast.run_sast(args, path, base_path)
-        assets[0]['sast'] = sast_records
+        code_issues.extend(sast_records)
+        logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
+        iac_records = iac.run_iac_checks(args, path, base_path)
+        code_issues.extend(iac_records)
+        assets[0]['sast'] = code_issues
 
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)
