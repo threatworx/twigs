@@ -38,10 +38,6 @@ def run_aws_cmd(cmd):
         cmd_output = cmd_output.decode(get_encoding())
         ret_json = json.loads(cmd_output)
 
-    #except ClientError as e:
-     #   if e.response['Error']['Code'] == 'RepositoryNotFoundException':
-      #      logging.error("Please make sure that repository exists and you are pointing to correct region",cmd,cmd_output)
-       #     ret_json = { } 
     except subprocess.CalledProcessError:
         logging.error("Error running aws  command [%s]", cmd)
         ret_json = { }
@@ -50,123 +46,108 @@ def run_aws_cmd(cmd):
         ret_json = { }
     return ret_json
 
-def get_image_name_with_tag(tag,repository,repositoryType):
-
-    if repositoryType == 'private':
-        ilist_cmd = "ecr describe-images --repository-name " + repository
-    else:
-        ilist_cmd = "ecr-public describe-images --repository-name " + repository
-
-    i_json = run_aws_cmd(ilist_cmd)
-
-    if len(i_json['imageDetails']) > 0:
-        i_uri = get_repo_uri(repository,repositoryType)
-
-        for image in i_json['imageDetails']:
-            if tag is None:
-                no_of_tags = len(image['imageTags'])
-                tag = ':' + image['imageTags'][no_of_tags-1]
-                logging.info("Using %s as a latest tag for the repository %s", image['imageTags'][no_of_tags-1], repository)
-            
-                ret_image = i_uri + tag
-            else:
-                ret_image = i_uri + ':' + tag
-
-        return ret_image
-    
-    else:
-        return None
-
-
 
 def get_inventory(args):
     set_encoding(args.encoding)
     allassets = []
-
-
-    import pdb; pdb.set_trace()
-    if args.repository is None and args.registryId is None:
-        logging.error("Please specify repository name or registryId to be discovered")
+    
+    if args.repositoryUri is None and args.registryId is None:
+        logging.error("Either  fully qualified image name (repositoryUri) or registry id (AWS account Id) needs to be specified.")
         return None
-    if not args.registryId:
-        
-        logging.info("Starting discovery of repository in ECR")
-
-        if args.repositoryType == 'private':
-            ilist_cmd = "ecr describe-images --repository-name " + args.repository
-        else:
-            ilist_cmd = "ecr-public describe-images --repository-name " + args.repository
+    if not args.repositoryUri: #search for all repositories and images under it
        
-        i_json = run_aws_cmd(ilist_cmd)
-
-        if len(i_json) > 0:
-            args.image = get_image_name_with_tag(args.tag,args.repository,args.repositoryType)
-
-            if args.image is None:
-                logging.info("This repository has no images")
-                return None
-
-            args.assetid = args.image
-
-
-            #docker.py is already taking care of this, do we still need this code?
-            args.assetid = args.assetid.replace('/','-')
-            args.assetid = args.assetid.replace(':','-')
-            args.assetname = args.image
-
-            logging.info("Discovering image "+args.image)
-            assets = docker.get_inventory(args)
-
-            if assets != None:
-                for a in assets:
-                    a['tags'].append('ECR')
-                return assets
-
-        else:
-            logging.error("Repository does not exist, please check the name and run the command again")
-            return None
-    else:
-
-        final_assets= None 
         import pdb; pdb.set_trace()
-        logging.info("Starting discovery for all repositories under AWS account")
-
+        logging.info("Starting discovery of images in ECR")
         if args.repositoryType == 'private':
-            ilist_cmd = "ecr describe-repositories"
+            iRepo_cmd = "ecr describe-repositories"
         else:
-            ilist_cmd = "ecr-public describe-repositories"
+            iRepo_cmd = "ecr-public describe-repositories"
 
-        i_json = run_aws_cmd(ilist_cmd)
+        i_json_repos = run_aws_cmd(iRepo_cmd)
+
+        if len(i_json_repos) > 0:
+            logging.info("Found %d repositories in %s", len(i_json_repos), args.registryId)
+            for repo in i_json_repos['repositories']:
+
+                if args.repositoryType == 'private':
+                    iImage_cmd = "ecr describe-images --repository-name " + repo['repositoryName']
+                else:
+                    iImage_cmd = "ecr-public describe-images --repository-name " + repo['repositoryName']
+
+                i_json_images = run_aws_cmd(iImage_cmd)
+                for image in i_json_images['imageDetails']:
+
+                    if args.tag is None:
+                        no_of_tags = len(image['imageTags'])
+                        if 'latest' in image['imageTags']:
+                            tag = ':' + 'latest'
+                        else:
+                            tag = ':' + image['imageTags'][no_of_tags -1]
 
 
-        if len(i_json) > 0:
-            logging.info("Found %d repositories in %s", len(i_json), args.registryId)
-
-        if i_json['repositories'][0]['registryId'] == args.registryId: 
-            for repos in i_json['repositories']:
-                         
-                args.image = get_image_name_with_tag(args.tag,repos['repositoryName'],args.repositoryType)
-
-                
-                if args.image is not None:
+                    logging.info("Using %s as a latest tag for the repository %s", tag,repo['repositoryName'])            
+                    args.image = get_repo_uri(repo['repositoryName'],args.repositoryType) + tag
                     args.assetid = args.image
-                
-                    #docker.py is already taking care of this, do we still need this code?
-                    args.assetid = args.assetid.replace('/','-')
-                    args.assetid = args.assetid.replace(':','-')
                     args.assetname = args.image
-                
-                    logging.info("Discovering image "+args.image)
+                    logging.info("Discovering image %s", args.image)
                     assets = docker.get_inventory(args)
 
-                
                     if assets:
-                        allassets = allassets + assets
+                        allassets.extend(assets)            
+        for a in allassets:
+            a['tags'].append('ECR')
+            return allassets
+    else:
+        #particular image(s) in the repository        
+        import pdb; pdb.set_trace()
+        tokens = args.repositoryUri.split('.amazonaws.com/')
+        uri = tokens[0]
+        repo_name = tokens[1]
 
+        if ':' not in repo_name:#get the latest tag for image, if available 'latest' otherwise most recent.
+        
+            if args.repositoryType == 'private':
+                ilist_cmd = "ecr describe-images --repository-name " + repo_name 
+            else:
+                ilist_cmd = "ecr-public describe-images --repository-name " + repo_name
+       
+            i_json = run_aws_cmd(ilist_cmd)
+
+            if len(i_json) > 0:
+
+                for image in i_json['imageDetails']:
+                    if args.tag is None:
+                        no_of_tags = len(image['imageTags'])
+                        if 'latest' in image['imageTags']:
+                            tag = ':' + 'latest'
+                        else:
+                            tag = ':' + image['imageTags'][no_of_tags-1]
+                
+                    logging.info("Using %s as a latest tag for the repository %s", tag,repo_name)            
+                    args.image = get_repo_uri(repo_name,args.repositoryType) + tag
+                    args.assetid = args.image
+                    args.assetname = args.image
+                    logging.info("Discovering image %s", args.image)
+                    assets = docker.get_inventory(args)
+
+                    if assets:
+                        allassets.extend(assets)            
             for a in allassets:
                 a['tags'].append('ECR')
-            return allassets
+                return allassets
+            else:
+                logging.info("This repository has no images")
+                return None
+        else:#user has provided repositoryUri (image) with tag
+            args.image = args.repositoryUri
+            args.assetid = args.image
+            args.assetname = args.image
+            logging.info("Discovering image %s", args.image)
+            assets = docker.get_inventory(args)
+
+            if assets:
+                for a in assets:
+                    a['tags'].append('ECR')
+                    return assets
+
         
-        else:
-            loggin.info("Run AWS Configure to point it to the correct region and registryId (AccountID) ");
-            return None
