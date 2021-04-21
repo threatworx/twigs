@@ -56,7 +56,6 @@ def get_inventory(args):
         return None
     if not args.repositoryUri: #search for all repositories and images under it
        
-        import pdb; pdb.set_trace()
         logging.info("Starting discovery of images in ECR")
         if args.repositoryType == 'private':
             iRepo_cmd = "ecr describe-repositories"
@@ -99,7 +98,6 @@ def get_inventory(args):
             return allassets
     else:
         #particular image(s) in the repository        
-        import pdb; pdb.set_trace()
         tokens = args.repositoryUri.split('.amazonaws.com/')
         uri = tokens[0]
         repo_name = tokens[1]
