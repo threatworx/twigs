@@ -50,13 +50,13 @@ def run_aws_cmd(cmd):
 def get_inventory(args):
     set_encoding(args.encoding)
     allassets = []
-    
+ 
+    import pdb; pdb.set_trace()
     if args.repositoryUri is None and args.registryId is None:
         logging.error("Either  fully qualified image name (repositoryUri) or registry id (AWS account Id) needs to be specified.")
         return None
     if not args.repositoryUri: #search for all repositories and images under it
        
-        import pdb; pdb.set_trace()
         logging.info("Starting discovery of images in ECR")
         if args.repositoryType == 'private':
             iRepo_cmd = "ecr describe-repositories"
@@ -94,15 +94,20 @@ def get_inventory(args):
 
                     if assets:
                         allassets.extend(assets)            
-        for a in allassets:
-            a['tags'].append('ECR')
+            for a in allassets:
+                a['tags'].append('ECR')
             return allassets
     else:
-        #particular image(s) in the repository        
+        #particular image(s) in the repository
+
         import pdb; pdb.set_trace()
-        tokens = args.repositoryUri.split('.amazonaws.com/')
-        uri = tokens[0]
-        repo_name = tokens[1]
+        if args.repositoryType == 'private':
+            tokens = args.repositoryUri.split('.amazonaws.com/')
+            repo_name = tokens[1]
+        else:
+            tokens = args.repositoryUri.split('/')
+            repo_name = tokens[2]
+
 
         if ':' not in repo_name:#get the latest tag for image, if available 'latest' otherwise most recent.
         
@@ -132,8 +137,8 @@ def get_inventory(args):
 
                     if assets:
                         allassets.extend(assets)            
-            for a in allassets:
-                a['tags'].append('ECR')
+                for a in allassets:
+                    a['tags'].append('ECR')
                 return allassets
             else:
                 logging.info("This repository has no images")
@@ -148,6 +153,6 @@ def get_inventory(args):
             if assets:
                 for a in assets:
                     a['tags'].append('ECR')
-                    return assets
+                return assets
 
         

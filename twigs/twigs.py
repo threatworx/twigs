@@ -331,7 +331,6 @@ def main(args=None):
         parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry (ECR) container images")
         parser_ecr.add_argument('--registryId', help='The AWS Container Registry(AWS account ID) which needs to be inspected for all repositories.')
         parser_ecr.add_argument('--repositoryUri', help='The fully qualified image name (with tag) to be inspected. If tag is not given, then the latest will be determined for all images under this repository')
-        parser_ecr.add_argument ("--tag", help = "Specific tag for given repository")
 
         parser_ecr.add_argument ("--repositoryType", help = "Specify repository type(public/private), otherwise private repositories under this account will be considered", choices=['public','private'], default='private')
         parser_ecr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
