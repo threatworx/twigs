@@ -76,12 +76,11 @@ def get_inventory(args):
                 i_json_images = run_aws_cmd(iImage_cmd)
                 for image in i_json_images['imageDetails']:
 
-                    if args.tag is None:
-                        no_of_tags = len(image['imageTags'])
-                        if 'latest' in image['imageTags']:
-                            tag = ':' + 'latest'
-                        else:
-                            tag = ':' + image['imageTags'][no_of_tags -1]
+                    no_of_tags = len(image['imageTags'])
+                    if 'latest' in image['imageTags']:
+                        tag = ':' + 'latest'
+                    else:
+                        tag = ':' + image['imageTags'][no_of_tags -1]
 
 
                     logging.info("Using %s as a latest tag for the repository %s", tag,repo['repositoryName'])            
@@ -119,12 +118,11 @@ def get_inventory(args):
             if len(i_json) > 0:
 
                 for image in i_json['imageDetails']:
-                    if args.tag is None:
-                        no_of_tags = len(image['imageTags'])
-                        if 'latest' in image['imageTags']:
-                            tag = ':' + 'latest'
-                        else:
-                            tag = ':' + image['imageTags'][no_of_tags-1]
+                    no_of_tags = len(image['imageTags'])
+                    if 'latest' in image['imageTags']:
+                        tag = ':' + 'latest'
+                    else:
+                        tag = ':' + image['imageTags'][no_of_tags-1]
                 
                     logging.info("Using %s as a latest tag for the repository %s", tag,repo_name)            
                     args.image = get_repo_uri(repo_name,args.repositoryType) + tag
