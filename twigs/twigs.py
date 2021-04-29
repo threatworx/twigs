@@ -291,6 +291,33 @@ def main(args=None):
         parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
         parser_aws.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording AWS specific information (like AWS Account ID, etc.) as asset tags', required=False)
 
+        # Arguments required for AWS Container Registry discovery 
+        parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry (ECR) container images")
+        parser_ecr.add_argument('--registry', help='The AWS Container Registry (AWS account ID) which needs to be inspected for all repositories.')
+        parser_ecr.add_argument('--image', help='The fully qualified image name (repositoryUri with optional tag) to be inspected. If tag is not given, latest will be determined for all images under this repository')
+        parser_ecr.add_argument ("--repository_type", help = "Specify repository type (public/private). Defaults to private repositories if not specified", choices=['public','private'], default='private')
+        parser_ecr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
+
+        parser_ecr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
+        parser_ecr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
+        parser_ecr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
+        parser_ecr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_ecr.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
+
         # Arguments required for Azure discovery
         parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
         parser_azure.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
@@ -326,34 +353,6 @@ def main(args=None):
         parser_acr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
         parser_acr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
 
-        
-        # Arguments required for AWS Container Registry discovery 
-        parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry (ECR) container images")
-        parser_ecr.add_argument('--registryId', help='The AWS Container Registry(AWS account ID) which needs to be inspected for all repositories.')
-        parser_ecr.add_argument('--repositoryUri', help='The fully qualified image name (with tag) to be inspected. If tag is not given, then the latest will be determined for all images under this repository')
-
-        parser_ecr.add_argument ("--repositoryType", help = "Specify repository type(public/private), otherwise private repositories under this account will be considered", choices=['public','private'], default='private')
-        parser_ecr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
-
-        parser_ecr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
-        parser_ecr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
-        parser_ecr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
-        parser_ecr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
-        parser_ecr.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--include_patterns', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
         # Arguments required for Google Cloud Platform discovery
         parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform (GCP) instances")
         parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)

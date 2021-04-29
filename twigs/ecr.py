@@ -50,25 +50,33 @@ def run_aws_cmd(cmd):
 def get_inventory(args):
     set_encoding(args.encoding)
     allassets = []
- 
-    if args.repositoryUri is None and args.registryId is None:
+
+    repositoryUri = args.image
+    registryId = args.registry
+
+    if repositoryUri is None and registryId is None:
         logging.error("Either  fully qualified image name (repositoryUri) or registry id (AWS account Id) needs to be specified.")
         return None
-    if not args.repositoryUri: #search for all repositories and images under it
+    if not repositoryUri: #search for all repositories and images under it
        
-        logging.info("Starting discovery of images in ECR")
-        if args.repositoryType == 'private':
+        if args.repository_type == 'private':
             iRepo_cmd = "ecr describe-repositories"
         else:
             iRepo_cmd = "ecr-public describe-repositories"
 
         i_json_repos = run_aws_cmd(iRepo_cmd)
 
+        if len(i_json_repos) > 0: #if user supplies wrong registryId, case: supplied public repo but forgot to mention repository_type
+            if i_json_repos['repositories'][0]['registryId'] not in registryId:
+                logging.error("Please check registry ID and repository type")
+                return None
+
+        logging.info("Starting discovery of images in ECR")
         if len(i_json_repos) > 0:
-            logging.info("Found %d repositories in %s", len(i_json_repos), args.registryId)
+            logging.info("Found %d repositories in %s", len(i_json_repos['repositories']), registryId)
             for repo in i_json_repos['repositories']:
 
-                if args.repositoryType == 'private':
+                if args.repository_type == 'private':
                     iImage_cmd = "ecr describe-images --repository-name " + repo['repositoryName']
                 else:
                     iImage_cmd = "ecr-public describe-images --repository-name " + repo['repositoryName']
@@ -84,8 +92,10 @@ def get_inventory(args):
 
 
                     logging.info("Using %s as a latest tag for the repository %s", tag,repo['repositoryName'])            
-                    args.image = get_repo_uri(repo['repositoryName'],args.repositoryType) + tag
+                    args.image = get_repo_uri(repo['repositoryName'],args.repository_type) + tag
                     args.assetid = args.image
+                    args.assetid = args.assetid.replace('/','-')
+                    args.assetid = args.assetid.replace(':','-')
                     args.assetname = args.image
                     logging.info("Discovering image %s", args.image)
                     assets = docker.get_inventory(args)
@@ -98,17 +108,28 @@ def get_inventory(args):
     else:
         #particular image(s) in the repository
 
-        if args.repositoryType == 'private':
-            tokens = args.repositoryUri.split('.amazonaws.com/')
-            repo_name = tokens[1]
-        else:
-            tokens = args.repositoryUri.split('/')
-            repo_name = tokens[2]
 
+        if args.repository_type == 'private':
+
+            tokens = repositoryUri.split('amazonaws.com/')
+            if len(tokens) != 2:
+                logging.error("Specify fully qualified repository name, if a tag is not mentioned then the 'latest' will be determined and all images under repository will be discovered")
+                return None
+            else:
+                repo_name = tokens[1]
+        else:
+
+            tokens = repositoryUri.split('/')
+            if len(tokens) != 3:
+
+                logging.error("Specify fully qualified repository name, if a tag is not mentioned then the 'latest' will be determined and all images under repository will be discovered")
+                return None
+            else:
+                repo_name = tokens[2]
 
         if ':' not in repo_name:#get the latest tag for image, if available 'latest' otherwise most recent.
         
-            if args.repositoryType == 'private':
+            if args.repository_type == 'private':
                 ilist_cmd = "ecr describe-images --repository-name " + repo_name 
             else:
                 ilist_cmd = "ecr-public describe-images --repository-name " + repo_name
@@ -125,8 +146,10 @@ def get_inventory(args):
                         tag = ':' + image['imageTags'][no_of_tags-1]
                 
                     logging.info("Using %s as a latest tag for the repository %s", tag,repo_name)            
-                    args.image = get_repo_uri(repo_name,args.repositoryType) + tag
+                    args.image = get_repo_uri(repo_name,args.repository_type) + tag
                     args.assetid = args.image
+                    args.assetid = args.assetid.replace('/','-')
+                    args.assetid = args.assetid.replace(':','-')
                     args.assetname = args.image
                     logging.info("Discovering image %s", args.image)
                     assets = docker.get_inventory(args)
@@ -140,8 +163,10 @@ def get_inventory(args):
                 logging.info("This repository has no images")
                 return None
         else:#user has provided repositoryUri (image) with tag
-            args.image = args.repositoryUri
+            args.image = repositoryUri
             args.assetid = args.image
+            args.assetid = args.assetid.replace('/','-')
+            args.assetid = args.assetid.replace(':','-')
             args.assetname = args.image
             logging.info("Discovering image %s", args.image)
             assets = docker.get_inventory(args)
