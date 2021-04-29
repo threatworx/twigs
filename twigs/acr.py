@@ -78,6 +78,9 @@ def get_inventory(args):
         return allassets
     else:
         tokens = args.image.split('.azurecr.io/')
+        if len(tokens) != 2:
+            logging.error("Invalid ACR image name specified. Please specify fully qualified image name ( like myregistry.azurecr.io/myimage[:mytag] )")
+            return None
         repository = tokens[0]
         image_name = tokens[1]
         if ':' not in image_name:

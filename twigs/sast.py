@@ -11,10 +11,6 @@ import traceback
 
 sast_plugin = "/usr/local/bin/semgrep"
 
-def on_rm_error( func, path, exc_info):
-    os.chmod( path, stat.S_IWRITE )
-    os.unlink( path )
-
 def get_rating(severity):
     if severity == 'ERROR':
         return '4'
@@ -39,8 +35,8 @@ def get_description(result):
 def run_sast(args, path, base_path):
     findings = []
     if not os.path.isfile(sast_plugin) or not os.access(sast_plugin, os.X_OK):
-        logging.error('SAST plugin CLI - semgrep not found')
-        sys.exit(1) 
+        logging.warning('SAST plugin CLI - semgrep not found')
+        return findings
 
     params = ' -q --json --config=p/r2c-security-audit ' + path
     
@@ -50,10 +46,9 @@ def run_sast(args, path, base_path):
         out = subprocess.check_output(cmdarr, shell=True)
         sast_issues = json.loads(out)
     except subprocess.CalledProcessError:
-        logging.error("Error running SAST CLI semgrep")
-        shutil.rmtree(path, onerror = on_rm_error)
-        return None 
-    logging.info("SAST checks completed")
+        logging.error("Error running SAST plugin CLI [semgrep]")
+        return findings 
+    logging.info("SAST plugin CLI [semgrep] checks completed")
 
     results = sast_issues['results']
     for r in results:
@@ -68,6 +63,7 @@ def run_sast(args, path, base_path):
         finding['lineno_start'] = r['start']['line']
         finding['lineno_end'] = r['end']['line']
         finding['description'] = get_description(r)
+        finding['type'] = 'SAST'
         finding['cwe'] = ''
         finding['owasp'] = ''
         if 'metadata' in r['extra']:
@@ -77,5 +73,4 @@ def run_sast(args, path, base_path):
                 finding['owasp'] = r['extra']['metadata']['owasp']
         findings.append(finding)
 
-    #print json.dumps(findings, indent=4)
     return findings

@@ -1,0 +1,77 @@
+import sys
+import re
+import os
+import shutil
+import stat
+import subprocess
+import logging
+import json
+import tempfile
+import traceback
+
+checkov_plugin = "/usr/local/bin/checkov"
+
+def get_code_snippet(r):
+    code_snippet = ''
+    if r['code_block'] is None:
+        return code_snippet
+    for cl in r['code_block']:
+        code_snippet = code_snippet + cl[1]
+    return code_snippet
+
+def get_refs(r):
+    refs = [ ]
+    guideline = r.get('guideline')
+    if guideline is not None:
+        refs.append(guideline)
+    return refs
+
+def run_iac_checks(args, path, base_path):
+    findings = []
+    if not os.path.isfile(checkov_plugin) or not os.access(checkov_plugin, os.X_OK):
+        logging.error('SAST plugin CLI - checkov not found')
+        return findings
+
+    params = '--output json --directory ' + path
+    
+    cmdarr = [checkov_plugin + " " + params]
+    logging.debug("Running command %s", cmdarr)
+    iac_issues = None
+    try:
+        out = subprocess.check_output(cmdarr, shell=True)
+        iac_issues = json.loads(out)
+    except subprocess.CalledProcessError as cpe:
+        if cpe.returncode == 1 and len(cpe.output) > 0:
+            iac_issues = json.loads(cpe.output)
+        else:
+            logging.error("Error running SAST plugin CLI [checkov]")
+            return findings 
+    logging.info("SAST plugin CLI [checkov] checks completed")
+
+    # checkov returns list if there are multiple technologies like terraform, kubernetes
+    # else it returns dict
+    if type(iac_issues) is dict:
+        iac_issues = [ iac_issues ]
+
+    for iac_issue in iac_issues:
+        failed_results = iac_issue['results'].get('failed_checks')
+        if failed_results is None:
+            continue
+        for r in failed_results:
+            finding = {}
+            finding['issue_id'] = r['check_id']
+            finding['rating'] = '4' # default rating
+            finding['filename'] = r['file_path'][1:]
+            if args.no_code:
+                finding['code_snippet'] = ''
+            else:
+                finding['code_snippet'] = get_code_snippet(r)
+            finding['lineno_start'] = r['file_line_range'][0] if r['file_line_range'][0] is not None else -1
+            finding['lineno_end'] = r['file_line_range'][1] if r['file_line_range'][1] is not None else -1
+            finding['description'] = r['check_name']
+            finding['resource'] = r['resource']
+            finding['refs'] = get_refs(r)
+            finding['type'] = 'IaC'
+            findings.append(finding)
+
+    return findings
