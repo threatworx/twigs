@@ -33,6 +33,7 @@ from . import azure
 from . import acr
 from . import gcp
 from . import gcr
+from . import ecr
 from . import servicenow
 from . import inv_file
 from . import fingerprint
@@ -289,6 +290,33 @@ def main(args=None):
         parser_aws.add_argument('--aws_region', help='AWS region', required=True)
         parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
         parser_aws.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording AWS specific information (like AWS Account ID, etc.) as asset tags', required=False)
+
+        # Arguments required for AWS Container Registry discovery 
+        parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry (ECR) container images")
+        parser_ecr.add_argument('--registry', help='The AWS Container Registry (AWS account ID) which needs to be inspected for all repositories.')
+        parser_ecr.add_argument('--image', help='The fully qualified image name (repositoryUri with optional tag) to be inspected. If tag is not given, latest will be determined for all images under this repository')
+        parser_ecr.add_argument ("--repository_type", help = "Specify repository type (public/private). Defaults to private repositories if not specified", choices=['public','private'], default='private')
+        parser_ecr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
+
+        parser_ecr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
+        parser_ecr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
+        parser_ecr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
+        parser_ecr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_ecr.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
 
         # Arguments required for Azure discovery
         parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
@@ -573,6 +601,8 @@ def main(args=None):
             assets = gcp.get_inventory(args)
         elif args.mode == 'gcr':
             assets = gcr.get_inventory(args)
+        elif args.mode == 'ecr':
+            assets = ecr.get_inventory(args)
         elif args.mode == 'servicenow':
             assets = servicenow.get_inventory(args)
         elif args.mode == 'repo':
