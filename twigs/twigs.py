@@ -31,6 +31,7 @@ from . import repo
 from . import docker
 from . import azure
 from . import acr
+from . import ecr
 from . import gcp
 from . import gcr
 from . import servicenow
@@ -596,6 +597,8 @@ def main(args=None):
             assets = azure.get_inventory(args)
         elif args.mode == 'acr':
             assets = acr.get_inventory(args)
+        elif args.mode == 'ecr':
+            assets = ecr.get_inventory(args)
         elif args.mode == 'gcp':
             assets = gcp.get_inventory(args)
         elif args.mode == 'gcr':

@@ -53,7 +53,7 @@ def get_inventory(args):
 
     repositoryUri = args.image
     registryId = args.registry
-
+    
     if repositoryUri is None and registryId is None:
         logging.error("Either  fully qualified image name (repositoryUri) or registry id (AWS account Id) needs to be specified.")
         return None
