@@ -128,7 +128,7 @@ def get_asset_type(os):
         return "OpenBSD"
     elif "suse" in os:
         return "Suse"
-    elif "mac os" in os:
+    elif "mac os" in os or "macos" in os:
         return "Mac OS"
     elif "windows" in os:
         return "Windows"
