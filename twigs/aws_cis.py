@@ -56,25 +56,29 @@ def get_issues_from_csv_file(csv_file_path, asset_id):
     with open(csv_file_path, "r") as csv_file:
         csv_reader = csv.DictReader(csv_file, quoting=csv.QUOTE_NONE, escapechar='\\')
         for row in csv_reader:
-            if row['RESULT'] != 'FAIL':
+            if row['CHECK_RESULT'] != 'FAIL':
                 continue
             if prev is None or prev != row['TITLE_ID']:
                 issue = { }
                 issue['twc_id']  = 'cis-aws-bench-check-'+row['TITLE_ID']
                 issue['asset_id'] = asset_id
-                issue['twc_title'] = row['LEVEL'] + ' ' + row['TITLE_TEXT']
-                issue['details'] = row['NOTES']
+                issue['twc_title'] = row['ITEM_LEVEL'] + ' ' + row['TITLE_TEXT']
+                issue['details'] = row['CHECK_RESULT_EXTENDED']
                 issue['type'] = 'AWS CIS'
-                if row['LEVEL'] == 'Level 1':
+                if row['CHECK_SEVERITY'] == 'Low':
+                    issue['rating'] = '1'
+                elif row['CHECK_SEVERITY'] == 'Medium':
+                    issue['rating'] = '2'
+                elif row['CHECK_SEVERITY'] == 'High':
                     issue['rating'] = '4'
-                else:
+                elif row['CHECK_SEVERITY'] == 'Critical':
                     issue['rating'] = '5'
                 issue['object_id'] = ''
                 issue['object_meta'] = ''
                 prev = row['TITLE_ID']
                 findings.append(issue)
             else:
-                findings[-1]['details'] = findings[-1]['details'] + '\n' + row['NOTES']
+                findings[-1]['details'] = findings[-1]['details'] + '\n' + row['CHECK_RESULT_EXTENDED']
     return findings
 
 def get_inventory(args):
