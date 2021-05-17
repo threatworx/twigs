@@ -53,7 +53,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--tag_critical] [--tag TAG] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -87,10 +87,11 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+{login,logout,aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
+    ecr                 Discover AWS Container Registry (ECR) container images
     azure               Discover Azure instances
     acr                 Discover Azure Container Registry (ACR) container images
     gcp                 Discover Google Cloud Platform (GCP) instances
@@ -141,6 +142,23 @@ optional arguments:
                         Account ID, etc.) as asset tags
 
 Help video: https://youtu.be/pYzHU7izRdU
+
+Mode: ecr
+$ twigs ecr --help
+usage: twigs ecr [-h] [--registry REGISTRY] [--image IMAGE] [--repository_type {public,private}] [--tmp_dir TMP_DIR]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --registry REGISTRY   The AWS Container Registry (AWS account ID) which
+                        needs to be inspected for all repositories.
+  --image IMAGE         The fully qualified image name (repositoryUri with
+                        optional tag) to be inspected. If tag is not given,
+                        latest will be determined for all images under this
+                        repository
+  --repository_type REPOSITORY_TYPE
+                        Specify repository type (public/private). Defaults to
+                        private repositories if not specified
+  --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
 
 Mode: azure
 $ twigs azure --help
