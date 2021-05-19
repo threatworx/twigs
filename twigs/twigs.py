@@ -470,7 +470,7 @@ def main(args=None):
         parser_aws_cis.add_argument('--aws_secret_key', help='AWS secret key', required=True)
         parser_aws_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to current directory')
+        parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
 
         # Arguments required for Azure CIS benchmarks
         parser_az_cis = subparsers.add_parser("azure_cis", help = "Run Azure CIS benchmarks")

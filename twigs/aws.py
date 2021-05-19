@@ -126,6 +126,11 @@ class EC2Impl(AWS):
                 except OSError:
                     logging.error("Failed to cleanup file [%s]", fname)
         return None
+
+    def get_asset_type(self, platformName):
+        if platformName == "Amazon Linux":
+            return "Amazon Linux AMI"
+        return platformName
       
     def asset_inventory(self, email):
         logging.info("Compiling asset inventory...")
@@ -150,7 +155,7 @@ class EC2Impl(AWS):
                     asset['id'] = data[0]['resourceId']
                     asset['name'] = data[0]['ComputerName']
                     logging.info("Found asset [%s] in AWS inventory", asset['name'])
-                    asset['type'] = data[0]['PlatformName']
+                    asset['type'] = self.get_asset_type(data[0]['PlatformName'])
                     asset['owner'] = email
                     os_release = None
                     if 'Linux' in asset['type']:

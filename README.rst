@@ -378,7 +378,7 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
   --prowler_home PROWLER_HOME
                         Location of cloned prowler github repo. Defaults to
-                        current directory
+                        /usr/share/prowler
 
 Mode: azure_cis
 $ twigs azure_cis --help
