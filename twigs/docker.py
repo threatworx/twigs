@@ -272,7 +272,7 @@ def discover_ubuntu_from_container_image(container_fs):
             if line.startswith('Package:'):
                 pkg = line.split(':')[1].strip()
             if line.startswith('Version:'):
-                ver = line.split(':')[1].strip()
+                ver = ':'.join(line.split(':')[1:]).strip()
     return plist
 
 def discover_alpine_from_container_image(container_fs):
