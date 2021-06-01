@@ -14,6 +14,9 @@ apt-get install -y apt-transport-https ca-certificates gnupg
 curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 apt-get -y update && sudo apt-get install -y google-cloud-sdk
 
+# Install AZ Cli
+curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
 # Link python3 as default python
 ln -fs /usr/bin/python3 /usr/bin/python
 
