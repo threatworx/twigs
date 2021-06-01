@@ -39,6 +39,9 @@ chmod 755 /usr/local/bin/twigs-update.sh
 # Install semgrep
 pip install semgrep
 
+# Install checkov 
+pip install checkov 
+
 # Install docker
 apt-get install -y docker.io
 

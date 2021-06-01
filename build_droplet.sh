@@ -44,6 +44,9 @@ systemctl enable twigs-update
 # Install semgrep
 pip install semgrep
 
+# Install checkov 
+pip install checkov 
+
 # Install docker
 apt-get install -y docker.io
 
