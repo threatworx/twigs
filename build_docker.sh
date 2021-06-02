@@ -55,6 +55,10 @@ pip install awscli detect-secrets
 rm -rf /usr/share/prowler
 git clone https://github.com/toniblyx/prowler /usr/share/prowler
 
+# Clone docker bench repo
+rm -rf /usr/share/docker-bench-security
+git clone https://github.com/docker/docker-bench-security.git /usr/share/docker-bench-security
+
 # Setup PROWLER_HOME in bashrc
 if ! grep -q "PROWLER_HOME" $HOME/.bashrc
 then
