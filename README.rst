@@ -361,7 +361,8 @@ optional arguments:
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
   --docker_bench_home DOCKER_BENCH_HOME
-                        Location of docker bench CLI
+                        Location of docker bench CLI. Defaults to /usr/share
+                        /docker-bench-security
 
 Mode: aws_cis
 $ twigs aws_cis --help
