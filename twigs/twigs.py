@@ -462,7 +462,7 @@ def main(args=None):
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
         parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
         parser_docker_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI', default='/usr/share/docker-bench-security')
+        parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI. Defaults to /usr/share/docker-bench-security', default='/usr/share/docker-bench-security')
 
         # Arguments required for AWS CIS benchmarks
         parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
