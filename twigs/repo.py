@@ -29,7 +29,7 @@ if GIT_PATH is None:
     else:
         GIT_PATH = '/usr/bin/git'
 
-SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar', 'cargo']
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar', 'cargo', 'go']
 
 def cleanse_semver_version(pv):
     pv = pv.replace('"','')
@@ -49,6 +49,29 @@ def cleanse_semver_version(pv):
         for token_index in range(2, len(temp_tokens)):
             pv = pv + " " + temp_tokens[token_index]
     return pv
+
+def discover_go_mod(args, localpath):
+    plist = []
+    files = lib_utils.find_files(localpath, 'go.mod')
+    prop_dict = None
+    for file_path in files:
+        fp = open(file_path, 'r')
+        if fp == None:
+            continue
+        contents = fp.read()
+        fp.close()
+        if localpath.startswith('/tmp/'):
+            file_path = file_path.replace(localpath+'/','')
+        for line in contents.splitlines():
+            line = line.strip()
+            if line == '' or line.startswith('module ') or line.startswith('go ') or line.startswith('require (') or line.startswith(')') or line.startswith('replace') or line.startswith('exclude'):
+                continue
+            sp = line.split()
+            if len(sp) < 2:
+                continue
+            prod = sp[0] + " " + sp[1] + " source:"+file_path
+            plist.append(prod)
+    return plist, None
 
 def discover_cargo_toml(args, localpath):
     plist = []
@@ -508,6 +531,8 @@ def discover_specified_type(repo_type, args, localpath):
         plist, p1list = discover_jar(args, localpath)
     elif repo_type == 'cargo':
         plist, p1list = discover_cargo_toml(args, localpath)
+    elif repo_type == 'go':
+        plist, p1list = discover_go_mod(args, localpath)
 
     return plist, p1list
 
