@@ -78,7 +78,9 @@ def get_all_organizations():
     _organizations = []
     out_json = run_gcloud_cmd('organizations list')
     for o in out_json:
-        _organizations.append(o['organizationId'])
+        org_name = o['name']
+        org_id = org_name.split('/')[-1]
+        _organizations.append(org_id)
     return _organizations
 
 def _add_sub_folders(folder, folders):
