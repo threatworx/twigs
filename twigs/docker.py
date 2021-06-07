@@ -180,12 +180,12 @@ def get_image_id(args):
 
 def create_asset(args, os_release, atype, plist):
     asset_id = None
-    if args.assetid is None:
+    if args.assetid is None or args.assetid.strip() == "":
         asset_id = args.image if args.image is not None else args.containerid
     else:
         asset_id = args.assetid
     asset_name = None
-    if args.assetname is None:
+    if args.assetname is None or args.assetname.strip() == "":
         asset_name = args.image if args.image is not None else args.containerid
     else:
         asset_name = args.assetname
@@ -603,8 +603,8 @@ def discover_container_from_instance(args):
 def run_docker_bench(args):
     DBENCH = "/docker-bench-security.sh"
 
-    asset_id = utils.get_ip() if args.assetid is None else args.assetid
-    asset_name = asset_id if args.assetname is None else args.assetname
+    asset_id = utils.get_ip() if args.assetid is None or args.assetid.strip() == "" else args.assetid
+    asset_name = asset_id if args.assetname is None or args.assetname.strip() == "" else args.assetname
     os_release = utils.get_os_release(args, None)
     if os_release == None:
         logging.error('Unsupported OS type for running docker bench')

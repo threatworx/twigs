@@ -17,12 +17,14 @@ def get_inventory(args):
     if args.plugin not in dast_plugins:
         logging.error('Not a supported DAST plugin')
         sys.exit(1) 
-
+    if args.assetid.strip() == "":
+        logging.error('[assetid] cannot be empty')
+        sys.exit(1)
     asset_id = args.assetid
     if asset_id == None:
         asset_id = args.url
     asset_name = None
-    if args.assetname == None:
+    if args.assetname == None or args.assetname.strip() == "":
         asset_name = asset_id 
     else:
         asset_name = args.assetname

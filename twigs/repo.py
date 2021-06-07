@@ -555,12 +555,12 @@ def strip_source(plist):
 def discover_inventory(args, localpath):
     default_id_name = get_last_component(args.repo)
     asset_id = None
-    if args.assetid == None:
+    if args.assetid == None or args.assetid.strip() == "":
         asset_id = default_id_name
     else:
         asset_id = args.assetid
     asset_name = None
-    if args.assetname == None:
+    if args.assetname == None or args.assetname.strip() == "":
         asset_name = default_id_name
     else:
         asset_name = args.assetname

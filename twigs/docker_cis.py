@@ -9,8 +9,8 @@ from . import utils
 def run_docker_bench(args):
     DBENCH = "/docker-bench-security.sh"
 
-    asset_id = utils.get_ip() if args.assetid is None else args.assetid
-    asset_name = asset_id if args.assetname is None else args.assetname
+    asset_id = utils.get_ip() if args.assetid is None or args.assetid.strip() == "" else args.assetid
+    asset_name = asset_id if args.assetname is None or args.assetname.strip() == "" else args.assetname
     os_release = utils.get_os_release(args, None)
     if os_release == None:
         logging.error('Unsupported OS type for running docker bench')

@@ -207,7 +207,7 @@ def get_inventory(args):
         logging.error('Error unsupported input file type [%s] specified! Supported file types are JSON and PDF.', in_file_ext)
         sys.exit(1)
     
-    if args.assetid is None:
+    if args.assetid is None or args.assetid.strip() == "":
         asset_id = os.path.basename(in_file)
         temp = asset_id.rfind('.')
         asset_id = asset_id[:temp] # remove the extension
@@ -216,7 +216,7 @@ def get_inventory(args):
     asset_id = asset_id.replace(' ','-')
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
-    if args.assetname is not None:
+    if args.assetname is not None and args.assetname.strip() != "":
         asset_name = args.assetname.replace('/','-')
         asset_name = asset_name.replace(':','-')
     else:

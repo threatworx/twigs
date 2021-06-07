@@ -10,8 +10,11 @@ import subprocess
 
 def run_cis_aws_bench(args):
     PROWLER_SH = '/prowler'
+    if args.assetid.strip() == "":
+        logging.error("[assetid] cannot be empty")
+        sys.exit(1)
     asset_id = args.assetid
-    asset_name = asset_id if args.assetname is None else args.assetname
+    asset_name = asset_id if args.assetname is None or args.assetname.strip() == "" else args.assetname
     if args.prowler_home is None:
         args.prowler_home = os.environ.get('PROWLER_HOME')
         if args.prowler_home is None:
