@@ -645,14 +645,18 @@ def get_inventory(args):
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         assets[0]['secrets'] = secret_records
 
+    code_issues = []
     if args.sast:
-        code_issues = []
         logging.info("Performing static analysis. This may take some time.")
         sast_records = sast.run_sast(args, path, base_path)
         code_issues.extend(sast_records)
+
+    if args.iac_checks:
         logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
         iac_records = iac.run_iac_checks(args, path, base_path)
         code_issues.extend(iac_records)
+
+    if len(code_issues) > 0:
         assets[0]['sast'] = code_issues
 
     if args.repo.startswith('http'):

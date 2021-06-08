@@ -29,7 +29,7 @@ def get_refs(r):
 def run_iac_checks(args, path, base_path):
     findings = []
     if not os.path.isfile(checkov_plugin) or not os.access(checkov_plugin, os.X_OK):
-        logging.error('SAST plugin CLI - checkov not found')
+        logging.error('IaC security checks CLI - checkov not found')
         return findings
 
     params = '--output json --directory ' + path
@@ -44,9 +44,9 @@ def run_iac_checks(args, path, base_path):
         if cpe.returncode == 1 and len(cpe.output) > 0:
             iac_issues = json.loads(cpe.output)
         else:
-            logging.error("Error running SAST plugin CLI [checkov]")
+            logging.error("Error running IaC security checks CLI [checkov]")
             return findings 
-    logging.info("SAST plugin CLI [checkov] checks completed")
+    logging.info("IaC security checks CLI [checkov] checks completed")
 
     # checkov returns list if there are multiple technologies like terraform, kubernetes
     # else it returns dict
