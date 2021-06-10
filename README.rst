@@ -15,10 +15,11 @@ twigs
 
 ThreatWatch Information Gathering Script
 
-https://threatwatch.io/
+https://threatwatch.io/twigs-user-guide/
 
 * Free software: GNU General Public License v3
-* Documentation: https://twigs.readthedocs.io.
+* Documentation: https://twigs.readthedocs.io
+* User guide: https://threatwatch.io/twigs-user-guide
 
 
 Features
