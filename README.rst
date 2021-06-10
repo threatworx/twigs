@@ -306,7 +306,7 @@ optional arguments:
 
 Mode: repo
 $ twigs repo --help
-usage: twigs repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}] [--level {shallow,deep}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast]
+usage: twigs repo [-h] --repo REPO [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}] [--level {shallow,deep}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -335,6 +335,7 @@ optional arguments:
   --mask_secret         Mask identified secret before storing for reference in ThreatWatch.
   --no_code             Disable storing code for reference in ThreatWatch.
   --sast                Perform static code analysis on your source code
+  --iac_checks          Perform security checks on IaC templates
 
 Mode: servicenow
 $ twigs servicenow --help
