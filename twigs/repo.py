@@ -501,6 +501,10 @@ def discover_jar(args, localpath):
         if localpath.startswith('/tmp/'):
             file_path = file_path.replace(localpath+'/','')
         prod = prod.strip() + " source:"+file_path
+        prod = prod.replace("b'","")
+        prod = prod.replace("'","")
+        prod = prod.replace('b"','')
+        prod = prod.replace('"','')
         if prod != '':
             plist.append(prod)
     return plist, None
