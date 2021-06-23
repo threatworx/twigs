@@ -39,6 +39,9 @@ printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install 
 
 chmod 755 /usr/local/bin/twigs-update.sh
 
+# Install git
+apt-get install -y git
+
 # Install semgrep
 pip install semgrep
 
