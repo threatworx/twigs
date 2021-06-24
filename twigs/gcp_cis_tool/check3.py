@@ -100,6 +100,8 @@ def _check_open_port(port_no, details_msg):
             for allowed in entry['allowed']:
                 port_open = False
                 if allowed['IPProtocol'] == 'tcp' or allowed['IPProtocol'] == 'all':
+                    if entry.get('sourceRanges') is None:
+                        continue
                     for sr in entry['sourceRanges']:
                         if sr == "0.0.0.0/0":
                             ports = allowed.get('ports')
