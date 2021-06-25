@@ -8,6 +8,8 @@ import requests
 
 GoDaddyCABundle = True
 
+SYSTEM_TAGS = ['IMAGE_NAME', 'OS_VERSION', 'OS_RELEASE', 'SOURCE', 'OS_RELEASE_ID', 'CRITICALITY', 'http', 'https', 'OS_ARCH']
+
 def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
     if host and host['remote']:
         pkgout = run_remote_ssh_command(args, host, cmdarr[0])

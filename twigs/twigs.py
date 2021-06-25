@@ -148,6 +148,16 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Failed to start license compliance assessment")
                 logging.error("Response details: %s", resp.content.decode(args.encoding))
 
+def remove_standard_tags(assets):
+    for asset in assets:
+        existing_tags = asset['tags']
+        if existing_tags is not None:
+            new_tags = []
+            for et in existing_tags:
+                if et.split(':')[0] in utils.SYSTEM_TAGS:
+                    new_tags.append(et)
+            asset['tags'] = new_tags
+
 def add_asset_tags(assets, tags):
     for asset in assets:
         existing_tags = asset.get('tags')
@@ -261,6 +271,7 @@ def main(args=None):
         parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
         parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
+        parser.add_argument('--no_auto_tags', action='store_true', help='Disable auto tagging of assets with standard classification tags. Only user specified tags will be applied')
         #parser.add_argument('--asset_criticality', choices=['1', '2', '3','4', '5'], help='Business criticality of the discovered assets on a scale of 1 (low) to 5 (high).', required=False)
         parser.add_argument('--apply_policy', help='One or more policy names as a comma-separated list', required=False)
         parser.add_argument('--out', help='Specify name of the JSON file to hold the exported asset information.')
@@ -643,6 +654,9 @@ def main(args=None):
                 if args.asset_criticality is not None:
                     add_asset_criticiality_tag(assets, args.asset_criticality)
                 """
+
+                if args.no_auto_tags:
+                    remove_standard_tags(assets)
 
                 if args.tag_critical:
                     add_asset_criticality_tag(assets, '5')
