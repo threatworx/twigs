@@ -44,6 +44,9 @@ printf "[Unit]\nAfter=network.service\n[Service]\nExecStart=/usr/local/bin/twigs
 chmod 664 /etc/systemd/system/twigs-update.service
 systemctl enable twigs-update
 
+# Install git
+apt-get install -y git
+
 # Install semgrep
 pip install semgrep
 
