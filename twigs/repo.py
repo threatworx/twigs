@@ -69,7 +69,10 @@ def discover_go_mod(args, localpath):
             sp = line.split()
             if len(sp) < 2:
                 continue
-            prod = sp[0] + " " + sp[1] + " source:"+file_path
+            ver = sp[1]
+            if ver.startswith('v'):
+                ver = ver[1:]
+            prod = sp[0] + " " + ver + " source:"+file_path
             plist.append(prod)
     return plist, None
 
