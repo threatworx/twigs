@@ -498,6 +498,7 @@ def main(args=None):
         parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_gcp_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
         parser_gcp_cis.add_argument('--projects', help='A comma separated list of GCP project IDs to run the checks against')
+        parser_gcp_cis.add_argument('--expanded', action='store_true', help='Create separate issue for each violation')
 
         # Arguments required for ssl audit 
         parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed")

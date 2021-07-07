@@ -12,6 +12,7 @@ _compute_instances_by_projects = None
 _services_by_projects = None
 
 _encoding = None
+_expanded_issues = None
 
 def set_encoding(encoding):
     global _encoding
@@ -20,6 +21,14 @@ def set_encoding(encoding):
 def get_encoding():
     global _encoding
     return _encoding
+
+def set_expanded(expanded):
+    global _expanded_issues
+    _expanded_issues = expanded
+
+def get_expanded():
+    global _expanded_issues
+    return _expanded_issues
 
 def run_cmd(cmd):
     try:
@@ -44,7 +53,22 @@ def run_gcloud_cmd(cmd):
         ret_json = { }
     return ret_json
 
+# details param is a 3 value tuple as follows (msg, list of twc_id values, resource id)
 def create_issue(twc_id, twc_title, details, rating, object_id, object_meta):
+    issues = []
+    if get_expanded() == True:
+        for detail in details:
+            issues.append(create_issue_helper(twc_id + '_' + "_".join(detail[1]), twc_title, detail[0], rating, detail[2], ''))
+    else:
+        consolidated_details = ''
+        for detail in details:
+            if consolidated_details != '':
+                consolidated_details = consolidated_details + "\n"
+            consolidated_details = consolidated_details + detail[0]
+        issues.append(create_issue_helper(twc_id, twc_title, consolidated_details, rating, object_id, object_meta))
+    return issues
+
+def create_issue_helper(twc_id, twc_title, details, rating, object_id, object_meta):
     issue = { }
     issue['twc_id'] = twc_id
     issue['twc_title'] = twc_title
@@ -57,7 +81,7 @@ def create_issue(twc_id, twc_title, details, rating, object_id, object_meta):
 
 def append_issue(config_issues, issue):
     if issue is not None:
-        config_issues.append(issue)
+        config_issues.extend(issue)
 
 # Get all projects
 def get_all_projects():
@@ -190,6 +214,6 @@ def check_database_flag(dbtype, flag, value, details_msg):
                         flag_set = True
                         break
             if flag_set == False:
-                details.append(details_msg % (entry['name'], p))
+                details.append((details_msg % (entry['name'], p), [entry['name'], p, dbtype, flag], entry['name']))
     return details
 

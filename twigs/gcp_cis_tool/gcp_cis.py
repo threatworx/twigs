@@ -14,6 +14,7 @@ from . import gcp_cis_utils as gcp_cis_utils
 
 def run_tests(args):
     gcp_cis_utils.set_encoding(args.encoding)
+    gcp_cis_utils.set_expanded(args.expanded)
     config_issues = []
     p_not_found = []
     if args.projects:
@@ -38,7 +39,7 @@ def run_tests(args):
     config_issues.extend(check4.run_checks())
     config_issues.extend(check5.run_checks())
     config_issues.extend(check6.run_checks())
-    #config_issues.extend(check7.run_checks())
+    config_issues.extend(check7.run_checks())
     #print config_issues
     return config_issues
 

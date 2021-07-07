@@ -25,7 +25,7 @@ def check1_1():
             members = entry.get('members')
             for m in members:
                 if m.endswith('gmail.com'):
-                    details.append("Personal email [%s] is used for role [%s] in IAM policies for project [%s]" % (m.split(':')[1], entry['role'], p))
+                    details.append(("Personal email [%s] is used for role [%s] in IAM policies for project [%s]" % (m.split(':')[1], entry['role'], p), [m.split(':')[1], entry['role'], p], m.split(':')[1]))
     
     # List accounts for each organization
     for o in orgs:
@@ -34,7 +34,7 @@ def check1_1():
             members = entry.get('members')
             for m in members:
                 if m.endswith('gmail.com'):
-                    details.append("Personal email [%s] is used for role [%s] in IAM policies for project [%s]" % (m.split(':')[1], entry['role'], o))
+                    details.append(("Personal email [%s] is used for role [%s] in IAM policies for project [%s]" % (m.split(':')[1], entry['role'], o), [m.split(':')[1], entry['role'], o], m.split(':')[1]))
 
     # List accounts for each folder
     for f in folders:
@@ -43,11 +43,11 @@ def check1_1():
             members = entry.get('members')
             for m in members:
                 if m.endswith('gmail.com'):
-                    details.append("Personal email [%s] is used for role [%s] in IAM policies for project [%s]" % (m.split(':')[1], entry['role'], f))
+                    details.append(("Personal email [%s] is used for role [%s] in IAM policies for project [%s]" % (m.split(':')[1], entry['role'], f), [m.split(':')[1], entry['role'], f], m.split(':')[1]))
 
     # record violation
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.1', '1.1 [Level 1] Ensure that corporate login credentials are used (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.1', '1.1 [Level 1] Ensure that corporate login credentials are used (Scored)', details, '4', '', '')
     return None
 
 def check1_2():
@@ -75,9 +75,9 @@ def check1_4():
             if sa_email.endswith('.iam.gserviceaccount.com'):
                 out_json_2 = gcp_cis_utils.run_gcloud_cmd("iam service-accounts keys list --iam-account=%s --managed-by=user" % sa_email)
                 for entry2 in out_json_2:
-                    details.append("User managed service account [%s] has user-managed key" % sa_email)
+                    details.append(("User managed service account [%s] has user-managed key" % sa_email, [sa_email], sa_email))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.4', '1.4 [Level 1] Ensure that there are only GCP-managed service account keys for each service account (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.4', '1.4 [Level 1] Ensure that there are only GCP-managed service account keys for each service account (Scored)', details, '4', '', '')
     return None
 
 def check1_5():
@@ -92,9 +92,9 @@ def check1_5():
             if 'admin' in entry['role'].lower() or entry['role'] in ["roles/editor", "roles/owner"]:
                 for m in entry['members']:
                     if m.endswith('.iam.gserviceaccount.com'):
-                        details.append("User created and managed service account [%s] has role [%s] in project [%s]" % (m, entry['role'], p))
+                        details.append(("User created and managed service account [%s] has role [%s] in project [%s]" % (m, entry['role'], p), [m, entry['role'], p], m))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.5', '1.5 [Level 1] Ensure that Service Account has no Admin privileges (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.5', '1.5 [Level 1] Ensure that Service Account has no Admin privileges (Scored)', details, '4', '', '')
     return None
 
 def check1_6():
@@ -109,9 +109,9 @@ def check1_6():
             if entry['role'] in ["roles/iam.serviceAccountUser", "roles/iam.serviceAccountTokenCreator"]:
                 for m in entry['members']:
                     if m.startswith('user:'):
-                        details.append("IAM user [%s] is assigned role [%s] in project [%s]" % (m.split(':')[1], entry['role'], p))
+                        details.append(("IAM user [%s] is assigned role [%s] in project [%s]" % (m.split(':')[1], entry['role'], p), [m.split(':')[1], entry['role'], p], m.split(':')[1]))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.6', '1.6 [Level 1] Ensure that IAM users are not assigned the Service Account User or Service Account Token Creator roles at project level (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.6', '1.6 [Level 1] Ensure that IAM users are not assigned the Service Account User or Service Account Token Creator roles at project level (Scored)', details, '4', '', '')
     return None
 
 def check1_7():
@@ -130,10 +130,10 @@ def check1_7():
                 if '.' in entry_2_vat:
                     entry_2_vat = entry_2_vat.split('.')[0] + 'Z'
                 vat = datetime.datetime.strptime(entry_2_vat, "%Y-%m-%dT%H:%M:%SZ")
-                if vat > last90days:
-                    details.append("User managed service account [%s] has not rotated key in last 90 days. Key has been valid since %s" % (entry['email'], entry_2['validAfterTime']))
+                if vat < last90days:
+                    details.append(("User managed service account [%s] has not rotated key in last 90 days. Key has been valid since %s" % (entry['email'], entry_2['validAfterTime']), [entry['email']], entry['email']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.7', '1.7 [Level 1] Ensure user-managed/external keys for service accounts are rotated every 90 days or less (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.7', '1.7 [Level 1] Ensure user-managed/external keys for service accounts are rotated every 90 days or less (Scored)', details, '4', '', '')
     return None
 
 def check1_8():
@@ -151,9 +151,10 @@ def check1_8():
             gcp_cis_utils.add_members_with_role(entry, "roles/iam.serviceAccountUser", sau_role_users)
         intersection = saa_role_users.intersection(sau_role_users)
         if len(intersection) > 0:
-            details.append("Separation of duties is not enforced for IAM users [%s] for roles (Service Account Admin & Service Account User) in project [%s]" % (",".join(list(intersection)), p))
+            for tuser in intersection:
+                details.append(("Separation of duties is not enforced for IAM user [%s] for roles (Service Account Admin & Service Account User) in project [%s]" % (tuser, p),[tuser, p], tuser))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.8', '1.8 [Level 2] Ensure that Separation of duties is enforced while assigning service account related roles to users (Not Scored)', "\n".join(details), '5', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.8', '1.8 [Level 2] Ensure that Separation of duties is enforced while assigning service account related roles to users (Not Scored)', details, '5', '', '')
     return None
 
 def check1_9():
@@ -173,9 +174,9 @@ def check1_9():
                     continue
                 for entry_3 in bindings:
                     if "allUsers" in entry_3['members'] or "allAuthenticatedUsers" in entry_3['members']:
-                        details.append("Cloud KMS CryptoKey [%s] is anonymously or publically accessible in project [%s]" % (entry_2['name'], p))
+                        details.append(("Cloud KMS CryptoKey [%s] is anonymously or publically accessible in project [%s]" % (entry_2['name'], p), [entry_2['name'], p], entry_2['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.9', '1.9 [Level 1] Ensure that Cloud KMS cryptokeys are not anonymously or publicly accessible (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.9', '1.9 [Level 1] Ensure that Cloud KMS cryptokeys are not anonymously or publicly accessible (Scored)', details, '4', '', '')
     return None
 
 def check1_10():
@@ -196,15 +197,15 @@ def check1_10():
                 if rotationPeriod is not None:
                     rpd_entry = rpd[rotationPeriod[-1]]
                     if int(rotationPeriod[:-1]) > rpd_entry[0]:
-                        details.append("Rotation period for key [%s] in project [%s] exceeeds 90 days. Currently set to rotate every [%s] %s" % (entry_2['name'], p, rotationPeriod[:-1], rpd_entry[1]))
+                        details.append(("Rotation period for key [%s] in project [%s] exceeeds 90 days. Currently set to rotate every [%s] %s" % (entry_2['name'], p, rotationPeriod[:-1], rpd_entry[1]), [entry_2['name'], p, "current"], entry_2['name']))
                 if nextRotationTime is not None:
                     if '.' in nextRotationTime:
                         nextRotationTime = nextRotationTime.split('.')[0] + 'Z'
                     nrt = datetime.datetime.strptime(nextRotationTime, "%Y-%m-%dT%H:%M:%SZ")
                     if nrt > next90days:
-                        details.append("Next rotation time for key [%s] in project [%s] exceeds 90 days from now. Currently set to rotate next at [%s]" % (entry_2['name'], p, nextRotationTime))
+                        details.append(("Next rotation time for key [%s] in project [%s] exceeds 90 days from now. Currently set to rotate next at [%s]" % (entry_2['name'], p, nextRotationTime), [entry_2['name'], p, "next"], entry_2['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.10', '1.10 [Level 1] Ensure KMS encryption keys are rotated within a period of 90 days (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.10', '1.10 [Level 1] Ensure KMS encryption keys are rotated within a period of 90 days (Scored)', details, '4', '', '')
     return None
 
 def check1_11():
@@ -229,15 +230,18 @@ def check1_11():
             gcp_cis_utils.add_members_with_role(entry, "roles/cloudkms.cryptoKeyEncrypterDecrypter", ckms_cked_set)
         intersection = ckms_admin_set.intersection(ckms_cke_set)
         if len(intersection) > 0:
-            details.append("Separation of duties is not enforced for IAM users [%s] for roles (Cloud KMS Admin & Cloud KMS CryptoKey Encrypter) in project [%s]" % (",".join(list(intersection)), p))
+            for tuser in intersection:
+                details.append(("Separation of duties is not enforced for IAM user [%s] for roles (Cloud KMS Admin & Cloud KMS CryptoKey Encrypter) in project [%s]" % (tuser, p), [tuser, p, "AdminAndCryptoKeyEncrypter"], tuser))
         intersection = ckms_admin_set.intersection(ckms_ckd_set)
         if len(intersection) > 0:
-            details.append("Separation of duties is not enforced for IAM users [%s] for roles (Cloud KMS Admin & Cloud KMS CryptoKey Decrypter) in project [%s]" % (",".join(list(intersection)), p))
+            for tuser in intersection:
+                details.append(("Separation of duties is not enforced for IAM users [%s] for roles (Cloud KMS Admin & Cloud KMS CryptoKey Decrypter) in project [%s]" % (tuser, p), [tuser, p, "AdminAndCryptoKeyDecrypter"], tuser))
         intersection = ckms_admin_set.intersection(ckms_cked_set)
         if len(intersection) > 0:
-            details.append("Separation of duties is not enforced for IAM users [%s] for roles (Cloud KMS Admin & Cloud KMS CryptoKey Encrypter/Decrypter) in project [%s]" % (",".join(list(intersection)), p))
+            for tuser in intersection:
+                details.append(("Separation of duties is not enforced for IAM users [%s] for roles (Cloud KMS Admin & Cloud KMS CryptoKey Encrypter/Decrypter) in project [%s]" % (tuser, p),[tuser, p, "AdminAndCryptoKeyEncrypterDecrypter"], tuser))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.11', '1.11 [Level 2] Ensure that Separation of duties is enforced while assigning KMS related roles to users (Scored)', "\n".join(details), '5', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-1.11', '1.11 [Level 2] Ensure that Separation of duties is enforced while assigning KMS related roles to users (Scored)', details, '5', '', '')
     return None
 
 def check1_12():

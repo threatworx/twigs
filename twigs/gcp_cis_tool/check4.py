@@ -20,9 +20,9 @@ def check4_1():
                 continue
             for sa in entry['serviceAccounts']:
                 if sa['email'] == default_service_account:
-                    details.append("Compute instance [%s] uses default service account [%s] in project [%s]" % (entry['name'], default_service_account, p))
+                    details.append(("Compute instance [%s] uses default service account [%s] in project [%s]" % (entry['name'], default_service_account, p), [entry['name'], default_service_account, p], entry['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.1', '4.1 [Level 1] Ensure that instances are not configured to use the default service account (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.1', '4.1 [Level 1] Ensure that instances are not configured to use the default service account (Scored)', details, '4', '', '')
     return None
 
 def check4_2():
@@ -43,9 +43,9 @@ def check4_2():
                 continue
             for sa in entry['serviceAccounts']:
                 if sa['email'] == default_service_account and "https://www.googleapis.com/auth/cloud-platform" in sa['scopes']:
-                    details.append("Compute instance [%s] uses default service account [%s] with full access to all Cloud APIs in project [%s]" % (entry['name'], default_service_account, p))
+                    details.append(("Compute instance [%s] uses default service account [%s] with full access to all Cloud APIs in project [%s]" % (entry['name'], default_service_account, p), [entry['name'], default_service_account, p], entry['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.2', '4.2 [Level 1] Ensure that instances are not configured to use the default service account with full access to all Cloud APIs (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.2', '4.2 [Level 1] Ensure that instances are not configured to use the default service account with full access to all Cloud APIs (Scored)', details, '4', '', '')
     return None
 
 def check4_3():
@@ -68,9 +68,9 @@ def check4_3():
                         if mdi['key'] == 'block-project-ssh-keys' and mdi['value'] == 'true':
                             block_pw_ssh_keys_enabled = True
             if block_pw_ssh_keys_enabled == False:
-                details.append("Compute instance [%s] does not have Block Project-wide SSH keys enabled in project [%s]" % (entry['name'], p))
+                details.append(("Compute instance [%s] does not have Block Project-wide SSH keys enabled in project [%s]" % (entry['name'], p), [entry['name'], p], entry['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.3', '4.3 [Level 1] Ensure "Block Project-wide SSH keys" is enabled for VM instances (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.3', '4.3 [Level 1] Ensure "Block Project-wide SSH keys" is enabled for VM instances (Scored)', details, '4', '', '')
     return None
 
 def check4_4():
@@ -103,11 +103,12 @@ def check4_4():
             if instance_overrides:
                 overriding_instances.append(entry['name'])
         if oslogin_enabled == False:
-            details.append("oslogin is not enabled for project [%s]" % p)
+            details.append(("oslogin is not enabled for project [%s]" % p, [p], p))
         elif len(overriding_instances) > 0:
-            details.append("oslogin is enabled for project [%s], however following compute instances override the project setting [%s]" % (p, ",".join(overriding_instances)))
+            for overriding_instance in overriding_instances:
+                details.append(("oslogin is enabled for project [%s], however following compute instance overrides the project setting [%s]" % (p, overriding_instance), [p, overriding_instance], overriding_instance))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.4', '4.4 [Level 1] Ensure oslogin is enabled for a Project (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.4', '4.4 [Level 1] Ensure oslogin is enabled for a Project (Scored)', details, '4', '', '')
     return None
 
 def check4_5():
@@ -128,9 +129,9 @@ def check4_5():
                         if mdi['key'] == 'serial-port-enable' and mdi['value'] == 'true':
                             serial_port_enabled = True
             if serial_port_enabled:
-                details.append("Serial port is enabled for compute instance [%s] in project [%s]" % (entry['name'], p))
+                details.append(("Serial port is enabled for compute instance [%s] in project [%s]" % (entry['name'], p), [entry['name'], p], entry['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.5', "4.5 [Level 1] Ensure 'Enable connecting to serial ports' is not enabled for VM Instance (Scored)", "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.5', "4.5 [Level 1] Ensure 'Enable connecting to serial ports' is not enabled for VM Instance (Scored)", details, '4', '', '')
     return None
 
 def check4_6():
@@ -145,9 +146,9 @@ def check4_6():
             if (entry['name'].startswith('gke-') and entry.get('labels') is not None and 'goog-gke-node' in entry['labels'].keys()) or (entry.get('labels') is not None and 'cloud.google.com/gke-nodepool' in entry['labels'].keys()):
                 continue
             if entry.get('canIpForward') is not None and entry['canIpForward']:
-                details.append("IP forrwarding is enabled on compute instance [%s] in project [%s]" % (entry['name'], p))
+                details.append(("IP forwarding is enabled on compute instance [%s] in project [%s]" % (entry['name'], p), [entry['name'], p], entry['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.6', '4.6 [Level 1] Ensure that IP forwarding is not enabled on Instances (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.6', '4.6 [Level 1] Ensure that IP forwarding is not enabled on Instances (Scored)', details, '4', '', '')
     return None
 
 def check4_7():
@@ -167,12 +168,12 @@ def check4_8():
         for entry in out_json:
             shieldedInstanceConfig = entry.get('shieldedInstanceConfig')
             if shieldedInstanceConfig is None:
-                details.append("Compute instance [%s] in project [%s] is not launched with Shielded VM enabled" % (entry['name'], p))
+                details.append(("Compute instance [%s] in project [%s] is not launched with Shielded VM enabled" % (entry['name'], p), [entry['name'], p], entry['name']))
             else:
                 if shieldedInstanceConfig['enableVtpm'] == False or shieldedInstanceConfig['enableIntegrityMonitoring'] == False:
-                    details.append("Compute instance [%s] in project [%s] is not launched with Shielded VM enabled" % (entry['name'], p))
+                    details.append(("Compute instance [%s] in project [%s] is not launched with Shielded VM enabled" % (entry['name'], p), [entry['name'], p], entry['name']))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.8', '4.8 [Level 2] Ensure Compute instances are launched with Shielded VM enabled (Scored)', "\n".join(details), '5', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.8', '4.8 [Level 2] Ensure Compute instances are launched with Shielded VM enabled (Scored)', details, '5', '', '')
     return None
 
 def check4_9():
@@ -188,10 +189,10 @@ def check4_9():
                 continue
             for ni in entry['networkInterfaces']:
                 if ni.get('accessConfigs') is not None:
-                    details.append("Compute instance [%s] in project [%s] has Public IP address" % (entry['name'], p))
+                    details.append(("Compute instance [%s] in project [%s] has Public IP address" % (entry['name'], p), [entry['name'], p], entry['name']))
                     break
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.9', '4.9 [Level 2] Ensure that Compute instances do not have public IP addresses (Scored)', "\n".join(details), '5', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-4.9', '4.9 [Level 2] Ensure that Compute instances do not have public IP addresses (Scored)', details, '5', '', '')
     return None
 
 def check4_10():

@@ -12,16 +12,16 @@ def check2_1():
         out_json = iam_policies_by_project[p]
         acs = out_json.get('auditConfigs')
         if acs is None:
-            details.append("Cloud Audit Logging is not configured for project [%s]" % p)
+            details.append(("Cloud Audit Logging is not configured for project [%s]" % p, [p], p))
             continue
         for ac in acs:
             s = ac.get('service')
             if s is None or s != "allServices":
-                details.append("Cloud Audit Logging is not configured for all services for project [%s]" % p)
+                details.append(("Cloud Audit Logging is not configured for all services for project [%s]" % p, [p], p))
                 continue
             alcs = ac.get('auditLogConfigs')
             if alcs is None:
-                details.append("Cloud Audit Logging is not configured properly for project [%s]" % p)
+                details.append(("Cloud Audit Logging is not configured properly for project [%s]" % p, [p], p))
                 continue
             lt_dr_found = False
             lt_dw_found = False
@@ -35,13 +35,13 @@ def check2_1():
                     continue
                 for em in ems:
                     if em.startswith('user:'):
-                        details.append("Audit configuration has exempted member [%s] for log type [%s] for project [%s]" % (em.split(':')[1], alc.get('logType'), p))
+                        details.append(("Audit configuration has exempted member [%s] for log type [%s] for project [%s]" % (em.split(':')[1], alc.get('logType'), p), [em.split(':')[1], alc.get('logType'), p], p))
             if lt_dr_found == False:
-                details.append("Cloud audit logging configuration is not enabled for DATA_READ operation for  project [%s]" % p)
+                details.append(("Cloud audit logging configuration is not enabled for DATA_READ operation for  project [%s]" % p, [p, "DataReadNotEnabled"], p))
             if lt_dw_found == False:
-                details.append("Cloud audit logging configuration is not enabled for DATA_WRITE operation for  project [%s]" % p)
+                details.append(("Cloud audit logging configuration is not enabled for DATA_WRITE operation for  project [%s]" % p, [p, "DataWriteNotEnabled"], p))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.1', '2.1 [Level 1] Ensure that Cloud Audit Logging is configured properly across all services and all users from a project (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.1', '2.1 [Level 1] Ensure that Cloud Audit Logging is configured properly across all services and all users from a project (Scored)', details, '4', '', '')
     return None
 
 def check2_2():
@@ -52,18 +52,24 @@ def check2_2():
     # Check if sink is configured at organization or folder level
     orgs = gcp_cis_utils.get_all_organizations()
     for o in orgs:
+        sink_found = False
         out_json = gcp_cis_utils.run_gcloud_cmd("logging sinks list --organization=%s" % o)
         for entry in out_json:
             if entry['filter'] == "(empty filter)":
                 # TODO confirm that the destination exits
-                return None
+                sink_found = True
+        if sink_found == False:
+            details.append(("Sinks are not configured for all log entries for organization [%s]" % o, [o, "organization"], o))
     folders = gcp_cis_utils.get_all_folders()
     for f in folders:
+        sink_found = False
         out_json = gcp_cis_utils.run_gcloud_cmd("logging sinks list --folder=%s" % f)
         for entry in out_json:
             if entry['filter'] == "(empty filter)":
                 # TODO confirm that the destination exits
-                return None
+                sink_found = True
+        if sink_found == False:
+            details.append(("Sinks are not configured for all log entries for folder [%s]" % f, [f, "folder"], f))
     projects = gcp_cis_utils.get_logging_enabled_projects()
     for p in projects:
         sink_found = False
@@ -73,17 +79,17 @@ def check2_2():
                 # TODO confirm that the destination exits
                 sink_found = True
         if sink_found == False:
-            details.append("Sinks are not configured for all log entries for project [%s]" % p)
+            details.append(("Sinks are not configured for all log entries for project [%s]" % p, [p, "project"], p))
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.2', '2.2 [Level 1] Ensure that sinks are configured for all log entries (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.2', '2.2 [Level 1] Ensure that sinks are configured for all log entries (Scored)', details, '4', '', '')
     return None
 
-def _check_bucket_retention_policy(logbucket, details):
+def _check_bucket_retention_policy(source, source_label, logbucket, details):
     output = gcp_cis_utils.run_cmd("gsutil retention get %s 2>/dev/null" % logbucket)
     if "has no Retention Policy" in output:
-        details.append("No retention policy is configured for log bucket [%s]" % logbucket)
+        details.append(("No retention policy is configured for log bucket [%s] in %s [%s]" % (logbucket, source_label, source), [logbucket, source_label, source], logbucket))
     if "Retention Policy (UNLOCKED)" in output:
-        details.append("Retention policy is not locked for log bucket [%s]" % logbucket)
+        details.append(("Retention policy is not locked for log bucket [%s] in %s [%s]" % (logbucket, source_label, source), [logbucket, source_label, source], logbucket))
 
 def check2_3():
     # 2.3 Ensure that retention policies on log buckets are configured using Bucket Lock (Scored)
@@ -97,7 +103,7 @@ def check2_3():
         for entry in out_json:
             if entry['destination'].startswith("storage.googleapis.com/"):
                 logbucket = "gs://" + entry['destination'][23:]
-                _check_bucket_retention_policy(logbucket, details)
+                _check_bucket_retention_policy(o, "organization", logbucket, details)
     # Get sinks for folders
     folders = gcp_cis_utils.get_all_folders()
     for f in folders:
@@ -105,7 +111,7 @@ def check2_3():
         for entry in out_json:
             if entry['destination'].startswith("storage.googleapis.com/"):
                 logbucket = "gs://" + entry['destination'][23:]
-                _check_bucket_retention_policy(logbucket, details)
+                _check_bucket_retention_policy(f, "folder", logbucket, details)
     # Get sinks for projects
     projects = gcp_cis_utils.get_logging_enabled_projects()
     for p in projects:
@@ -113,9 +119,9 @@ def check2_3():
         for entry in out_json:
             if entry['destination'].startswith("storage.googleapis.com/"):
                 logbucket = "gs://" + entry['destination'][23:]
-                _check_bucket_retention_policy(logbucket, details)
+                _check_bucket_retention_policy(p, "project", logbucket, details)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.3', '2.3 [Level 1] Ensure that retention policies on log buckets are configured using Bucket Lock (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.3', '2.3 [Level 1] Ensure that retention policies on log buckets are configured using Bucket Lock (Scored)', details, '4', '', '')
     return None
 
 def _check_log_metric_filter_and_alerts(in_filter, details_msg):
@@ -134,7 +140,7 @@ def _check_log_metric_filter_and_alerts(in_filter, details_msg):
                         if cond['conditionThreshold']['filter'] == "metric.type=\"" + mdt + "\"" and entry_2['enabled']:
                             poac_metric_found = True
         if poac_metric_found == False:
-            details.append(details_msg % p)
+            details.append((details_msg % p, [p], p))
     return details
 
 def check2_4():
@@ -145,7 +151,7 @@ def check2_4():
     details_msg = "Log metric filter and alerts do not exist for Project Ownership assignments/changes for project [%s]"
     details =  _check_log_metric_filter_and_alerts(POAC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.4', '2.4 [Level 1] Ensure log metric filter and alerts exist for project ownership assignments/changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.4', '2.4 [Level 1] Ensure log metric filter and alerts exist for project ownership assignments/changes (Scored)', details, '4', '', '')
     return None
 
 def check2_5():
@@ -156,7 +162,7 @@ def check2_5():
     details_msg = "Log metric filter and alerts do not exist for Audit Configuration changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(ACC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.5', '2.5 [Level 1] Ensure that the log metric filter and alerts exist for Audit Configuration changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.5', '2.5 [Level 1] Ensure that the log metric filter and alerts exist for Audit Configuration changes (Scored)', details, '4', '', '')
     return None
 
 def check2_6():
@@ -168,7 +174,7 @@ def check2_6():
     details_msg = "Log metric filter and alerts do not exist for Custom Role changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(CRC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.6', '2.6 [Level 1] Ensure that the log metric filter and alerts exist for Custom Role changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.6', '2.6 [Level 1] Ensure that the log metric filter and alerts exist for Custom Role changes (Scored)', details, '4', '', '')
     return None
 
 def check2_7():
@@ -180,7 +186,7 @@ def check2_7():
     details_msg = "Log metric filter and alerts do not exist for VPC Network Firewall Rule changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(VPCNFRC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.7', '2.7 [Level 1] Ensure that the log metric filter and alerts exist for VPC Network Firewall rule changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.7', '2.7 [Level 1] Ensure that the log metric filter and alerts exist for VPC Network Firewall rule changes (Scored)', details, '4', '', '')
     return None
 
 def check2_8():
@@ -192,7 +198,7 @@ def check2_8():
     details_msg = "Log metric filter and alerts do not exist for VPC Network Route changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(VPCNRC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.8', '2.8 [Level 1] Ensure that the log metric filter and alerts exist for VPC network route changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.8', '2.8 [Level 1] Ensure that the log metric filter and alerts exist for VPC network route changes (Scored)', details, '4', '', '')
     return None
 
 def check2_9():
@@ -204,7 +210,7 @@ def check2_9():
     details_msg = "Log metric filter and alerts do not exist for VPC Network changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(VPCNC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.9', '2.9 [Level 1] Ensure that the log metric filter and alerts exist for VPC network changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.9', '2.9 [Level 1] Ensure that the log metric filter and alerts exist for VPC network changes (Scored)', details, '4', '', '')
     return None
 
 def check2_10():
@@ -216,7 +222,7 @@ def check2_10():
     details_msg = "Log metric filter and alerts do not exist for Cloud Storage IAM Permission changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(CSIAMPC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.10', '2.10 [Level 1] Ensure that the log metric filter and alerts exist for Cloud Storage IAM permission changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.10', '2.10 [Level 1] Ensure that the log metric filter and alerts exist for Cloud Storage IAM permission changes (Scored)', details, '4', '', '')
     return None
 
 def check2_11():
@@ -228,7 +234,7 @@ def check2_11():
     details_msg = "Log metric filter and alerts do not exist for SQL Instance Configuration changes for project [%s]"
     details = _check_log_metric_filter_and_alerts(SQLICC_METRIC_FILTER, details_msg)
     if len(details) > 0:
-        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.11', '2.11 [Level 1] Ensure that the log metric filter and alerts exist for SQL instance configuration changes (Scored)', "\n".join(details), '4', '', '')
+        return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.11', '2.11 [Level 1] Ensure that the log metric filter and alerts exist for SQL instance configuration changes (Scored)', details, '4', '', '')
     return None
 
 def run_checks():
