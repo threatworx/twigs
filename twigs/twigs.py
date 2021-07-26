@@ -25,26 +25,49 @@ import importlib
 import getpass
 from os.path import expanduser
 
-from . import aws
-from . import linux
-from . import repo
-from . import docker
-from . import azure
-from . import acr
-from . import ecr
-from . import gcp
-from . import gcr
-from . import servicenow
-from . import inv_file
-from . import fingerprint
-from . import dast 
-from . import docker_cis
-from . import aws_cis
-from . import azure_cis
-from . import gcp_cis
-from . import utils
-from . import policy as policy_lib
-from .__init__ import __version__
+try:
+    from . import aws
+    from . import linux
+    from . import repo
+    from . import docker
+    from . import azure
+    from . import acr
+    from . import ecr
+    from . import gcp
+    from . import gcr
+    from . import servicenow
+    from . import inv_file
+    from . import fingerprint
+    from . import dast
+    from . import docker_cis
+    from . import aws_cis
+    from . import azure_cis
+    from . import gcp_cis
+    from . import utils
+    from . import policy as policy_lib
+    from .__init__ import __version__
+except (ImportError,ValueError):
+    from twigs import aws
+    from twigs import linux
+    from twigs import repo
+    from twigs import docker
+    from twigs import azure
+    from twigs import acr
+    from twigs import ecr
+    from twigs import gcp
+    from twigs import gcr
+    from twigs import servicenow
+    from twigs import inv_file
+    from twigs import fingerprint
+    from twigs import dast
+    from twigs import docker_cis
+    from twigs import aws_cis
+    from twigs import azure_cis
+    from twigs import gcp_cis
+    from twigs import utils
+    from twigs import policy as policy_lib
+    from twigs.__init__ import __version__
+
 
 
 def export_assets_to_file(assets, json_file):

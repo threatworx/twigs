@@ -398,7 +398,7 @@ optional arguments:
 
 Mode: gcp_cis
 $ twigs gcp_cis --help
-usage: twigs gcp_cis [-h] --assetid ASSETID [--assetname ASSETNAME] [--projects PROJECTS]
+usage: twigs gcp_cis [-h] --assetid ASSETID [--assetname ASSETNAME] [--projects PROJECTS] [--expanded]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -407,6 +407,7 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
   --projects PROJECTS   A comma separated list of GCP project IDs to run the
                         checks against
+  --expanded            Create separate issue for each violation
 
 Mode: ssl_audit
 $ twigs ssl_audit --help
