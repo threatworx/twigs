@@ -478,18 +478,22 @@ def discover_jar(args, localpath):
         prod = ''
         ver = ''
         #print "Checking "+file_path
-        zf = zipfile.ZipFile(file_path, 'r')
         try:
-            metafile = zf.read('META-INF/MANIFEST.MF')
-            if metafile:
-                for l in metafile.splitlines():
-                    if l.startswith(b"Bundle-Version:"):
-                        ver = l.split(b':')[1].strip()
-                    if l.startswith(b"Bundle-Name:"):
-                        prod = l.split(b':')[1].strip().lower().replace(b' ',b'-')
-        except KeyError:
-            #print "Error: No manifest found"
-            pass
+            zf = zipfile.ZipFile(file_path, 'r')
+            try:
+                metafile = zf.read('META-INF/MANIFEST.MF')
+                if metafile:
+                    for l in metafile.splitlines():
+                        if l.startswith(b"Bundle-Version:"):
+                            ver = l.split(b':')[1].strip()
+                        if l.startswith(b"Bundle-Name:"):
+                            prod = l.split(b':')[1].strip().lower().replace(b' ',b'-')
+            except KeyError:
+                #print "Error: No manifest found"
+                pass
+        except zipfile.BadZipfile:
+            logging.warn("Unable to inspect file: %s", os.path.basename(file_path))
+
         if prod == '' or ver == '':
             jfile = os.path.basename(file_path)
             jfile = jfile.replace('.jar','')
