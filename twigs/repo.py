@@ -634,7 +634,10 @@ def get_inventory(args):
         base_path = path
         new_repo = None
         try:
-            cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
+            if args.branch and args.branch != '':
+                cmdarr = [GIT_PATH, 'clone', '--branch', args.branch, args.repo, path+'/.']
+            else:
+                cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
             out = subprocess.check_output(cmdarr)
         except:
             logging.error(traceback.format_exc())
