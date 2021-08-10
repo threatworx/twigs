@@ -46,6 +46,14 @@ def run_aws_cmd(cmd):
         ret_json = { }
     return ret_json
 
+def get_image_digest(image_name, image_tag, repo_type):
+    if repo_type == "private":
+        repo_cmd = "ecr describe-images --repository-name %s --image-ids imageTag=%s" % (image_name, image_tag)
+        t_json = run_aws_cmd(repo_cmd)
+
+        if len(t_json) > 0:
+            return t_json['imageDetails'][0]['imageDigest']
+    return None
 
 def get_inventory(args):
     set_encoding(args.encoding)
@@ -98,7 +106,7 @@ def get_inventory(args):
                     args.assetid = args.assetid.replace(':','-')
                     args.assetname = args.image
                     logging.info("Discovering image %s", args.image)
-                    assets = docker.get_inventory(args)
+                    assets = docker.get_inventory(args, image['imageDigest'])
 
                     if assets:
                         allassets.extend(assets)            
@@ -152,7 +160,7 @@ def get_inventory(args):
                     args.assetid = args.assetid.replace(':','-')
                     args.assetname = args.image
                     logging.info("Discovering image %s", args.image)
-                    assets = docker.get_inventory(args)
+                    assets = docker.get_inventory(args, image['imageDigest'])
 
                     if assets:
                         allassets.extend(assets)            
@@ -163,13 +171,16 @@ def get_inventory(args):
                 logging.info("This repository has no images")
                 return None
         else:#user has provided repositoryUri (image) with tag
+            image_name = repo_name.split(':')[0]
+            image_tag = repo_name.split(':')[1]
+            digest = get_image_digest(image_name, image_tag, args.repository_type)
             args.image = repositoryUri
             args.assetid = args.image
             args.assetid = args.assetid.replace('/','-')
             args.assetid = args.assetid.replace(':','-')
             args.assetname = args.image
             logging.info("Discovering image %s", args.image)
-            assets = docker.get_inventory(args)
+            assets = docker.get_inventory(args, digest)
 
             if assets:
                 for a in assets:

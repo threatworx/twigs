@@ -8,7 +8,7 @@ import requests
 
 GoDaddyCABundle = True
 
-SYSTEM_TAGS = ['IMAGE_NAME', 'OS_VERSION', 'OS_RELEASE', 'SOURCE', 'OS_RELEASE_ID', 'CRITICALITY', 'http', 'https', 'OS_ARCH']
+SYSTEM_TAGS = ['IMAGE_NAME', 'OS_VERSION', 'OS_RELEASE', 'SOURCE', 'OS_RELEASE_ID', 'CRITICALITY', 'http', 'https', 'OS_ARCH', 'IMAGE_DIGEST']
 
 def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
     if host and host['remote']:
@@ -239,4 +239,14 @@ def requests_post(url, json):
 
 def requests_put(url, json):
     return requests.put(url, json=json, verify=get_requests_verify())
+
+def get_asset(asset_id, args):
+    asset_url = "https://" + args.instance + "/api/v2/assets/"
+    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+
+    resp = requests_get(asset_url + asset_id + "/" + auth_data)
+    if resp.status_code == 200:
+        return resp.json()
+    else:
+        return None
 

@@ -33,14 +33,28 @@ def run_az_cmd(cmd):
         sys.exit(1)
     return ret_json
 
-def get_latest_tag(image_name, repository):
-    tags_cmd = "acr repository show-tags --name " + repository + " --repository " + image_name + " --orderby time_desc"
+def get_latest_tag_with_digest(image_name, repository):
+    tags_cmd = "acr repository show-tags --name " + repository + " --repository " + image_name + " --orderby time_desc --detail"
     t_json = run_az_cmd(tags_cmd)
     if len(t_json) > 0:
-        if "latest" in t_json:
-            return ":latest"
-        else:
-            return ":" + t_json[0]
+        for entry in t_json:
+            if entry['name'] == "latest":
+                return ":latest", entry['digest']
+        return ":" + t_json[0]['name'], t_json[0]['digest']
+    return None, None
+
+def get_digest(image_name, repository):
+    #remove tag from image_name
+    image_name_tokens = image_name.split(':')
+    image_name = image_name_tokens[0]
+    image_tag = image_name_tokens[1]
+
+    tags_cmd = "acr repository show-tags --name " + repository + " --repository " + image_name + " --orderby time_desc --detail"
+    t_json = run_az_cmd(tags_cmd)
+    if len(t_json) > 0:
+        for entry in t_json:
+            if entry['name'] == image_tag:
+                return entry['digest']
     return None
 
 def get_inventory(args):
@@ -58,7 +72,7 @@ def get_inventory(args):
         i_json = run_az_cmd(ilist_cmd)
         logging.info("Found %d images in %s", len(i_json), args.registry)
         for i in i_json:
-            tag = get_latest_tag(i, args.registry)
+            tag, digest = get_latest_tag_with_digest(i, args.registry)
             if tag == None:
                 logging.error("Unable to determine latest tag for image. Skipping %s",i)
                 continue
@@ -70,7 +84,7 @@ def get_inventory(args):
             args.assetid = args.assetid.replace(':','-')
             args.assetname = image_name
             logging.info("Discovering image "+args.image)
-            assets = docker.get_inventory(args)
+            assets = docker.get_inventory(args, digest)
             if assets:
                 allassets = allassets + assets
         for a in allassets:
@@ -84,18 +98,20 @@ def get_inventory(args):
         repository = tokens[0]
         image_name = tokens[1]
         if ':' not in image_name:
-            tag = get_latest_tag(image_name, repository)
+            tag, digest = get_latest_tag_with_digest(image_name, repository)
             if tag == None:
                 logging.error("Unable to determine latest tag / digest for image")
                 return None 
             logging.info("Using tag/digest '"+tag[1:]+"'")
             args.image = args.image + tag
+        else:
+            digest = get_digest(image_name, repository)
         args.assetid = args.image
         args.assetid = args.assetid.replace('/','-')
         args.assetid = args.assetid.replace(':','-')
         args.assetname = args.image
         logging.info("Discovering image "+args.image)
-        assets = docker.get_inventory(args)
+        assets = docker.get_inventory(args, digest)
         if assets != None:
             for a in assets:
                 a['tags'].append('ACR')

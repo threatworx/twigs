@@ -178,19 +178,47 @@ def get_image_id(args):
         break
     return imageid
 
-def create_asset(args, os_release, atype, plist):
+def get_image_digest(args):
+    image_tokens = args.image.split(':')
+    image = image_tokens[0]
+    image_tag = "latest" if len(image_tokens) == 1 else image_tokens[1]
+
+    cmdarr = [docker_cli, "images", image, "--digests"]
+    out = ''
+    try:
+        out = subprocess.check_output(cmdarr)
+        out = out.decode(args.encoding)
+    except subprocess.CalledProcessError:
+        logging.error("Error getting image digest: "+args.image)
+        return None
+    image_digest = None
+    for l in out.splitlines():
+        if 'REPOSITORY' in l:
+            continue
+        l_tokens = l.split()
+        if l_tokens[0] == image and l_tokens[1] == image_tag:
+            image_digest = l_tokens[2]
+            break
+    image_digest = None if image_digest.strip() == "<none>" else image_digest
+    return image_digest
+
+def get_asset_id(args):
     asset_id = None
     if args.assetid is None or args.assetid.strip() == "":
         asset_id = args.image if args.image is not None else args.containerid
     else:
         asset_id = args.assetid
+    asset_id = asset_id.replace('/','-')
+    asset_id = asset_id.replace(':','-')
+    return asset_id
+
+def create_asset(args, os_release, atype, plist, digest):
+    asset_id = get_asset_id(args)
     asset_name = None
     if args.assetname is None or args.assetname.strip() == "":
         asset_name = args.image if args.image is not None else args.containerid
     else:
         asset_name = args.assetname
-    asset_id = asset_id.replace('/','-')
-    asset_id = asset_id.replace(':','-')
 
     asset_data = {}
     asset_data['id'] = asset_id
@@ -201,6 +229,8 @@ def create_asset(args, os_release, atype, plist):
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_release)
     asset_tags.append('IMAGE_NAME:' + asset_name)
+    if args.image is not None and digest is not None:
+        asset_tags.append('IMAGE_DIGEST:' + digest)
     asset_tags.append('Docker')
     asset_tags.append('Container')
     asset_tags.append('Linux')
@@ -300,21 +330,28 @@ def discover_alpine_from_container_image(container_fs):
                 ver = line.split(':')[1].strip()
     return plist
 
-def create_open_source_asset(args, container_fs):
-    args.repo = container_fs
+def get_opensource_asset_id(args):
     if args.assetid == None:
         args.assetid = args.image
+    os_asset_id = repo.get_asset_id(args)
+    os_asset_id = os_asset_id + '-opensource'
+    return os_asset_id
+
+def create_open_source_asset(args, container_fs, digest):
+    args.repo = container_fs
+    os_asset_id = get_opensource_asset_id(args)
     oa = repo.discover_inventory(args, container_fs)
     if oa != None and len(oa[0]['products']) != 0:
-        oa[0]['name'] = oa[0]['id']+'-container-app'
-        oa[0]['id'] = oa[0]['id']+'-opensource'
+        oa[0]['name'] = args.assetname+'-container-app'
+        oa[0]['id'] = os_asset_id
         oa[0]['type'] = 'Container App'
         oa[0]['tags'].append('IMAGE_NAME:'+args.image)
+        oa[0]['tags'].append('IMAGE_DIGEST:'+digest)
     else:
         return None
     return oa
 
-def discover_container_from_image(args):
+def discover_container_from_image(args, digest):
     casset = None
     temp_dir = None
     try:
@@ -332,7 +369,7 @@ def discover_container_from_image(args):
             shutil.rmtree(temp_dir, onerror = on_rm_error)
             return None
 
-        oa = create_open_source_asset(args, container_fs)
+        oa = create_open_source_asset(args, container_fs, digest)
         if oa != None:
             casset = [] + oa
 
@@ -359,7 +396,7 @@ def discover_container_from_image(args):
         if plist is None or len(plist) == 0:
             return casset 
 
-        basset = create_asset(args, os_release, atype, plist)
+        basset = create_asset(args, os_release, atype, plist, digest)
         if casset:
             casset = casset + basset 
         else:
@@ -598,7 +635,7 @@ def discover_container_from_instance(args):
     if plist == None or len(plist) == 0:
         return None
 
-    return create_asset(args, os_release, atype, plist)
+    return create_asset(args, os_release, atype, plist, None)
 
 def run_docker_bench(args):
     DBENCH = "/docker-bench-security.sh"
@@ -671,7 +708,10 @@ def run_docker_bench(args):
     args.no_scan = True
     return [ asset_data ]
 
-def get_inventory(args):
+# digest = None --> get digest using docker
+def get_inventory(args, digest=None):
+
+
     global docker_cli
 
     if os.geteuid() != 0:
@@ -691,21 +731,59 @@ def get_inventory(args):
         logging.error("Specified temporary directory [%s] does not exist!", args.tmp_dir)
         return None
 
+    # If digest is not specified, then try to pull image locally to obtain digest
     del_image = False
+    if digest is None:
+        if args.image is not None:
+            if not get_image_id(args):
+                if not pull_image(args):
+                    logging.error("Failed to pull image: "+args.image)
+                    return None
+                else:
+                    del_image = True
+            digest = get_image_digest(args)
+
+    # If image digest is available, then check if image has changed using digest
+    if digest is not None and digest != -1:
+        if (args.token is None or len(args.token) == 0):
+            logging.warn("Unable to compare image digest as [token] argument is not specified")
+        else:
+            no_change = False
+            digest_tag = "IMAGE_DIGEST:%s" % digest
+            eos_asset_id = get_opensource_asset_id(args)
+            eos_asset = utils.get_asset(eos_asset_id, args)
+            if eos_asset is not None:
+                for tag in eos_asset['tags']:
+                    if digest_tag == tag:
+                        no_change = True
+            easset_id = get_asset_id(args)
+            easset = utils.get_asset(easset_id, args)
+            if easset is not None:
+                for tag in easset['tags']:
+                    if digest_tag == tag:
+                        no_change = True
+            if no_change:
+                logging.info("No change in image digest for container image [%s]...skipping it", args.image)
+                if del_image:
+                    remove_image(args)
+                return None
+    digest = None if digest == -1 else digest
+
     if args.image is not None:
+        # Note if digest was passed, then image may not be available locally
         if not get_image_id(args):
             if not pull_image(args):
                 logging.error("Failed to pull image: "+args.image)
                 return None
             else:
                 del_image = True
-        assets = discover_container_from_image(args)
+        assets = discover_container_from_image(args, digest)
         if assets is None and args.start_instance:
             assets = discover_container_from_instance(args)
     elif args.containerid is not None:
         assets = discover_container_from_instance(args)
         if assets is None:
-            assets = discover_container_from_image(args)
+            assets = discover_container_from_image(args, digest)
 
     # if image was downloaded by twigs then remove it
     if del_image:

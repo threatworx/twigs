@@ -563,21 +563,23 @@ def strip_source(plist):
             ret_list.append(pname)
     return ret_list
 
-def discover_inventory(args, localpath):
-    default_id_name = get_last_component(args.repo)
+def get_asset_id(args):
     asset_id = None
     if args.assetid == None or args.assetid.strip() == "":
-        asset_id = default_id_name
+        asset_id = get_last_component(args.repo)
     else:
         asset_id = args.assetid
-    asset_name = None
-    if args.assetname == None or args.assetname.strip() == "":
-        asset_name = default_id_name
-    else:
-        asset_name = args.assetname
     asset_id = asset_id.replace(' ','-')
     asset_id = asset_id.replace('/','-')
     asset_id = asset_id.replace(':','-')
+    return asset_id
+
+def discover_inventory(args, localpath):
+    asset_name = None
+    if args.assetname == None or args.assetname.strip() == "":
+        asset_name = get_last_component(args.repo)
+    else:
+        asset_name = args.assetname
 
     atype = 'Source Repository'
     plist = []
@@ -608,7 +610,7 @@ def discover_inventory(args, localpath):
         logging.warning("Unable to identify any source code components")
 
     asset_data = {}
-    asset_data['id'] = asset_id
+    asset_data['id'] = get_asset_id(args)
     asset_data['name'] = asset_name
     asset_data['type'] = atype
     asset_data['owner'] = args.handle

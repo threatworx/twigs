@@ -18,6 +18,12 @@ def get_latest_tag(imagename):
             return '@' + t_json[0]['digest']
     return None
 
+def get_digest(imagename):
+    tcmd = "container images describe "+imagename
+    t_json = gcp_cis_utils.run_gcloud_cmd(tcmd)
+    if t_json:
+        return t_json['image_summary']['digest']
+
 def get_inventory(args):
     allassets = [] 
     if args.repository is None and args.image is None:
@@ -40,7 +46,7 @@ def get_inventory(args):
             args.assetid = args.assetid.replace(':','-')
             args.assetname = i['name'] + tag
             logging.info("Discovering image "+args.image)
-            assets = docker.get_inventory(args)
+            assets = docker.get_inventory(args, get_digest(args.image))
             if assets:
                 allassets = allassets + assets
         for a in allassets:
@@ -60,7 +66,7 @@ def get_inventory(args):
         args.assetid = args.assetid.replace(':','-')
         args.assetname = args.image
         logging.info("Discovering image "+args.image)
-        assets = docker.get_inventory(args)
+        assets = docker.get_inventory(args, get_digest(args.image))
         if assets != None:
             for a in assets:
                 a['tags'].append('GCR')
