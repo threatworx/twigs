@@ -42,7 +42,10 @@ default_regex_rules = {
 
 default_exclude_patterns = [
     "\.git\/",
-    "\.svn\/"
+    "\.svn\/",
+    "\/.*\.cer$",
+    "\/.*\.lock$",
+    "\/[Rr][Ee][Aa][Dd][Mm][Ee]\.md$"
 ]
 
 common_passwords = [

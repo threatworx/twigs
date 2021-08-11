@@ -232,13 +232,13 @@ def get_requests_verify():
     return GoDaddyCABundle
 
 def requests_get(url):
-    return requests.get(url, verify=get_requests_verify())
+    return requests.get(url, verify=get_requests_verify(), timeout=9.1)
 
 def requests_post(url, json):
-    return requests.post(url, json=json, verify=get_requests_verify())
+    return requests.post(url, json=json, verify=get_requests_verify(), timeout=9.1)
 
 def requests_put(url, json):
-    return requests.put(url, json=json, verify=get_requests_verify())
+    return requests.put(url, json=json, verify=get_requests_verify(), timeout=9.1)
 
 def get_asset(asset_id, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
