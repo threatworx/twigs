@@ -3,10 +3,10 @@
 block_cipher = None
 
 
-a = Analysis(['twigs.py'],
-             pathex=['C:\\Users\\twadmin\\codebase\\twigs\\twigs'],
+a = Analysis(['twigs\\twigs.py'],
+             pathex=['C:\\Users\\twadmin\\codebase\\twigs'],
              binaries=[],
-             datas=[('..\\readme.txt', '.'), ('.\\twigs.ps1', '.')],
+             datas=[('readme.txt', '.'), ('twigs\\twigs.ps1', '.')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
