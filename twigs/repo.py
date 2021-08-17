@@ -566,7 +566,15 @@ def strip_source(plist):
 def get_asset_id(args):
     asset_id = None
     if args.assetid == None or args.assetid.strip() == "":
-        asset_id = get_last_component(args.repo)
+        tokens = [args.handle.split('@')[0]]
+        repo_path = args.repo
+        if repo_path.startswith('http:') or repo_path.startswith('https:'):
+            tokens.extend(repo_path.split('/')[3:])
+            if args.branch is not None and args.branch.strip() != "":
+                tokens.append(args.branch)
+        else:
+            tokens.append(os.path.basename(os.path.normpath(repo_path)))
+        asset_id = "-".join(tokens)
     else:
         asset_id = args.assetid
     asset_id = asset_id.replace(' ','-')
@@ -678,7 +686,8 @@ def get_inventory(args):
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)
 
-    if len(assets[0]['products']) == 0 and (assets[0].get('secrets')!= None and len(assets[0]['secrets']) == 0):
+    if len(assets[0]['products']) == 0 and (assets[0].get('secrets') is None or len(assets[0]['secrets']) == 0) and (assets[0].get('sast') is None or len(assets[0]['sast']) == 0):
         logging.warning("No products idenitified nor any code secrets found.")
-        return [] # if there are no products nor secrets then no assets to report
+        if args.create_empty_asset is None or not args.create_empty_asset:
+            return [] # if there are no products nor secrets then no assets to report
     return assets

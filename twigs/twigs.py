@@ -84,11 +84,14 @@ def push_asset_to_TW(asset, args):
     asset_id = asset['id']
 
     resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
+    if resp is None:
+        logging.info("Unable to check if asset exists...skipping asset [%s]", asset_id)
+        return None, False
     if resp.status_code != 200:
         logging.info("Creating new asset [%s]", asset_id)
         # Asset does not exist so create one with POST
         resp = utils.requests_post(asset_url + auth_data, json=asset)
-        if resp.status_code == 200:
+        if resp is not None and resp.status_code == 200:
             logging.info("Successfully created new asset [%s]", asset_id)
             logging.info("Response content: %s", resp.content.decode(args.encoding))
             return asset_id, True
@@ -100,7 +103,7 @@ def push_asset_to_TW(asset, args):
         logging.info("Updating asset [%s]", asset_id)
         # asset exists so update it with PUT
         resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
-        if resp.status_code == 200:
+        if resp is not None and resp.status_code == 200:
             logging.info("Successfully updated asset [%s]", asset_id)
             logging.debug("Response content: %s", resp.content.decode(args.encoding))
             resp_json = resp.json()
@@ -150,7 +153,7 @@ def run_scan(asset_id_list, pj_json, args):
             if args.email_report:
                 scan_payload['mode'] = 'email'
             resp = utils.requests_post(scan_api_url, json=scan_payload)
-            if resp.status_code == 200:
+            if resp is not None and resp.status_code == 200:
                 logging.info("Started impact refresh")
             else:
                 logging.error("Failed to start impact refresh")
@@ -165,7 +168,7 @@ def run_scan(asset_id_list, pj_json, args):
             if args.email_report:
                 scan_payload['mode'] = 'email'
             resp = utils.requests_post(scan_api_url, json=scan_payload)
-            if resp.status_code == 200:
+            if resp is not None and resp.status_code == 200:
                 logging.info("Started license compliance assessment")
             else:
                 logging.error("Failed to start license compliance assessment")
@@ -212,7 +215,7 @@ def authenticate_user(tw_user, tw_pwd, tw_instance):
     payload["password"] = tw_pwd
     twigs_auth_url = "https://" + tw_instance + "/api/v1/twigsauth/"
     resp = utils.requests_post(twigs_auth_url, json=payload)
-    if resp.status_code == 200:
+    if resp is not None and resp.status_code == 200:
         logging.info("User logged in successfully")
         return resp.json()["token"]
     else:
@@ -292,6 +295,7 @@ def main(args=None):
         parser.add_argument('--handle', help='The ThreatWatch registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
+        parser.add_argument('--create_empty_asset', action='store_true', help='Create empty asset even if nothing is discovered. Applicable to source code (repo) assets.')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
         parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
         parser.add_argument('--no_auto_tags', action='store_true', help='Disable auto tagging of assets with standard classification tags. Only user specified tags will be applied')
