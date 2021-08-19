@@ -242,7 +242,7 @@ def requests_get(url):
         except requests.exceptions.RequestException as e:
             logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
             resp_status_code = -1
-        if resp_status_code != 200 and resp_status_code != 401:
+        if resp_status_code not in [200, 401, 404]:
             if resp_status_code != -1:
                 logging.warn("Got HTTP code [%s]", resp_status_code)
             if rc >= 10:
@@ -309,7 +309,7 @@ def get_asset(asset_id, args):
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
 
     resp = requests_get(asset_url + asset_id + "/" + auth_data)
-    if resp.status_code == 200:
+    if resp is not None and resp.status_code == 200:
         return resp.json()
     else:
         return None
