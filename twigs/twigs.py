@@ -97,7 +97,8 @@ def push_asset_to_TW(asset, args):
             return asset_id, True
         else:
             logging.error("Failed to create new asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content.decode(args.encoding))
+            if resp is not None:
+                logging.error("Response details: %s", resp.content.decode(args.encoding))
             return None, False
     else:
         logging.info("Updating asset [%s]", asset_id)
@@ -112,7 +113,8 @@ def push_asset_to_TW(asset, args):
             return asset_id, True
         else:
             logging.error("Failed to update existing asset [%s]", asset_id)
-            logging.error("Response details: %s", resp.content.decode(args.encoding))
+            if resp is not None:
+                logging.error("Response details: %s", resp.content.decode(args.encoding))
             return None, False
 
 def push_assets_to_TW(assets, args):
@@ -157,7 +159,8 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started impact refresh")
             else:
                 logging.error("Failed to start impact refresh")
-                logging.error("Response details: %s", resp.content.decode(args.encoding))
+                if resp is not None:
+                    logging.error("Response details: %s", resp.content.decode(args.encoding))
         if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo"):
             # Start license compliance assessment
             scan_payload = { }
@@ -172,7 +175,8 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started license compliance assessment")
             else:
                 logging.error("Failed to start license compliance assessment")
-                logging.error("Response details: %s", resp.content.decode(args.encoding))
+                if resp is not None:
+                    logging.error("Response details: %s", resp.content.decode(args.encoding))
 
 def remove_standard_tags(assets):
     for asset in assets:
@@ -220,7 +224,8 @@ def authenticate_user(tw_user, tw_pwd, tw_instance):
         return resp.json()["token"]
     else:
         logging.error("User authentication failed")
-        logging.debug("Response: %s", resp.content)
+        if resp is not None:
+            logging.debug("Response: %s", resp.content)
         sys.exit(1)
 
 def login_user(args):

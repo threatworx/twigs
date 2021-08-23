@@ -133,7 +133,7 @@ def validate_update_csv_asset(asset, args):
             url = "https://" + args.instance + "/api/v1/assets/types"
             auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
             response = utils.requests_get(url + auth_data)
-            if response.status_code != 200:
+            if response is not None and response.status_code != 200:
                 logging.error("Unable to get valid asset types.")
                 sys.exit(1)
             all_asset_types = response.json()

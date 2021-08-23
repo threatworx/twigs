@@ -241,10 +241,6 @@ def requests_get(url):
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
-            resp_status_code = -1
-        if resp_status_code not in [200, 401, 404]:
-            if resp_status_code != -1:
-                logging.warn("Got HTTP code [%s]", resp_status_code)
             if rc >= 10:
                 logging.warn("Max retries exceeded....giving up...")
                 return None
@@ -253,8 +249,8 @@ def requests_get(url):
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
-        else:
-            return resp
+                continue
+        return resp
 
 def requests_post(url, json):
     rc = 0
@@ -265,10 +261,6 @@ def requests_post(url, json):
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
-            resp_status_code = -1
-        if resp_status_code != 200 and resp_status_code != 401:
-            if resp_status_code != -1:
-                logging.warn("Got HTTP code [%s]", resp_status_code)
             if rc >= 10:
                 logging.warn("Max retries exceeded....giving up...")
                 return None
@@ -277,8 +269,8 @@ def requests_post(url, json):
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
-        else:
-            return resp
+                continue
+        return resp
 
 def requests_put(url, json):
     rc = 0
@@ -289,10 +281,6 @@ def requests_put(url, json):
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
-            resp_status_code = -1
-        if resp_status_code != 200 and resp_status_code != 401:
-            if resp_status_code != -1:
-                logging.warn("Got HTTP code [%s]", resp_status_code)
             if rc >= 10:
                 logging.warn("Max retries exceeded....giving up...")
                 return None
@@ -301,8 +289,8 @@ def requests_put(url, json):
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
-        else:
-            return resp
+                continue
+        return resp
 
 def get_asset(asset_id, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
