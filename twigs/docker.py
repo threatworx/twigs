@@ -29,6 +29,27 @@ def on_rm_error( func, path, exc_info):
     os.chmod( path, stat.S_IWRITE )
     os.unlink( path )
 
+# Note this routine only handles direct symbolic links and not nested ones
+def fix_symbolic_links_helper(container_fs):
+    for root, subdirs, files in os.walk(container_fs):
+        for fname in files:
+            file_path = os.path.join(root, fname)
+            if os.path.islink(file_path):
+                symlink_path = os.readlink(file_path)
+                # Typically absolute links should point within container_fs
+                if os.path.isabs(symlink_path) and not symlink_path.startswith(container_fs):
+                    nested_path = container_fs + symlink_path
+                    if os.path.exists(nested_path):
+                        # Fix symbolic link to point within container_fs
+                        os.remove(file_path)
+                        os.symlink(nested_path, file_path)
+
+def fix_symbolic_links(container_fs):
+    # This is a two phase operation as there could be symbolic links that could not be processed
+    # due to a symbolic that will be processed later...
+    fix_symbolic_links_helper(container_fs)
+    fix_symbolic_links_helper(container_fs)
+
 def tar_available():
     if os.path.isfile("/bin/tar"):
         return "/bin/tar"
@@ -368,6 +389,8 @@ def discover_container_from_image(args, digest):
             logging.warning("Unable to analyze container filesystem")
             shutil.rmtree(temp_dir, onerror = on_rm_error)
             return None
+
+        fix_symbolic_links(container_fs)
 
         oa = create_open_source_asset(args, container_fs, digest)
         if oa != None:
