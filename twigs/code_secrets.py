@@ -4,6 +4,7 @@ import json
 import re
 import math
 import mmap
+import logging
 from . import utils as lib_utils
 from . import code_secrets_defaults as cs_defaults
 
@@ -131,6 +132,12 @@ def create_secret_record(filename, lines, line_no, record_type, line_content, se
         secret_record['before_content'] = hide_secrets(before_content) if to_mask else before_content
         secret_record['after_content'] = hide_secrets(after_content) if to_mask else after_content
         truncate_code_snippet(secret_record)
+    if record_type == 'COMMON_PASSWORD':
+        secret_record['rating'] = 5 if args.common_passwords_file is not None else 4
+    elif record_type.startswith('REGEX:'):
+        secret_record['rating'] = 5 if args.regex_rules_file is not None else 4
+    else:
+        secret_record['rating'] = 3 # ENTROPY_BASE64 or ENTROPY_HEX
     return secret_record
 
 def check_entropy(this_file, lines, line, line_no, secret_records, args):
@@ -234,8 +241,17 @@ def scan_for_secrets(args, local_path, base_path):
 
     global regex_rules
     if args.regex_rules_file:
-        with open(args.regex_rules_file, 'r') as fd:
-            regex_rules = json.load(fd)
+        try:
+            with open(args.regex_rules_file, 'r') as fd:
+                regex_rules = json.load(fd)
+        except IOError as ioe:
+            logging.error("Unable to open file [%s]",args.regex_rules_file)
+            logging.error("Got exception: [%s]", str(ioe))
+            sys.exit(1)
+        except ValueError as ve:
+            logging.error("Unable to parse JSON content")
+            logging.error("Got exception [%s]", str(ve))
+            sys.exit(1)
     else:
         regex_rules = cs_defaults.default_regex_rules
     for key in regex_rules:
