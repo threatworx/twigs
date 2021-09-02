@@ -43,6 +43,7 @@ try:
     from . import aws_cis
     from . import azure_cis
     from . import gcp_cis
+    from . import vmware 
     from . import utils
     from . import policy as policy_lib
     from .__init__ import __version__
@@ -294,7 +295,7 @@ def main(args=None):
         logging_level = logging.WARN
 
         parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and project repositories')
-        subparsers = parser.add_subparsers(title="modes", description="Discovery modes supported", dest="mode")
+        subparsers = parser.add_subparsers(title="modes", description="Discovery modes and commands supported", dest="mode")
         # Required arguments
         parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
         parser.add_argument('--handle', help='The ThreatWatch registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
@@ -493,6 +494,12 @@ def main(args=None):
         parser_repo.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
         parser_repo.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
+        # Arguments required for vmware discovery
+        parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMWare assets")
+        parser_vmware.add_argument('--host', help='A vCenter host name or IP', required=True)
+        parser_vmware.add_argument('--user', help='A vCenter user name', required=True)
+        parser_vmware.add_argument('--password', help='Password for the vCenter user', required=True)
+
         # Arguments required for File-based discovery
         parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
         parser_file.add_argument('--input', help='Absolute path to single input inventory file or a directory containing JSON or CSV files. Supported file formats are: CSV, JSON & PDF', required=True)
@@ -660,6 +667,8 @@ def main(args=None):
             assets = repo.get_inventory(args)
         elif args.mode == 'host':
             assets = linux.get_inventory(args)
+        elif args.mode == 'vmware':
+            assets = vmware.get_inventory(args)
         elif args.mode == 'nmap':
             assets = fingerprint.get_inventory(args)
         elif args.mode == 'docker':
