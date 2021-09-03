@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,vmware,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -103,10 +103,11 @@ modes:
     gcp                 Discover Google Cloud Platform (GCP) instances
     gcr                 Discover Google Cloud Registry (GCR) container images
     docker              Discover docker instances
-    file                Discover inventory from file
     host                Discover linux host assets
     nmap                Fingerprint assets using nmap. Requires nmap to be installed.
     repo                Discover project repository as asset
+    vmware              Discover VMWare assets
+    file                Discover inventory from file
     servicenow          Discover inventory from ServiceNow instance
     docker_cis          Run docker CIS benchmarks
     aws_cis             Run AWS CIS benchmarks
@@ -251,25 +252,6 @@ optional arguments:
   --start_instance      If image inventory fails, try starting a container
                         instance to inventory contents. Use with caution
 
-Mode: file
-$ twigs file --help
-usage: twigs file [-h] --input INPUT [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --input INPUT         Absolute path to single input inventory file or a
-                        directory containing JSON or CSV files. Supported file
-                        formats are: CSV, JSON & PDF
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset.
-                        Defaults to input filename if not specified. Applies
-                        only for PDF files.
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset.
-                        Defaults to assetid is not specified. Applies only for
-                        PDF files.
-  --type TYPE           Type of asset. Defaults to repo if not specified.
-                        Applies only for PDF files.
-
 Mode: host
 $ twigs host --help
 usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME] [--no_ssh_audit] [--no_host_benchmark]
@@ -342,6 +324,35 @@ optional arguments:
   --no_code             Disable storing code for reference in ThreatWatch.
   --sast                Perform static code analysis on your source code
   --iac_checks          Perform security checks on IaC templates
+
+Mode: vmware
+$twigs vmware --help
+usage: twigs vmware [-h] --host HOST --user USER --password PASSWORD
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --host HOST          A vCenter host name or IP
+  --user USER          A vCenter user name
+  --password PASSWORD  Password for the vCenter user
+
+Mode: file
+$ twigs file --help
+usage: twigs file [-h] --input INPUT [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --input INPUT         Absolute path to single input inventory file or a
+                        directory containing JSON or CSV files. Supported file
+                        formats are: CSV, JSON & PDF
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset.
+                        Defaults to input filename if not specified. Applies
+                        only for PDF files.
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset.
+                        Defaults to assetid is not specified. Applies only for
+                        PDF files.
+  --type TYPE           Type of asset. Defaults to repo if not specified.
+                        Applies only for PDF files.
 
 Mode: servicenow
 $ twigs servicenow --help

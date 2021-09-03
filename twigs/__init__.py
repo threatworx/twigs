@@ -4,4 +4,4 @@
 
 __author__ = """Paresh Borkar"""
 __email__ = 'opensource@threatwatch.io'
-__version__ = '1.0.85'
+__version__ = '1.0.86'
