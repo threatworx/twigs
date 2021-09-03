@@ -29,6 +29,7 @@ def discover(args):
     content = si.content
     if content == None:
          logging.error("No information from vCenter host "+args.host)
+         return None
 
     vmware_assets = []
 
