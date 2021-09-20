@@ -40,8 +40,8 @@ def discover(args):
     vcenter_asset['owner'] = args.handle
     plist = []
     plist.append(content.about.fullName)
-    plist.append(content.about.productLineId)
-    plist.append(content.about.name)
+    #plist.append(content.about.productLineId)
+    #plist.append(content.about.name)
     vcenter_asset['products'] = plist
     vcenter_asset['tags'] = []
     vmware_assets.append(vcenter_asset)
@@ -58,16 +58,16 @@ def discover(args):
                 hostname = summary.name
                 esx_asset['id'] = hostname
                 esx_asset['name'] = hostname
-                esx_asset['type'] = 'VMware ESX'
+                esx_asset['type'] = 'VMware ESXi'
                 esx_asset['owner'] = args.handle
                 plist = []
                 plist.append(summary.product.fullName)
-                plist.append(summary.product.productLineId)
-                plist.append(summary.product.name)
+                #plist.append(summary.product.productLineId)
+                #plist.append(summary.product.name)
                 esx_asset['products'] = plist
                 tags = []
-                tags.append('DC: '+datacenter.name)
-                tags.append('Cluster: '+cluster.name)
+                tags.append('vCenter DC: '+datacenter.name)
+                tags.append('vCenter Cluster: '+cluster.name)
                 tags.append('vCenter: '+args.host)
                 esx_asset['tags'] = tags 
                 vmware_assets.append(esx_asset)
