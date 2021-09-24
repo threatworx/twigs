@@ -498,7 +498,7 @@ def main(args=None):
         parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMWare assets")
         parser_vmware.add_argument('--host', help='A vCenter host name or IP', required=True)
         parser_vmware.add_argument('--user', help='A vCenter user name', required=True)
-        parser_vmware.add_argument('--password', help='Password for the vCenter user', required=True)
+        parser_vmware.add_argument('--password', help='Password for the vCenter user')
 
         # Arguments required for File-based discovery
         parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")

@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 import json
@@ -18,7 +19,13 @@ def get_all_objs(content, vimtype):
 def discover(args):
     si = None
     try:
-        si = SmartConnectNoSSL(host=args.host, user=args.user, pwd=args.password)
+        pwd = os.environ.get('VCENTER_PASSWD')
+        if pwd is None:
+            if args.password is None:
+                logging.error("vCenter password not found")
+                return None
+            pwd = args.password
+        si = SmartConnectNoSSL(host=args.host, user=args.user, pwd=pwd)
     except:
          logging.error("Failed to connect to vCenter host "+args.host)
          return None
