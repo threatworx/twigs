@@ -327,13 +327,14 @@ optional arguments:
 
 Mode: vmware
 $twigs vmware --help
-usage: twigs vmware [-h] --host HOST --user USER --password PASSWORD
+usage: twigs vmware [-h] --host HOST --user USER [--password PASSWORD]
 
 optional arguments:
   -h, --help           show this help message and exit
   --host HOST          A vCenter host name or IP
   --user USER          A vCenter user name
-  --password PASSWORD  Password for the vCenter user
+  --password PASSWORD  Password for the vCenter user. Note this can be set as
+                       "VCENTER_PASSWD" environment variable
 
 Mode: file
 $ twigs file --help
