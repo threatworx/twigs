@@ -21,7 +21,10 @@ def check1_1():
     iam_policies_by_project = gcp_cis_utils.get_iam_policies_by_projects()
     for p in iam_policies_by_project.keys():
         out_json = iam_policies_by_project[p]
-        for entry in out_json['bindings']:
+        bindings = out_json.get('bindings')
+        if bindings is None:
+            continue
+        for entry in bindings:
             members = entry.get('members')
             for m in members:
                 if m.endswith('gmail.com'):
@@ -30,7 +33,10 @@ def check1_1():
     # List accounts for each organization
     for o in orgs:
         out_json = gcp_cis_utils.run_gcloud_cmd("organizations get-iam-policy %s" % (o))
-        for entry in out_json['bindings']:
+        bindings = out_json.get('bindings')
+        if bindings is None:
+            continue
+        for entry in bindings:
             members = entry.get('members')
             for m in members:
                 if m.endswith('gmail.com'):
@@ -39,7 +45,10 @@ def check1_1():
     # List accounts for each folder
     for f in folders:
         out_json = gcp_cis_utils.run_gcloud_cmd("resource-manager folders get-iam-policy " % f)
-        for entry in out_json['bindings']:
+        bindings = out_json.get('bindings')
+        if bindings is None:
+            continue
+        for entry in bindings:
             members = entry.get('members')
             for m in members:
                 if m.endswith('gmail.com'):
@@ -88,7 +97,10 @@ def check1_5():
     iam_policies_by_project = gcp_cis_utils.get_iam_policies_by_projects()
     for p in iam_policies_by_project.keys():
         out_json = iam_policies_by_project[p]
-        for entry in out_json['bindings']:
+        bindings = out_json.get('bindings')
+        if bindings is None:
+            continue
+        for entry in bindings:
             if 'admin' in entry['role'].lower() or entry['role'] in ["roles/editor", "roles/owner"]:
                 for m in entry['members']:
                     if m.endswith('.iam.gserviceaccount.com'):
@@ -105,7 +117,10 @@ def check1_6():
     iam_policies_by_project = gcp_cis_utils.get_iam_policies_by_projects()
     for p in iam_policies_by_project.keys():
         out_json = iam_policies_by_project[p]
-        for entry in out_json['bindings']:
+        bindings = out_json.get('bindings')
+        if bindings is None:
+            continue
+        for entry in bindings:
             if entry['role'] in ["roles/iam.serviceAccountUser", "roles/iam.serviceAccountTokenCreator"]:
                 for m in entry['members']:
                     if m.startswith('user:'):
@@ -146,7 +161,10 @@ def check1_8():
         out_json = iam_policies_by_projects[p]
         saa_role_users = set()
         sau_role_users = set()
-        for entry in out_json['bindings']:
+        bindings = out_json.get('bindings')
+        if bindings is None:
+            continue
+        for entry in bindings:
             gcp_cis_utils.add_members_with_role(entry, "roles/iam.serviceAccountAdmin", saa_role_users)
             gcp_cis_utils.add_members_with_role(entry, "roles/iam.serviceAccountUser", sau_role_users)
         intersection = saa_role_users.intersection(sau_role_users)
