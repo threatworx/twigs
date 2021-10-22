@@ -250,7 +250,8 @@ def process_package_json_files(files, level, localpath):
                     for req_pname in req_dict:
                         if localpath.startswith('/tmp/'):
                             file_path = file_path.replace(localpath+'/','')
-                        pname = req_pname + ' ' + req_dict[req_pname] + " source:"+file_path
+                        pname = req_pname + ' ' + req_dict[req_pname]
+                        pname = cleanse_semver_version(pname) + " source:"+file_path
                         if pname not in plist:
                             plist.append(pname)
                 else:
@@ -346,7 +347,8 @@ def discover_yarn(args, localpath):
                 libver = vline.split()[1].replace('"','')
                 if localpath.startswith('/tmp/'):
                     file_path = file_path.replace(localpath+'/','')
-                pname = libname+' '+libver + " source:"+file_path
+                pname = libname+' '+libver
+                pname = cleanse_semver_version(pname) + " source:"+file_path
                 if pname not in plist:
                     plist.append(pname)
                     p1list.append(pname)
