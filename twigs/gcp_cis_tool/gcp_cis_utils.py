@@ -13,6 +13,7 @@ _services_by_projects = None
 
 _encoding = None
 _expanded_issues = None
+_custom_ratings_dict = None
 
 def set_encoding(encoding):
     global _encoding
@@ -29,6 +30,14 @@ def set_expanded(expanded):
 def get_expanded():
     global _expanded_issues
     return _expanded_issues
+
+def set_custom_ratings(custom_ratings_dict):
+    global _custom_ratings_dict
+    _custom_ratings_dict = custom_ratings_dict
+
+def get_custom_ratings():
+    global _custom_ratings_dict
+    return _custom_ratings_dict
 
 def run_cmd(cmd):
     try:
@@ -56,6 +65,11 @@ def run_gcloud_cmd(cmd):
 # details param is a 3 value tuple as follows (msg, list of twc_id values, resource id)
 def create_issue(twc_id, twc_title, details, rating, object_id, object_meta):
     issues = []
+    custom_ratings_dict = get_custom_ratings()
+    if custom_ratings_dict is not None:
+        test_id = twc_id.split('-')[4]
+        custom_rating = custom_ratings_dict.get(test_id)
+        rating = custom_rating if custom_rating is not None else rating
     if get_expanded() == True:
         for detail in details:
             issues.append(create_issue_helper(twc_id + '_' + "_".join(detail[1]), twc_title, detail[0], rating, detail[2], ''))

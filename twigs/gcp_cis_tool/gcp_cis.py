@@ -2,6 +2,7 @@ import sys
 import subprocess
 import os
 import logging
+import json
 
 from . import check1 as check1
 from . import check2 as check2
@@ -15,6 +16,29 @@ from . import gcp_cis_utils as gcp_cis_utils
 def run_tests(args):
     gcp_cis_utils.set_encoding(args.encoding)
     gcp_cis_utils.set_expanded(args.expanded)
+    if args.custom_ratings:
+        if os.path.isfile(args.custom_ratings):
+            with open(args.custom_ratings,"r") as fd:
+                try:
+                    temp_cr = json.load(fd)
+                    custom_rating_dict = { }
+                    for rating in temp_cr:
+                        if rating not in ["1", "2", "3", "4", "5"]:
+                            logging.error("Invalid rating [%s] specified in custom rating JSON file [%s]", rating, args.custom_ratings)
+                            sys.exit(1)
+                        tests = temp_cr[rating]
+                        for test in tests:
+                            custom_rating_dict[test] = rating
+                    gcp_cis_utils.set_custom_ratings(custom_rating_dict)
+                except ValueError as ve:
+                    logging.error('Unable to load JSON file %s', args.custom_ratings)
+                    logging.error(ve)
+                    sys.exit(1)
+        else:
+            logging.error('Unable to access JSON file %s', args.custom_ratings)
+            logging.error('Please check it exists and is accessible')
+            sys.exit(1)
+
     config_issues = []
     p_not_found = []
     if args.projects:
