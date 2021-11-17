@@ -26,18 +26,20 @@ def run_cis_aws_bench(args):
 
     logging.info("Running AWS CIS Bench script [%s]", prowler_path)
     logging.info("This may take some time...")
+    csv_file_path = tempfile.gettempdir() + os.path.sep + 'aws_cis_bench_out.csv'
+    if os.path.isfile(csv_file_path):
+        os.remove(csv_file_path)
     cwd = os.getcwd()
     os.chdir(os.path.dirname(prowler_path))
     cmd = 'AWS_ACCESS_KEY_ID=' + args.aws_access_key + ' AWS_SECRET_ACCESS_KEY=' + args.aws_secret_key
-    cmd = cmd + ' ' + prowler_path + ' -b -q -g cislevel2 -M csv 2>/dev/null'
-    csv_file_path = tempfile.gettempdir() + os.path.sep + 'aws_cis_bench_out.csv'
-    with open(csv_file_path, "w") as csv_file:
-        try:
-            proc = subprocess.Popen([cmd], shell=True, stdin=None, stdout=csv_file, stderr=None, close_fds=True)
-            exit_code = proc.wait()
-        except subprocess.CalledProcessError:
-            logging.error("Error running CIS AWS bench script")
-            sys.exit(1)
+    cmd = cmd + ' ' + prowler_path + ' -b -q -g cislevel2 -M csv -o ' + tempfile.gettempdir()
+    cmd = cmd + ' -F aws_cis_bench_out 2>&1 >/dev/null'
+    try:
+        proc = subprocess.Popen([cmd], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
+        exit_code = proc.wait()
+    except subprocess.CalledProcessError:
+        logging.error("Error running CIS AWS bench script")
+        sys.exit(1)
 
     os.chdir(cwd) 
     asset = { }

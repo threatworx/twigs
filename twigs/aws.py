@@ -130,6 +130,8 @@ class EC2Impl(AWS):
     def get_asset_type(self, platformName):
         if platformName == "Amazon Linux":
             return "Amazon Linux AMI"
+        elif "windows" in platformName.lower():
+            return "Windows"
         return platformName
       
     def asset_inventory(self, email):
@@ -165,6 +167,7 @@ class EC2Impl(AWS):
                         os_release = asset['type'] + " " + data[0]['PlatformVersion']
                     elif 'Windows' in asset['type']:
                         asset['tags'] = [ 'Windows' ]
+                        os_release = data[0]['PlatformName']
                     if os_release is not None:
                         asset['tags'].append("OS_RELEASE:" + os_release)
                     if self.enable_tracking_tags == True:
