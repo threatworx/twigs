@@ -4,11 +4,13 @@ import logging
 import tempfile
 import csv
 import subprocess
+import json
+import uuid
 
-# Prowler is used for AWS CIS benchmark tests and can be found here:
+# Prowler is used for AWS benchmark tests and can be found here:
 # https://github.com/toniblyx/prowler
 
-def run_cis_aws_bench(args):
+def run_cis_aws_bench(args, extra_checks=False):
     PROWLER_SH = '/prowler'
     if args.assetid.strip() == "":
         logging.error("[assetid] cannot be empty")
@@ -21,24 +23,28 @@ def run_cis_aws_bench(args):
             args.prowler_home = '.' # default to current directory
     prowler_path = args.prowler_home + PROWLER_SH
     if not os.path.isfile(prowler_path) or not os.access(prowler_path, os.X_OK):
-        logging.error('AWS CIS Bench script not found')
+        logging.error('AWS Bench script not found')
         sys.exit(1)
 
-    logging.info("Running AWS CIS Bench script [%s]", prowler_path)
+    logging.info("Running AWS Bench script [%s]", prowler_path)
     logging.info("This may take some time...")
-    csv_file_path = tempfile.gettempdir() + os.path.sep + 'aws_cis_bench_out.csv'
+    outfile = uuid.uuid4().hex
+    csv_file_path = tempfile.gettempdir() + os.path.sep + outfile + '.csv' 
     if os.path.isfile(csv_file_path):
         os.remove(csv_file_path)
     cwd = os.getcwd()
     os.chdir(os.path.dirname(prowler_path))
     cmd = 'AWS_ACCESS_KEY_ID=' + args.aws_access_key + ' AWS_SECRET_ACCESS_KEY=' + args.aws_secret_key
-    cmd = cmd + ' ' + prowler_path + ' -b -q -g cislevel2 -M csv -o ' + tempfile.gettempdir()
-    cmd = cmd + ' -F aws_cis_bench_out 2>&1 >/dev/null'
+    if extra_checks:
+        cmd = cmd + ' ' + prowler_path + ' -b -q -g extras -M csv -o ' + tempfile.gettempdir()
+    else:
+        cmd = cmd + ' ' + prowler_path + ' -b -q -g cislevel2 -M csv -o ' + tempfile.gettempdir()
+    cmd = cmd + ' -F ' + outfile + ' 2>&1 >/dev/null'
     try:
         proc = subprocess.Popen([cmd], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
         exit_code = proc.wait()
     except subprocess.CalledProcessError:
-        logging.error("Error running CIS AWS bench script")
+        logging.error("Error running AWS bench script")
         sys.exit(1)
 
     os.chdir(cwd) 
@@ -48,14 +54,18 @@ def run_cis_aws_bench(args):
     asset['type'] = 'AWS'
     asset['owner'] = args.handle
     asset['products'] = []
-    asset['tags'] = ['AWS', 'CIS']
-    asset['config_issues'] = get_issues_from_csv_file(csv_file_path, asset_id)
+    asset['config_issues'] = get_issues_from_csv_file(csv_file_path, asset_id, extra_checks)
+    asset['tags'] = ['AWS']
+    if extra_checks:
+        asset['tags'].append('Audit')
+    else:
+        asset['tags'].append('CIS')
     os.remove(csv_file_path)
     # disable scan
     args.no_scan = True
     return asset
 
-def get_issues_from_csv_file(csv_file_path, asset_id):
+def get_issues_from_csv_file(csv_file_path, asset_id, extra_checks=False):
     findings = []
     prev = None
     with open(csv_file_path, "r") as csv_file:
@@ -68,8 +78,11 @@ def get_issues_from_csv_file(csv_file_path, asset_id):
                 issue['twc_id']  = 'cis-aws-bench-check-'+row['TITLE_ID']
                 issue['asset_id'] = asset_id
                 issue['twc_title'] = row['ITEM_LEVEL'] + ' ' + row['TITLE_TEXT']
-                issue['details'] = row['CHECK_RESULT_EXTENDED']
-                issue['type'] = 'AWS CIS'
+                issue['details'] = row['CHECK_RESULT_EXTENDED'] + '\n' + row['CHECK_REMEDIATION']
+                if extra_checks:
+                    issue['type'] = 'AWS Audit'
+                else:
+                    issue['type'] = 'AWS CIS'
                 if row['CHECK_SEVERITY'] == 'Low':
                     issue['rating'] = '1'
                 elif row['CHECK_SEVERITY'] == 'Medium':
@@ -78,7 +91,9 @@ def get_issues_from_csv_file(csv_file_path, asset_id):
                     issue['rating'] = '4'
                 elif row['CHECK_SEVERITY'] == 'Critical':
                     issue['rating'] = '5'
-                issue['object_id'] = ''
+                else:
+                    issue['rating'] = '3'
+                issue['object_id'] = row['CHECK_RESOURCE_ID'] 
                 issue['object_meta'] = ''
                 prev = row['TITLE_ID']
                 findings.append(issue)
@@ -86,7 +101,7 @@ def get_issues_from_csv_file(csv_file_path, asset_id):
                 findings[-1]['details'] = findings[-1]['details'] + '\n' + row['CHECK_RESULT_EXTENDED']
     return findings
 
-def get_inventory(args):
-    asset = run_cis_aws_bench(args)
+def get_inventory(args, extra_checks=False):
+    asset = run_cis_aws_bench(args, extra_checks)
     return [ asset ]
 

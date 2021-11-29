@@ -528,6 +528,14 @@ def main(args=None):
         parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
         parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
 
+        # Arguments required for AWS Audit Checks 
+        parser_aws_audit = subparsers.add_parser ("aws_audit", help = "Run AWS audit checks including PCI, GDPR, HIPAA readiness")
+        parser_aws_audit.add_argument('--aws_access_key', help='AWS access key', required=True)
+        parser_aws_audit.add_argument('--aws_secret_key', help='AWS secret key', required=True)
+        parser_aws_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_aws_audit.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_aws_audit.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
+
         # Arguments required for Azure CIS benchmarks
         parser_az_cis = subparsers.add_parser("azure_cis", help = "Run Azure CIS benchmarks")
         parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
@@ -682,6 +690,8 @@ def main(args=None):
             assets = docker_cis.get_inventory(args)
         elif args.mode == 'aws_cis':
             assets = aws_cis.get_inventory(args)
+        elif args.mode == 'aws_audit':
+            assets = aws_cis.get_inventory(args, True)
         elif args.mode == 'azure_cis':
             assets = azure_cis.get_inventory(args)
         elif args.mode == 'gcp_cis':
