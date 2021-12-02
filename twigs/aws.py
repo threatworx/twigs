@@ -159,14 +159,15 @@ class EC2Impl(AWS):
                     logging.info("Found asset [%s] in AWS inventory", asset['name'])
                     asset['type'] = self.get_asset_type(data[0]['PlatformName'])
                     asset['owner'] = email
+                    asset['tags'] = []
                     os_release = None
                     if 'Linux' in asset['type']:
-                        asset['tags'] = [ 'Linux' ]
+                        asset['tags'].append('Linux')
                     elif 'Ubuntu' in asset['type']:
-                        asset['tags'] = [ 'Linux' ]
+                        asset['tags'].append('Linux')
                         os_release = asset['type'] + " " + data[0]['PlatformVersion']
                     elif 'Windows' in asset['type']:
-                        asset['tags'] = [ 'Windows' ]
+                        asset['tags'].append('Windows')
                         os_release = data[0]['PlatformName']
                     if os_release is not None:
                         asset['tags'].append("OS_RELEASE:" + os_release)
