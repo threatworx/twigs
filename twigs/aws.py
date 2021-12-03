@@ -101,7 +101,7 @@ class EC2Impl(AWS):
                             pname = data[i]['Name']
                             pversion = data[i]['Version']
                             products.append(pname+' '+pversion)
-                        elif host_type == "Amazon Linux AMI":
+                        elif host_type in ["Amazon Linux AMI", "Red Hat", "CentOS"]:
                             pname = data[i]['Name']
                             pver = data[i]['Version']
                             prpm = data[i]['PackageId']
@@ -132,6 +132,12 @@ class EC2Impl(AWS):
             return "Amazon Linux AMI"
         elif "windows" in platformName.lower():
             return "Windows"
+        elif platformName == "SLES":
+            return "Suse"
+        elif "centos" in platformName.lower():
+            return "CentOS"
+        elif "red hat" in platformName.lower():
+            return "Red Hat"
         return platformName
       
     def asset_inventory(self, email):
