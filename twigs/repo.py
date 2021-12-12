@@ -118,8 +118,8 @@ def discover_pom_xml(args, localpath):
         try:
             xmldoc = minidom.parseString(contents)
         except Exception:
-            logging.error("Unable to parse pom.xml")
-            return None
+            logging.error("Unable to parse pom.xml "+file_path)
+            continue
         if prop_dict is None:
             prop_dict = { }
             curr_prop_dict = prop_dict
@@ -524,6 +524,7 @@ def discover_specified_type(repo_type, args, localpath):
         return [], None
 
     plist = []
+    p1list = []
     if repo_type == 'pip':
         plist, p1list = discover_python(args, localpath)
     elif repo_type == 'ruby':
