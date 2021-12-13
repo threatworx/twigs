@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,vmware,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,vmware,file,servicenow,docker_cis,aws_cis,aws_audit,azure_cis,gcp_cis,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -111,6 +111,7 @@ modes:
     servicenow          Discover inventory from ServiceNow instance
     docker_cis          Run docker CIS benchmarks
     aws_cis             Run AWS CIS benchmarks
+    aws_audit           Run AWS audit checks including PCI, GDPR, HIPAA readiness
     azure_cis           Run Azure CIS benchmarks
     gcp_cis             Run Google Cloud Platform CIS benchmarks
     ssl_audit           Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed
@@ -387,6 +388,23 @@ optional arguments:
 Mode: aws_cis
 $ twigs aws_cis --help
 usage: twigs aws_cis [-h] --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --assetid ASSETID [--assetname ASSETNAME] [--prowler_home PROWLER_HOME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --aws_access_key AWS_ACCESS_KEY
+                        AWS access key
+  --aws_secret_key AWS_SECRET_KEY
+                        AWS secret key
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --prowler_home PROWLER_HOME
+                        Location of cloned prowler github repo. Defaults to
+                        /usr/share/prowler
+
+Mode: aws_audit
+$ twigs aws_audit --help
+usage: twigs aws_audit [-h] --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --assetid ASSETID [--assetname ASSETNAME] [--prowler_home PROWLER_HOME]
 
 optional arguments:
   -h, --help            show this help message and exit
