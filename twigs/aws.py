@@ -94,7 +94,7 @@ class EC2Impl(AWS):
                     with codecs.open(fname,'rU','utf-8') as f:
                	        for line in f:
                             data.append(json.loads(line))
-                    #print data
+                    # print(data)
                     products = []
                     for i in range(len(data)):
                         if "Windows" in host_type:
@@ -117,6 +117,13 @@ class EC2Impl(AWS):
                             parch = data[i]['Architecture']
                             product_name = pname+' '+pver
                             #print "[%s][%s] ==> [%s]" % (pname, prpm, product_name)
+                            products.append(product_name)
+                        elif host_type == "Suse":
+                            pname = data[i]['Name']
+                            pver = data[i]['Version']
+                            prel = data[i]['Release']
+                            parch = data[i]['Architecture']
+                            product_name = pname+' '+pver+'-'+prel+'.'+parch
                             products.append(product_name)
                     return products
                 except ValueError:
@@ -175,6 +182,24 @@ class EC2Impl(AWS):
                     elif 'Windows' in asset['type']:
                         asset['tags'].append('Windows')
                         os_release = data[0]['PlatformName']
+                    elif asset['type'] == 'Suse':
+                        asset['tags'].append('Linux')
+                        pv = data[0]['PlatformVersion']
+                        if "." in pv:
+                            os_version = data[0]['PlatformVersion'].split('.')[0]
+                            sp_level = data[0]['PlatformVersion'].split('.')[1]
+                        else:
+                            os_version = data[0]['PlatformVersion']
+                            sp_level = '0'
+                        if sp_level != '0':
+                            os_release = "SUSE Linux Enterprise Server %s SP%s" % (os_version,sp_level)
+                        else:
+                            os_release = "SUSE Linux Enterprise Server %s" % (os_version)
+                    elif asset['type'] == 'CentOS':
+                        asset['tags'].append('Linux')
+                    elif asset['type'] == 'Red Hat':
+                        asset['tags'].append('Linux')
+
                     if os_release is not None:
                         asset['tags'].append("OS_RELEASE:" + os_release)
                     if self.enable_tracking_tags == True:
@@ -183,6 +208,7 @@ class EC2Impl(AWS):
                         asset['tags'].append("SOURCE:AWS")
                     logging.info("Retrieving product details for [%s]", asset['name'])
                     asset['products'] = self.product_inventory(asset['id'], asset['type'])
+                    asset['tags'].append(asset['type'])
                     logging.info("Retrieving patch details for [%s]", asset['name'])
                     asset['patches'] = self.windows_patch_inventory(asset['id'])
                     assets.append(asset)
