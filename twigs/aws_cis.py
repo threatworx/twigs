@@ -39,7 +39,11 @@ def run_cis_aws_bench(args, extra_checks=False):
         cmd = cmd + ' ' + prowler_path + ' -b -q -g extras -M csv -o ' + tempfile.gettempdir()
     else:
         cmd = cmd + ' ' + prowler_path + ' -b -q -g cislevel2 -M csv -o ' + tempfile.gettempdir()
-    cmd = cmd + ' -F ' + outfile + ' 2>&1 >/dev/null'
+    cmd = cmd + ' -F ' + outfile
+    #cmd = cmd + ' -F ' + outfile + ' 2>&1 >/dev/null'
+    if args.verbosity < 2:
+        cmd = cmd + ' 2>&1 >/dev/null'
+    logging.debug("AWS checks command: %s",cmd)
     try:
         proc = subprocess.Popen([cmd], shell=True, stdin=None, stdout=None, stderr=None, close_fds=True)
         exit_code = proc.wait()

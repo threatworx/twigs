@@ -161,6 +161,21 @@ def discover_rh(args, host):
     logging.info("Completed retrieval of product details")
     return plist
 
+def discover_suse(args, host):
+    plist = []
+    cmdarr = ["/bin/rpm -qa"]
+    logging.info("Retrieving product details")
+    rpmout = utils.run_cmd_on_host(args, host, cmdarr)
+
+    for l in rpmout.splitlines():
+        l = l.strip()
+        l_tokens = l.split('-')
+        tokens_len = len(l_tokens)
+        pkg = "-".join(l_tokens[:-2])
+        plist.append(pkg+' '+l_tokens[-2]+'-'+l_tokens[-1])
+    logging.info("Completed retrieval of product details")
+    return plist
+
 def discover_ubuntu(args, host):
     plist = []
     cmdarr = ["/usr/bin/apt list --installed"]
@@ -412,6 +427,8 @@ def discover_host(args, host):
         plist = discover_macos(args, host)
     elif atype == "Alpine Linux":
         plist = discover_alpine(args, host)
+    elif atype == "Suse":
+        plist = discover_suse(args, host)
 
     if plist == None or len(plist) == 0:
         logging.error("Could not inventory asset [%s]", asset_id)

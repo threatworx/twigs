@@ -125,21 +125,31 @@ def check2_3():
     return None
 
 def _check_log_metric_filter_and_alerts(in_filter, details_msg):
+    logging.debug("In _check_log_metric_filter_and_alerts")
     details = []
     projects = gcp_cis_utils.get_logging_enabled_projects()
     for p in projects:
+        logging.debug("Processing project [%s]", p)
         out_json = gcp_cis_utils.run_gcloud_cmd("beta logging metrics list --project=%s" % p)
         poac_metric_found = False
         for entry in out_json:
             mf = entry['filter'].strip().replace('\n',' ')
+            logging.debug("Comparing filters...")
+            logging.debug("%s", mf)
+            logging.debug("%s", in_filter)
             if mf == in_filter:
+                logging.debug("Filters matched")
                 mdt = entry['metricDescriptor']['type']
+                logging.debug("metricsDescriptor.type is [%s]", mdt)
                 out_json_2 = gcp_cis_utils.run_gcloud_cmd("alpha monitoring policies list --project=%s" % p)
                 for entry_2 in out_json_2:
                     for cond in entry_2['conditions']:
+                        logging.debug("condition.conditionThreshold.filter is [%s]",cond['conditionThreshold']['filter'])
                         if cond['conditionThreshold']['filter'] == "metric.type=\"" + mdt + "\"" and entry_2['enabled']:
+                            logging.debug("Alert policy found")
                             poac_metric_found = True
         if poac_metric_found == False:
+            logging.debug("Alert policy not found")
             details.append((details_msg % p, [p], p))
     return details
 
