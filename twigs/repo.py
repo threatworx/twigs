@@ -618,7 +618,7 @@ def discover_inventory(args, localpath):
         asset_tags.append(args.type)
 
     if plist == None or len(plist) == 0:
-        logging.warning("Unable to identify any source code components")
+        logging.info("Unable to identify any source code dependencies")
 
     asset_data = {}
     asset_data['id'] = get_asset_id(args)
@@ -690,7 +690,7 @@ def get_inventory(args):
         shutil.rmtree(path, onerror = on_rm_error)
 
     if len(assets[0]['products']) == 0 and (assets[0].get('secrets') is None or len(assets[0]['secrets']) == 0) and (assets[0].get('sast') is None or len(assets[0]['sast']) == 0):
-        logging.warning("No products idenitified nor any code secrets found.")
+        logging.warning("Nothing to report")
         if args.create_empty_asset is None or not args.create_empty_asset:
             return [] # if there are no products nor secrets then no assets to report
     return assets

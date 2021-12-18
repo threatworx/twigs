@@ -42,6 +42,7 @@ try:
     from . import docker_cis
     from . import aws_cis
     from . import azure_cis
+    from . import azure_functions
     from . import gcp_cis
     from . import vmware 
     from . import utils
@@ -541,6 +542,28 @@ def main(args=None):
         parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_az_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
+        # Arguments required for Azure Functions 
+        parser_az_functions = subparsers.add_parser("azure_functions", help = "Discover and scan Azure Functions soure code")
+        parser_az_functions.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_az_functions.add_argument('--type', help=argparse.SUPPRESS)
+        parser_az_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
+        parser_az_functions.add_argument('--assetid', help=argparse.SUPPRESS)
+        parser_az_functions.add_argument('--assetname', help=argparse.SUPPRESS)
+        # Switches related to secrets scan for repo
+        parser_az_functions.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+        parser_az_functions.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
+        parser_az_functions.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+        parser_az_functions.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+        parser_az_functions.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
+        parser_az_functions.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+        parser_az_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+        parser_az_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+        parser_az_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+        parser_az_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
+        parser_az_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_az_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
+        parser_az_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
+
         # Arguments required for GCP CIS benchmarks
         parser_gcp_cis = subparsers.add_parser("gcp_cis", help = "Run Google Cloud Platform CIS benchmarks")
         parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
@@ -694,6 +717,8 @@ def main(args=None):
             assets = aws_cis.get_inventory(args, True)
         elif args.mode == 'azure_cis':
             assets = azure_cis.get_inventory(args)
+        elif args.mode == 'azure_functions':
+            assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcp_cis':
             assets = gcp_cis.get_inventory(args)
         elif args.mode == 'ssl_audit':
