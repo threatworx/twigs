@@ -1,4 +1,5 @@
 import sys
+import re
 import logging
 from . import gcp_cis_utils as gcp_cis_utils
 
@@ -124,6 +125,11 @@ def check2_3():
         return gcp_cis_utils.create_issue('cis-gcp-bench-check-2.3', '2.3 [Level 1] Ensure that retention policies on log buckets are configured using Bucket Lock (Scored)', details, '4', '', '')
     return None
 
+def _strip_all_whitespaces(in_str):
+    p = re.compile(r'\s+')
+    out_str = re.sub(p, '', in_str)
+    return out_str
+
 def _check_log_metric_filter_and_alerts(in_filter, details_msg):
     logging.debug("In _check_log_metric_filter_and_alerts")
     details = []
@@ -134,10 +140,12 @@ def _check_log_metric_filter_and_alerts(in_filter, details_msg):
         poac_metric_found = False
         for entry in out_json:
             mf = entry['filter'].strip().replace('\n',' ')
-            logging.debug("Comparing filters...")
-            logging.debug("%s", mf)
-            logging.debug("%s", in_filter)
-            if mf == in_filter:
+            logging.debug("Comparing sanitizied filters...")
+            sanitized_mf = _strip_all_whitespaces(mf)
+            sanitized_in_filter = _strip_all_whitespaces(in_filter)
+            logging.debug("%s", sanitized_mf)
+            logging.debug("%s", sanitized_in_filter)
+            if sanitized_mf == sanitized_in_filter:
                 logging.debug("Filters matched")
                 mdt = entry['metricDescriptor']['type']
                 logging.debug("metricsDescriptor.type is [%s]", mdt)
@@ -145,7 +153,8 @@ def _check_log_metric_filter_and_alerts(in_filter, details_msg):
                 for entry_2 in out_json_2:
                     for cond in entry_2['conditions']:
                         logging.debug("condition.conditionThreshold.filter is [%s]",cond['conditionThreshold']['filter'])
-                        if cond['conditionThreshold']['filter'] == "metric.type=\"" + mdt + "\"" and entry_2['enabled']:
+                        mt_string = "metric.type=\"" + mdt + "\""
+                        if mt_string in cond['conditionThreshold']['filter'] and entry_2['enabled']:
                             logging.debug("Alert policy found")
                             poac_metric_found = True
         if poac_metric_found == False:
