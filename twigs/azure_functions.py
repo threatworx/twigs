@@ -61,8 +61,7 @@ def get_inventory(args):
                     if len(code_issues) > 0:
                         assets[0]['sast'] = code_issues
                     assets[0]['type'] = 'Azure Function'
-                    assets[0]['tags'] = ['Azure', 'Azure Function', 'Serverless']
+                    assets[0]['tags'].extend(['Azure', 'Azure Function', 'Serverless'])
                     ret_assets.extend(assets)
                 shutil.rmtree(temp_dir)
-    print(ret_assets)
     return ret_assets 

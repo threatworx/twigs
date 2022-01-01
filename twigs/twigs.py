@@ -26,6 +26,7 @@ import getpass
 from os.path import expanduser
 
 try:
+    from . import utils
     from . import aws
     from . import linux
     from . import repo
@@ -44,8 +45,8 @@ try:
     from . import azure_cis
     from . import azure_functions
     from . import gcp_cis
+    from . import gcloud_functions
     from . import vmware 
-    from . import utils
     from . import policy as policy_lib
     from .__init__ import __version__
 except (ImportError,ValueError):
@@ -65,7 +66,9 @@ except (ImportError,ValueError):
     from twigs import docker_cis
     from twigs import aws_cis
     from twigs import azure_cis
+    from twigs import azure_functions
     from twigs import gcp_cis
+    from twigs import gcloud_functions
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
@@ -572,6 +575,28 @@ def main(args=None):
         parser_gcp_cis.add_argument('--expanded', action='store_true', help='Create separate issue for each violation')
         parser_gcp_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for GCP CIS benchmark tests')
 
+        # Arguments required for Google Cloud Functions 
+        parser_gcloud_functions = subparsers.add_parser("gcloud_functions", help = "Discover and scan Google Cloud Functions soure code")
+        parser_gcloud_functions.add_argument('--projects', help='A comma separated list of GCP project IDs', required=True)
+        parser_gcloud_functions.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--type', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
+        parser_gcloud_functions.add_argument('--assetid', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--assetname', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+        parser_gcloud_functions.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
+        parser_gcloud_functions.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+        parser_gcloud_functions.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+        parser_gcloud_functions.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
+        parser_gcloud_functions.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+        parser_gcloud_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+        parser_gcloud_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+        parser_gcloud_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+        parser_gcloud_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
+        parser_gcloud_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_gcloud_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
+        parser_gcloud_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
+
         # Arguments required for ssl audit 
         parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed")
         parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
@@ -721,6 +746,8 @@ def main(args=None):
             assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcp_cis':
             assets = gcp_cis.get_inventory(args)
+        elif args.mode == 'gcloud_functions':
+            assets = gcloud_functions.get_inventory(args)
         elif args.mode == 'ssl_audit':
             assets = ssl_audit.get_inventory(args)
 

@@ -24,7 +24,7 @@ def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
             dev_null_device.close()
         except subprocess.CalledProcessError:
             if logging_enabled:
-                logging.error("Error running inventory")
+                logging.debug("Error running command")
             return None
     return pkgout
 
