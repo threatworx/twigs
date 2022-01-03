@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,vmware,file,servicenow,docker_cis,aws_cis,aws_audit,azure_cis,gcp_cis,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,aws_cis,aws_audit,ecr,azure,azure_cis,acr,azure_functions,gcp,gcp_cis,gcr,gcloud_functions,docker,docker_cis,repo,host,vmware,nmap,file,servicenow,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -97,23 +97,25 @@ modes:
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
-    ecr                 Discover AWS Container Registry (ECR) container images
-    azure               Discover Azure instances
-    acr                 Discover Azure Container Registry (ACR) container images
-    gcp                 Discover Google Cloud Platform (GCP) instances
-    gcr                 Discover Google Cloud Registry (GCR) container images
-    docker              Discover docker instances
-    host                Discover linux host assets
-    nmap                Fingerprint assets using nmap. Requires nmap to be installed.
-    repo                Discover project repository as asset
-    vmware              Discover VMWare assets
-    file                Discover inventory from file
-    servicenow          Discover inventory from ServiceNow instance
-    docker_cis          Run docker CIS benchmarks
     aws_cis             Run AWS CIS benchmarks
-    aws_audit           Run AWS audit checks including PCI, GDPR, HIPAA readiness
+    aws_audit           Run AWS audit checks including PCI, GDPR, HIPAA
+    ecr                 Discover AWS Container Registry (ECR) images
+    azure               Discover Azure instances
     azure_cis           Run Azure CIS benchmarks
+    acr                 Discover Azure Container Registry (ACR) images
+    azure_functions     Discover and scan Azure Functions soure code
+    gcp                 Discover Google Cloud Platform (GCP) instances
     gcp_cis             Run Google Cloud Platform CIS benchmarks
+    gcr                 Discover Google Cloud Registry (GCR) images
+    gcloud_functions    Discover and scan Google Cloud Functions soure code
+    docker              Discover docker instances
+    docker_cis          Run docker CIS benchmarks
+    repo                Discover source code repository as asset
+    host                Discover linux host assets
+    vmware              Discover VMware vCenter/ESX assets
+    nmap                Discover assets using nmap
+    file                Ingest asset inventory from file
+    servicenow          Ingest inventory from ServiceNow CMDB
     ssl_audit           Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed
     dast                Discover and test web application using a DAST plugin
 
@@ -150,6 +152,40 @@ optional arguments:
                         Account ID, etc.) as asset tags
 
 Help video: https://youtu.be/pYzHU7izRdU
+
+Mode: aws_cis
+$ twigs aws_cis --help
+usage: twigs aws_cis [-h] --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --assetid ASSETID [--assetname ASSETNAME] [--prowler_home PROWLER_HOME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --aws_access_key AWS_ACCESS_KEY
+                        AWS access key
+  --aws_secret_key AWS_SECRET_KEY
+                        AWS secret key
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --prowler_home PROWLER_HOME
+                        Location of cloned prowler github repo. Defaults to
+                        /usr/share/prowler
+
+Mode: aws_audit
+$ twigs aws_audit --help
+usage: twigs aws_audit [-h] --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --assetid ASSETID [--assetname ASSETNAME] [--prowler_home PROWLER_HOME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --aws_access_key AWS_ACCESS_KEY
+                        AWS access key
+  --aws_secret_key AWS_SECRET_KEY
+                        AWS secret key
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --prowler_home PROWLER_HOME
+                        Location of cloned prowler github repo. Defaults to
+                        /usr/share/prowler
 
 Mode: ecr
 $ twigs ecr --help
@@ -195,9 +231,19 @@ optional arguments:
 
 Help video: https://youtu.be/DyMrxYscADw
 
+Mode: azure_cis
+$ twigs azure_cis --help
+usage: twigs azure_cis [-h] --assetid ASSETID [--assetname ASSETNAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+
 Mode: acr
 $ twigs acr --help
-usage: twigs.py acr [-h] [--registry REGISTRY] [--image IMAGE] [--tmp_dir TMP_DIR]
+usage: twigs acr [-h] [--registry REGISTRY] [--image IMAGE] [--tmp_dir TMP_DIR]
 
 optional arguments:
   -h, --help           show this help message and exit
@@ -207,6 +253,43 @@ optional arguments:
                        to be inspected. If tag is not given, latest will be
                        determined and used.
   --tmp_dir TMP_DIR    Temporary directory. Defaults to /tmp
+
+Mode: azure_functions
+$ twigs azure_functions --help
+usage: twigs azure_functions [-h] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --secrets_scan        Perform a scan to look for secrets in the code
+  --enable_entropy      Identify entropy based secrets
+  --regex_rules_file REGEX_RULES_FILE
+                        Path to JSON file specifying regex rules
+  --check_common_passwords
+                        Look for top common passwords.
+  --common_passwords_file COMMON_PASSWORDS_FILE
+                        Specify your own common passwords file. One password
+                        per line in file
+  --include_patterns INCLUDE_PATTERNS
+                        Specify patterns which indicate files to be included
+                        in the secrets scan. Separate multiple patterns with
+                        comma.
+  --include_patterns_file INCLUDE_PATTERNS_FILE
+                        Specify file containing include patterns which
+                        indicate files to be included in the secrets scan. One
+                        pattern per line in file.
+  --exclude_patterns EXCLUDE_PATTERNS
+                        Specify patterns which indicate files to be excluded
+                        in the secrets scan. Separate multiple patterns with
+                        comma.
+  --exclude_patterns_file EXCLUDE_PATTERNS_FILE
+                        Specify file containing exclude patterns which
+                        indicate files to be excluded in the secrets scan. One
+                        pattern per line in file.
+  --mask_secret         Mask identified secret before storing for reference in
+                        ThreatWatch.
+  --no_code             Disable storing code for reference in ThreatWatch.
+  --sast                Perform static code analysis on your source code
+  --iac_checks          Perform security checks on IaC templates
 
 Mode: gcp
 $ twigs gcp --help
@@ -219,6 +302,22 @@ optional arguments:
                         Project ID, etc.) as asset tags
 
 Help video: https://youtu.be/tGgKZcGFfZ4
+
+Mode: gcp_cis
+$ twigs gcp_cis --help
+usage: twigs gcp_cis [-h] --assetid ASSETID [--assetname ASSETNAME] [--projects PROJECTS] [--expanded] [--custom_ratings CUSTOM_RATINGS]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --projects PROJECTS   A comma separated list of GCP project IDs to run the
+                        checks against
+  --expanded            Create separate issue for each violation
+  --custom_ratings CUSTOM_RATINGS
+                        Specify JSON file which provides custom ratings for
+                        GCP CIS benchmark tests
 
 Mode: gcr
 $ twigs gcr --help
@@ -233,6 +332,44 @@ optional arguments:
                         which needs to be inspected. If tag / digest is not
                         given, latest will be determined and used.
   --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
+
+Mode: gcloud_functions
+$ twigs gcloud_functions --help
+usage: twigs gcloud_functions [-h] --projects PROJECTS [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --projects PROJECTS   A comma separated list of GCP project IDs
+  --secrets_scan        Perform a scan to look for secrets in the code
+  --enable_entropy      Identify entropy based secrets
+  --regex_rules_file REGEX_RULES_FILE
+                        Path to JSON file specifying regex rules
+  --check_common_passwords
+                        Look for top common passwords.
+  --common_passwords_file COMMON_PASSWORDS_FILE
+                        Specify your own common passwords file. One password
+                        per line in file
+  --include_patterns INCLUDE_PATTERNS
+                        Specify patterns which indicate files to be included
+                        in the secrets scan. Separate multiple patterns with
+                        comma.
+  --include_patterns_file INCLUDE_PATTERNS_FILE
+                        Specify file containing include patterns which
+                        indicate files to be included in the secrets scan. One
+                        pattern per line in file.
+  --exclude_patterns EXCLUDE_PATTERNS
+                        Specify patterns which indicate files to be excluded
+                        in the secrets scan. Separate multiple patterns with
+                        comma.
+  --exclude_patterns_file EXCLUDE_PATTERNS_FILE
+                        Specify file containing exclude patterns which
+                        indicate files to be excluded in the secrets scan. One
+                        pattern per line in file.
+  --mask_secret         Mask identified secret before storing for reference in
+                        ThreatWatch.
+  --no_code             Disable storing code for reference in ThreatWatch.
+  --sast                Perform static code analysis on your source code
+  --iac_checks          Perform security checks on IaC templates
 
 Mode: docker
 $ twigs docker --help
@@ -253,44 +390,18 @@ optional arguments:
   --start_instance      If image inventory fails, try starting a container
                         instance to inventory contents. Use with caution
 
-Mode: host
-$ twigs host --help
-usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME] [--no_ssh_audit] [--no_host_benchmark]
+Mode: docker_cis
+$ twigs docker_cis --help
+usage: twigs docker_cis [-h] [--assetid ASSETID] [--assetname ASSETNAME] [--docker_bench_home DOCKER_BENCH_HOME]
 
 optional arguments:
   -h, --help            show this help message and exit
-  --remote_hosts_csv REMOTE_HOSTS_CSV
-                        CSV file containing details of remote hosts. CSV file
-                        column header [1st row] should be: hostname,userlogin,
-                        userpwd,privatekey,assetid,assetname. Note "hostname"
-                        column can contain hostname, IP address, CIDR range.
-  --host_list HOST_LIST
-                        Same as the option: remote_hosts_csv. A file
-                        (currently in CSV format) containing details of remote
-                        hosts. CSV file column header [1st row] should be: hos
-                        tname,userlogin,userpwd,privatekey,assetid,assetname.
-                        Note "hostname" column can contain hostname, IP
-                        address, CIDR range.
-  --secure              Use this option to encrypt clear text passwords in the
-                        host list file
-  --password PASSWORD   A password use to encrypt / decrypt login information
-                        from the host list file
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
-  --no_ssh_audit        Skip ssh audit
-  --no_host_benchmark   Skip host benchmark audit
-
-Help video: https://youtu.be/OKJ-DxXwanA
-
-Mode: nmap
-$ twigs nmap --help
-usage: twigs nmap [-h] --hosts HOSTS
-
-optional arguments:
-  -h, --help     show this help message and exit
-  --hosts HOSTS  A hostname, IP address or CIDR range
-  --no_ssh_audit  Skip ssh audit
+  --docker_bench_home DOCKER_BENCH_HOME
+                        Location of docker bench CLI. Defaults to /usr/share
+                        /docker-bench-security
 
 Mode: repo
 $ twigs repo --help
@@ -326,6 +437,36 @@ optional arguments:
   --sast                Perform static code analysis on your source code
   --iac_checks          Perform security checks on IaC templates
 
+Mode: host
+$ twigs host --help
+usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME] [--no_ssh_audit] [--no_host_benchmark]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --remote_hosts_csv REMOTE_HOSTS_CSV
+                        CSV file containing details of remote hosts. CSV file
+                        column header [1st row] should be: hostname,userlogin,
+                        userpwd,privatekey,assetid,assetname. Note "hostname"
+                        column can contain hostname, IP address, CIDR range.
+  --host_list HOST_LIST
+                        Same as the option: remote_hosts_csv. A file
+                        (currently in CSV format) containing details of remote
+                        hosts. CSV file column header [1st row] should be: hos
+                        tname,userlogin,userpwd,privatekey,assetid,assetname.
+                        Note "hostname" column can contain hostname, IP
+                        address, CIDR range.
+  --secure              Use this option to encrypt clear text passwords in the
+                        host list file
+  --password PASSWORD   A password use to encrypt / decrypt login information
+                        from the host list file
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --no_ssh_audit        Skip ssh audit
+  --no_host_benchmark   Skip host benchmark audit
+
+Help video: https://youtu.be/OKJ-DxXwanA
+
 Mode: vmware
 $twigs vmware --help
 usage: twigs vmware [-h] --host HOST --user USER [--password PASSWORD]
@@ -336,6 +477,15 @@ optional arguments:
   --user USER          A vCenter user name
   --password PASSWORD  Password for the vCenter user. Note this can be set as
                        "VCENTER_PASSWD" environment variable
+
+Mode: nmap
+$ twigs nmap --help
+usage: twigs nmap [-h] --hosts HOSTS
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --hosts HOSTS  A hostname, IP address or CIDR range
+  --no_ssh_audit  Skip ssh audit
 
 Mode: file
 $ twigs file --help
@@ -371,79 +521,6 @@ optional arguments:
   --enable_tracking_tags
                         Enable recording ServiceNow specific information (like
                         ServiceNow instance name, etc.) as asset tags
-
-Mode: docker_cis
-$ twigs docker_cis --help
-usage: twigs docker_cis [-h] [--assetid ASSETID] [--assetname ASSETNAME] [--docker_bench_home DOCKER_BENCH_HOME]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset
-  --docker_bench_home DOCKER_BENCH_HOME
-                        Location of docker bench CLI. Defaults to /usr/share
-                        /docker-bench-security
-
-Mode: aws_cis
-$ twigs aws_cis --help
-usage: twigs aws_cis [-h] --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --assetid ASSETID [--assetname ASSETNAME] [--prowler_home PROWLER_HOME]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --aws_access_key AWS_ACCESS_KEY
-                        AWS access key
-  --aws_secret_key AWS_SECRET_KEY
-                        AWS secret key
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset
-  --prowler_home PROWLER_HOME
-                        Location of cloned prowler github repo. Defaults to
-                        /usr/share/prowler
-
-Mode: aws_audit
-$ twigs aws_audit --help
-usage: twigs aws_audit [-h] --aws_access_key AWS_ACCESS_KEY --aws_secret_key AWS_SECRET_KEY --assetid ASSETID [--assetname ASSETNAME] [--prowler_home PROWLER_HOME]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --aws_access_key AWS_ACCESS_KEY
-                        AWS access key
-  --aws_secret_key AWS_SECRET_KEY
-                        AWS secret key
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset
-  --prowler_home PROWLER_HOME
-                        Location of cloned prowler github repo. Defaults to
-                        /usr/share/prowler
-
-Mode: azure_cis
-$ twigs azure_cis --help
-usage: twigs azure_cis [-h] --assetid ASSETID [--assetname ASSETNAME]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset
-
-Mode: gcp_cis
-$ twigs gcp_cis --help
-usage: twigs gcp_cis [-h] --assetid ASSETID [--assetname ASSETNAME] [--projects PROJECTS] [--expanded] [--custom_ratings CUSTOM_RATINGS]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset
-  --projects PROJECTS   A comma separated list of GCP project IDs to run the
-                        checks against
-  --expanded            Create separate issue for each violation
-  --custom_ratings CUSTOM_RATINGS
-                        Specify JSON file which provides custom ratings for
-                        GCP CIS benchmark tests
 
 Mode: ssl_audit
 $ twigs ssl_audit --help
@@ -482,7 +559,7 @@ Note: For Windows hosts, you can use provided PowerShell script (twigs.ps1) for 
 
 usage: .\\twigs.ps1 -?
 
-twigs.ps1 [-handle] <String> [[-token] <String>] [[-instance] <String>] [[-out] <String>] [[-assetid] <String>] [[-assetname] <String>] [-tag_critical] [[-tags] <String[]>] [<CommonParameters>]
+twigs.ps1 [[-mode] <String>] [[-remote_hosts_csv] <String>] [[-host_list] <String>] [[-password] <String>] [-handle] <String> [[-token] <String>] [[-instance] <String>] [[-out] <String>] [[-assetid] <String>] [[-assetname] <String>] [[-tags] <String[]>] [-tag_critical] [-no_scan] [-email_report] [<CommonParameters>]
 
 Credits
 -------
