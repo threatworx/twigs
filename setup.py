@@ -12,7 +12,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'PyPDF4==1.27.0', 'paramiko==2.6.0', "pdfminer==20140328 ; python_version<'3'", "pdfminer ; python_version>'3'", 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi']
+requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'PyPDF4==1.27.0', 'paramiko==2.6.0', "pdfminer==20140328 ; python_version<'3'", "pdfminer ; python_version>'3'", 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi', 'scp==0.13.3']
 if sys.platform != 'win32':
     requirements.append('python-crontab==2.5.1')
 

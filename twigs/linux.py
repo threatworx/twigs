@@ -20,6 +20,7 @@ with warnings.catch_warnings():
    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
    from cryptography.fernet import Fernet
 from . import utils
+from . import plugin_processor
 
 def check_host_up(host):
     if not host['remote']:
@@ -446,6 +447,8 @@ def discover_host(args, host):
         asset_tags.append('Linux')
     asset_tags.append(atype)
     asset_data['tags'] = asset_tags
+
+    plugin_processor.process_plugins(asset_data, host, args, '/')
 
     logging.info("Completed inventory discovery for asset [%s]", asset_id)
 

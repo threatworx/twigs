@@ -3,6 +3,7 @@ import os
 import socket
 import subprocess
 import paramiko
+from scp import SCPClient
 import logging
 import requests
 import time
@@ -10,6 +11,20 @@ import time
 GoDaddyCABundle = True
 
 SYSTEM_TAGS = ['IMAGE_NAME', 'OS_VERSION', 'OS_RELEASE', 'SOURCE', 'OS_RELEASE_ID', 'CRITICALITY', 'http', 'https', 'OS_ARCH', 'IMAGE_DIGEST']
+
+def get_ssh_client(host):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
+    if host.get('userpwd') is not None and len(host['userpwd']) > 0 and (host.get('privatekey') is None or len(host['privatekey'])==0):
+        client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
+    elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
+        if host.get('userpwd') is not None and len(host['userpwd']) > 0:
+            client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'],passphrase=host['userpwd'])
+        else:
+            client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
+    else:
+        client.connect(host['hostname'],username=host['userlogin'])
+    return client
 
 def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
     if host and host['remote']:
@@ -28,24 +43,18 @@ def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
             return None
     return pkgout
 
+def run_remote_ssh_command_helper(client, command, args):
+    output = ''
+    stdin, stdout, stderr = client.exec_command(command)
+    for line in stdout:
+        output = output + line
+    return output, stdout.channel.recv_exit_status()
+
 def run_remote_ssh_command(args, host, command):
     assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
-    output = ''
     try:
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy)
-        if host.get('userpwd') is not None and len(host['userpwd']) > 0 and (host.get('privatekey') is None or len(host['privatekey'])==0):
-            client.connect(host['hostname'],username=host['userlogin'],password=host['userpwd'])
-        elif host.get('privatekey') is not None and len(host['privatekey']) > 0:
-            if host.get('userpwd') is not None and len(host['userpwd']) > 0:
-                client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'],passphrase=host['userpwd'])
-            else:
-                client.connect(host['hostname'],username=host['userlogin'],key_filename=host['privatekey'])
-        else:
-            client.connect(host['hostname'],username=host['userlogin'])
-        stdin, stdout, stderr = client.exec_command(command)
-        for line in stdout:
-            output = output + line
+        client = get_ssh_client(host)
+        output, exit_code = run_remote_ssh_command_helper(client, command, args)
         client.close()
     except paramiko.ssh_exception.AuthenticationException as e:
         logging.info("Authentication failed for asset [%s], host [%s]", assetid, host['hostname'])
@@ -64,6 +73,86 @@ def run_remote_ssh_command(args, host, command):
         output = None
     finally:
         return output
+
+def run_script_on_host(args, host, script_path, script_args):
+    if host and host['remote']:
+        pkgout, exit_code = run_remote_ssh_script(args, host, script_path, script_args)
+    else:
+        if not os.path.isfile(script_path):
+            logging.error("Error script file not found at [%s]", script_path)
+            return None
+        if not os.access(script_path, os.X_OK):
+            logging.error("Error script file at [%s] is not marked as executable", script_path)
+            return None
+        try:
+            dev_null_device = open(os.devnull, "w")
+            #cmdarr = [ "chroot '" + root_folder + "' && " + script_path ]
+            cmd = script_path
+            for sa in script_args:
+                cmd = cmd + ' "' + sa + '"'
+            cmdarr = [ cmd ]
+            pkgout = subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
+            pkgout = pkgout.decode(args.encoding)
+            dev_null_device.close()
+            exit_code = 0
+        except subprocess.CalledProcessError as excpt:
+            logging.error("Error running script [%s]", script_path)
+            pkgout = None
+            exit_code = excpt.returncode
+    return pkgout, exit_code
+
+def scp_get_file(ssh_client, from_path, to_path):
+    try:
+        scp_client = SCPClient(ssh_client.get_transport())
+        scp_client.get(from_path, to_path)
+        return True
+    except:
+        logging.info("Unknown error copying file [%s] from remote host", from_path)
+        return False
+
+def scp_put_file(ssh_client, from_path, to_path):
+    try:
+        scp_client = SCPClient(ssh_client.get_transport())
+        scp_client.put(from_path, recursive=True, remote_path=to_path)
+        return True
+    except:
+        logging.info("Unknown error copying file [%s] to remote host", from_path)
+        return False
+
+# NOTE script_path is path of script file on remote host
+def run_remote_ssh_script(args, host, script_path, script_args):
+    assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
+    output = ''
+    exit_code = -1
+    try:
+        client = get_ssh_client(host)
+        cmd = "test -x " + script_path
+        temp_output, exit_code = run_remote_ssh_command_helper(client, cmd, args)
+        if exit_code != 0:
+            logging.error("Error executable script file not found on remote host at [%s]", script_path)
+            output = None, exit_code
+        cmd = script_path
+        for sa in script_args:
+            cmd = cmd + ' "' + sa + '"'
+        output, exit_code = run_remote_ssh_command_helper(client, cmd, args)
+        client.close()
+    except paramiko.ssh_exception.AuthenticationException as e:
+        logging.info("Authentication failed for asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+        output = None
+    except paramiko.ssh_exception.SSHException as e:
+        logging.info("SSHException while connecting to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+        output = None
+    except socket.error as e:
+        logging.info("Socket error while connection to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+        output = None
+    except:
+        logging.info("Unknown error running remote discovery for asset [%s], host [%s]: [%s]", assetid, host['hostname'], sys.exc_info()[0])
+        output = None
+    finally:
+        return output, exit_code
 
 def get_os_release(args, host=None):
     freebsd = False

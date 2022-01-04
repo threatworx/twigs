@@ -506,7 +506,6 @@ def main(args=None):
         parser_gcloud_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
         parser_gcloud_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
-
         # Arguments required for docker discovery 
         parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
         parser_docker.add_argument('--image', help='The docker image (repo:tag) which needs to be inspected. If tag is not given, "latest" will be assumed.')
@@ -531,6 +530,9 @@ def main(args=None):
         parser_docker.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
         parser_docker.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
         parser_docker.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_docker.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_docker.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
+
         # Arguments required for docker CIS benchmarks 
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
         parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
@@ -570,6 +572,8 @@ def main(args=None):
         parser_linux.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
         parser_linux.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
         parser_linux.add_argument('--no_host_benchmark', action='store_true', help='Skip host benchmark audit')
+        parser_linux.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_linux.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
         # Arguments required for vmware discovery
         parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMware vCenter/ESX assets")

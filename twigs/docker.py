@@ -14,7 +14,8 @@ import importlib
 import io
 
 from . import utils
-from . import repo 
+from . import repo
+from . import plugin_processor
 
 docker_cli = ""
 
@@ -233,7 +234,7 @@ def get_asset_id(args):
     asset_id = asset_id.replace(':','-')
     return asset_id
 
-def create_asset(args, os_release, atype, plist, digest):
+def create_asset(args, os_release, atype, plist, digest, container_fs):
     asset_id = get_asset_id(args)
     asset_name = None
     if args.assetname is None or args.assetname.strip() == "":
@@ -257,6 +258,10 @@ def create_asset(args, os_release, atype, plist, digest):
     asset_tags.append('Linux')
     asset_tags.append(atype)
     asset_data['tags'] = asset_tags
+
+    if container_fs is not None:
+        host = {'remote' : False}
+        plugin_processor.process_plugins(asset_data, host, args, container_fs)
 
     return [ asset_data ]
 
@@ -419,7 +424,7 @@ def discover_container_from_image(args, digest):
         if plist is None or len(plist) == 0:
             return casset 
 
-        basset = create_asset(args, os_release, atype, plist, digest)
+        basset = create_asset(args, os_release, atype, plist, digest, container_fs)
         if casset:
             casset = casset + basset 
         else:
@@ -658,7 +663,7 @@ def discover_container_from_instance(args):
     if plist == None or len(plist) == 0:
         return None
 
-    return create_asset(args, os_release, atype, plist, None)
+    return create_asset(args, os_release, atype, plist, None, None)
 
 def run_docker_bench(args):
     DBENCH = "/docker-bench-security.sh"
