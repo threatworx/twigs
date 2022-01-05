@@ -373,7 +373,7 @@ optional arguments:
 
 Mode: docker
 $ twigs docker --help
-usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME] [--tmp_dir TMP_DIR] [--start_instance]
+usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME] [--tmp_dir TMP_DIR] [--start_instance] [--check_vuln CHECK_VULN] [--check_all_vulns]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -389,6 +389,11 @@ optional arguments:
   --tmp_dir TMP_DIR     Temporary directory to discover container
   --start_instance      If image inventory fails, try starting a container
                         instance to inventory contents. Use with caution
+  --check_vuln CHECK_VULN
+                        Run plugin to detect impact of specified
+                        vulnerabilities. You can use this option multiple
+                        times to specify multiple vulnerabilities
+  --check_all_vulns     Run plugins to detect impact of all vulnerabilities
 
 Mode: docker_cis
 $ twigs docker_cis --help
@@ -439,7 +444,7 @@ optional arguments:
 
 Mode: host
 $ twigs host --help
-usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME] [--no_ssh_audit] [--no_host_benchmark]
+usage: twigs host [-h] [--remote_hosts_csv REMOTE_HOSTS_CSV] [--host_list HOST_LIST] [--secure] [--password PASSWORD] [--assetid ASSETID] [--assetname ASSETNAME] [--no_ssh_audit] [--no_host_benchmark] [--check_vuln CHECK_VULN] [--check_all_vulns]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -464,6 +469,11 @@ optional arguments:
                         A name/label to be assigned to the discovered asset
   --no_ssh_audit        Skip ssh audit
   --no_host_benchmark   Skip host benchmark audit
+  --check_vuln CHECK_VULN
+                        Run plugin to detect impact of specified
+                        vulnerabilities. You can use this option multiple
+                        times to specify multiple vulnerabilities
+  --check_all_vulns     Run plugins to detect impact of all vulnerabilities
 
 Help video: https://youtu.be/OKJ-DxXwanA
 

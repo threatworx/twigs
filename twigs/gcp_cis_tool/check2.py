@@ -152,7 +152,10 @@ def _check_log_metric_filter_and_alerts(in_filter, details_msg):
                 out_json_2 = gcp_cis_utils.run_gcloud_cmd("alpha monitoring policies list --project=%s" % p)
                 for entry_2 in out_json_2:
                     for cond in entry_2['conditions']:
-                        logging.debug("condition.conditionThreshold.filter is [%s]",cond['conditionThreshold']['filter'])
+                        logging.debug("Condition is %s", cond)
+                        if cond.get('conditionThreshold') is None:
+                            continue
+                        #logging.debug("condition.conditionThreshold.filter is [%s]",cond['conditionThreshold']['filter'])
                         mt_string = "metric.type=\"" + mdt + "\""
                         if mt_string in cond['conditionThreshold']['filter'] and entry_2['enabled']:
                             logging.debug("Alert policy found")
