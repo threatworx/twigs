@@ -391,3 +391,9 @@ def get_asset(asset_id, args):
     else:
         return None
 
+def tw_open(in_file, in_encoding, in_mode='rt'):
+    if sys.version_info[0] < 3:
+        f = open(in_file, mode=in_mode)
+    else:
+        f = open(in_file, mode=in_mode, encoding=in_encoding)
+    return f

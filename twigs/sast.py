@@ -26,7 +26,11 @@ def get_description(result):
         if 'cwe' in result['extra']['metadata']:
             desc = desc + '\n' + 'CWE: '+result['extra']['metadata']['cwe']
         if 'owasp' in result['extra']['metadata']:
-            desc = desc + '\n' + 'OWASP: '+result['extra']['metadata']['owasp']
+            owasp = result['extra']['metadata']['owasp']
+            if isinstance(owasp, list):
+                desc = desc + '\n' + 'OWASP: '+owasp[0]
+            else:
+                desc = desc + '\n' + 'OWASP: '+owasp
         if 'references' in result['extra']['metadata']:
             for ref in result['extra']['metadata']['references']:
                 desc = desc + '\n' + ref
@@ -45,8 +49,10 @@ def run_sast(args, path, base_path):
     try:
         out = subprocess.check_output(cmdarr, shell=True)
         sast_issues = json.loads(out)
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
         logging.error("Error running SAST plugin CLI [semgrep]")
+        logging.debug("[semgrep] command: %s", cmdarr[0])
+        logging.debug("Output of [semgrep]: %s", e.output)
         return findings 
     logging.info("SAST plugin CLI [semgrep] checks completed")
 
@@ -70,7 +76,11 @@ def run_sast(args, path, base_path):
             if 'cwe' in r['extra']['metadata']:
                 finding['cwe'] = r['extra']['metadata']['cwe']
             if 'owasp' in r['extra']['metadata']:
-                finding['owasp'] = r['extra']['metadata']['owasp']
+                owasp = r['extra']['metadata']['owasp']
+                if isinstance(owasp, list):
+                    finding['owasp'] = owasp[0]
+                else:
+                    finding['owasp'] = owasp
         findings.append(finding)
 
     return findings

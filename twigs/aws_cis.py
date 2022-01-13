@@ -7,6 +7,8 @@ import subprocess
 import json
 import uuid
 
+from . import utils
+
 # Prowler is used for AWS benchmark tests and can be found here:
 # https://github.com/toniblyx/prowler
 
@@ -58,7 +60,7 @@ def run_cis_aws_bench(args, extra_checks=False):
     asset['type'] = 'AWS'
     asset['owner'] = args.handle
     asset['products'] = []
-    asset['config_issues'] = get_issues_from_csv_file(csv_file_path, asset_id, extra_checks)
+    asset['config_issues'] = get_issues_from_csv_file(csv_file_path, asset_id, args.encoding, extra_checks)
     asset['tags'] = ['AWS']
     if extra_checks:
         asset['tags'].append('Audit')
@@ -69,40 +71,40 @@ def run_cis_aws_bench(args, extra_checks=False):
     args.no_scan = True
     return asset
 
-def get_issues_from_csv_file(csv_file_path, asset_id, extra_checks=False):
+def get_issues_from_csv_file(csv_file_path, asset_id, encoding, extra_checks=False):
     findings = []
     prev = None
-    with open(csv_file_path, "r") as csv_file:
-        csv_reader = csv.DictReader(csv_file, quoting=csv.QUOTE_NONE, escapechar='\\')
-        for row in csv_reader:
-            if row['CHECK_RESULT'] != 'FAIL':
-                continue
-            if prev is None or prev != row['TITLE_ID']:
-                issue = { }
-                issue['twc_id']  = 'cis-aws-bench-check-'+row['TITLE_ID']
-                issue['asset_id'] = asset_id
-                issue['twc_title'] = row['ITEM_LEVEL'] + ' ' + row['TITLE_TEXT']
-                issue['details'] = row['CHECK_RESULT_EXTENDED'] + '\n' + row['CHECK_REMEDIATION']
-                if extra_checks:
-                    issue['type'] = 'AWS Audit'
-                else:
-                    issue['type'] = 'AWS CIS'
-                if row['CHECK_SEVERITY'] == 'Low':
-                    issue['rating'] = '1'
-                elif row['CHECK_SEVERITY'] == 'Medium':
-                    issue['rating'] = '2'
-                elif row['CHECK_SEVERITY'] == 'High':
-                    issue['rating'] = '4'
-                elif row['CHECK_SEVERITY'] == 'Critical':
-                    issue['rating'] = '5'
-                else:
-                    issue['rating'] = '3'
-                issue['object_id'] = row['CHECK_RESOURCE_ID'] 
-                issue['object_meta'] = ''
-                prev = row['TITLE_ID']
-                findings.append(issue)
+    csv_file = utils.tw_open(csv_file_path, encoding, "r")
+    csv_reader = csv.DictReader(csv_file, quoting=csv.QUOTE_NONE, escapechar='\\')
+    for row in csv_reader:
+        if row['CHECK_RESULT'] != 'FAIL':
+            continue
+        if prev is None or prev != row['TITLE_ID']:
+            issue = { }
+            issue['twc_id']  = 'cis-aws-bench-check-'+row['TITLE_ID']
+            issue['asset_id'] = asset_id
+            issue['twc_title'] = row['ITEM_LEVEL'] + ' ' + row['TITLE_TEXT']
+            issue['details'] = row['CHECK_RESULT_EXTENDED'] + '\n' + row['CHECK_REMEDIATION']
+            if extra_checks:
+                issue['type'] = 'AWS Audit'
             else:
-                findings[-1]['details'] = findings[-1]['details'] + '\n' + row['CHECK_RESULT_EXTENDED']
+                issue['type'] = 'AWS CIS'
+            if row['CHECK_SEVERITY'] == 'Low':
+                issue['rating'] = '1'
+            elif row['CHECK_SEVERITY'] == 'Medium':
+                issue['rating'] = '2'
+            elif row['CHECK_SEVERITY'] == 'High':
+                issue['rating'] = '4'
+            elif row['CHECK_SEVERITY'] == 'Critical':
+                issue['rating'] = '5'
+            else:
+                issue['rating'] = '3'
+            issue['object_id'] = row['CHECK_RESOURCE_ID'] 
+            issue['object_meta'] = ''
+            prev = row['TITLE_ID']
+            findings.append(issue)
+        else:
+            findings[-1]['details'] = findings[-1]['details'] + '\n' + row['CHECK_RESULT_EXTENDED']
     return findings
 
 def get_inventory(args, extra_checks=False):

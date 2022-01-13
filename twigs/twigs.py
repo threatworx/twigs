@@ -24,6 +24,13 @@ import pkgutil
 import importlib
 import getpass
 from os.path import expanduser
+import warnings
+with warnings.catch_warnings():
+   warnings.simplefilter("ignore", category=Warning)
+   from cryptography.hazmat.backends import default_backend
+   from cryptography.hazmat.primitives import hashes
+   from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+   from cryptography.fernet import Fernet
 
 try:
     from . import utils
