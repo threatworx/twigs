@@ -55,7 +55,7 @@ def discover_go_mod(args, localpath):
     files = lib_utils.find_files(localpath, 'go.mod')
     prop_dict = None
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -81,7 +81,7 @@ def discover_cargo_toml(args, localpath):
     files = lib_utils.find_files(localpath, 'Cargo.toml')
     prop_dict = None
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -110,7 +110,7 @@ def discover_pom_xml(args, localpath):
     files = lib_utils.find_files(localpath, 'pom.xml')
     prop_dict = None
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -190,7 +190,7 @@ def discover_gradle(args, localpath):
     plist = []
     files = lib_utils.find_files(localpath, 'dependencies.gradle')
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -208,11 +208,13 @@ def discover_gradle(args, localpath):
                     plist.append(pname)
     return plist, None
 
-def process_package_json_files(files, level, localpath):
+def process_package_json_files(files, args, localpath):
+    level = args.level
+    encoding = args.encoding
     plist = []
     p1list = [] # 1st level dependencies
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -287,17 +289,17 @@ def process_package_json_files(files, level, localpath):
 def discover_package_json(args, localpath):
     files = lib_utils.find_files(localpath, 'package-lock.json')
     if len(files) > 0:
-        plist, p1list = process_package_json_files(files, args.level, localpath)
+        plist, p1list = process_package_json_files(files, args, localpath)
     else:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist, p1list = process_package_json_files(files, args.level, localpath)
+        plist, p1list = process_package_json_files(files, args, localpath)
     return plist, p1list
 
 def discover_packages_config(args, localpath):
     plist = []
     files = lib_utils.find_files(localpath, 'packages.config')
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -305,8 +307,8 @@ def discover_packages_config(args, localpath):
         try:
             xmldoc = minidom.parseString(contents)
         except Exception:
-            logging.error("Unable to parse package config")
-            return None
+            logging.error("Unable to parse package config: %s", file_path)
+            continue
         temp_plist = xmldoc.getElementsByTagName('package')
         for p in temp_plist:
             libname = p.getAttribute('id')
@@ -324,11 +326,11 @@ def discover_yarn(args, localpath):
     files = lib_utils.find_files(localpath, 'yarn.lock')
     if len(files) == 0 and args.type is not None:
         files = lib_utils.find_files(localpath, 'package.json')
-        plist = process_package_json_files(files, args.level, localpath)
+        plist = process_package_json_files(files, args, localpath)
         return plist
 
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -374,7 +376,7 @@ def discover_ruby(args, localpath):
     if len(files) == 0:
         files = lib_utils.find_files(localpath, 'Gemfile.lock')
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         contents = fp.read()
@@ -422,7 +424,7 @@ def discover_python(args, localpath):
     plist = []
     files = lib_utils.find_files(localpath, 'requirements.txt')
     for file_path in files:
-        fp = open(file_path, 'r')
+        fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
             continue
         req = requirements.parse(fp)
