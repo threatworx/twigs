@@ -189,7 +189,7 @@ optional arguments:
 
 Mode: ecr
 $ twigs ecr --help
-usage: twigs ecr [-h] [--registry REGISTRY] [--image IMAGE] [--repository_type {public,private}] [--tmp_dir TMP_DIR]
+usage: twigs ecr [-h] [--registry REGISTRY] [--image IMAGE] [--repository_type {public,private}] [--tmp_dir TMP_DIR] [--check_vuln CHECK_VULN] [--check_all_vulns]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -203,6 +203,11 @@ optional arguments:
                         Specify repository type (public/private). Defaults to
                         private repositories if not specified
   --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
+  --check_vuln CHECK_VULN
+                        Run plugin to detect impact of specified
+                        vulnerabilities. You can use this option multiple
+                        times to specify multiple vulnerabilities
+  --check_all_vulns     Run plugins to detect impact of all vulnerabilities
 
 Mode: azure
 $ twigs azure --help
@@ -243,7 +248,7 @@ optional arguments:
 
 Mode: acr
 $ twigs acr --help
-usage: twigs acr [-h] [--registry REGISTRY] [--image IMAGE] [--tmp_dir TMP_DIR]
+usage: twigs acr [-h] [--registry REGISTRY] [--image IMAGE] [--tmp_dir TMP_DIR] [--check_vuln CHECK_VULN] [--check_all_vulns]
 
 optional arguments:
   -h, --help           show this help message and exit
@@ -253,6 +258,11 @@ optional arguments:
                        to be inspected. If tag is not given, latest will be
                        determined and used.
   --tmp_dir TMP_DIR    Temporary directory. Defaults to /tmp
+  --check_vuln CHECK_VULN
+                        Run plugin to detect impact of specified
+                        vulnerabilities. You can use this option multiple
+                        times to specify multiple vulnerabilities
+  --check_all_vulns     Run plugins to detect impact of all vulnerabilities
 
 Mode: azure_functions
 $ twigs azure_functions --help
@@ -321,7 +331,7 @@ optional arguments:
 
 Mode: gcr
 $ twigs gcr --help
-usage: twigs gcr [-h] [--repository REPOSITORY] [--image IMAGE] [--tmp_dir TMP_DIR]
+usage: twigs gcr [-h] [--repository REPOSITORY] [--image IMAGE] [--tmp_dir TMP_DIR] [--check_vuln CHECK_VULN] [--check_all_vulns]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -332,6 +342,11 @@ optional arguments:
                         which needs to be inspected. If tag / digest is not
                         given, latest will be determined and used.
   --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
+  --check_vuln CHECK_VULN
+                        Run plugin to detect impact of specified
+                        vulnerabilities. You can use this option multiple
+                        times to specify multiple vulnerabilities
+  --check_all_vulns     Run plugins to detect impact of all vulnerabilities
 
 Mode: gcloud_functions
 $ twigs gcloud_functions --help

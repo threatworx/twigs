@@ -389,6 +389,8 @@ def main(args=None):
         parser_ecr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
         parser_ecr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
         parser_ecr.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_ecr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_ecr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
         # Arguments required for Azure discovery
         parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
@@ -429,6 +431,8 @@ def main(args=None):
         parser_acr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
         parser_acr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
         parser_acr.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_acr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_acr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
         # Arguments required for Azure Functions 
         parser_az_functions = subparsers.add_parser("azure_functions", help = "Discover and scan Azure Functions soure code")
@@ -490,6 +494,8 @@ def main(args=None):
         parser_gcr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_gcr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_gcr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
         # Arguments required for Google Cloud Functions 
         parser_gcloud_functions = subparsers.add_parser("gcloud_functions", help = "Discover and scan Google Cloud Functions soure code")

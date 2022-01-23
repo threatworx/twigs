@@ -132,7 +132,7 @@ def run_plugins(args, asset_dict, host, plugin_dir, root_folder):
     logging.info("Done running all enabled plugins")
 
 def process_plugins(asset_dict, host, args, root_folder):
-    if args.mode != 'host' and args.mode != 'docker':
+    if args.mode not in ['host', 'docker', 'gcr', 'acr', 'ecr']:
         return
 
     plugin_dir = plugin_registry.get_plugin_dir()
