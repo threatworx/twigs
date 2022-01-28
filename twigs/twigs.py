@@ -208,6 +208,10 @@ def add_asset_tags(assets, tags):
         else:
             existing_tags.extend(tags)
 
+def add_asset_location(assets, location):
+    for asset in assets:
+        asset['location'] = location
+
 def add_asset_criticality_tag(assets, asset_criticality):
     asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
     add_asset_tags(assets, [asset_criticality_tag])
@@ -312,6 +316,7 @@ def main(args=None):
         parser.add_argument('--handle', help='The ThreatWatch registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
+        parser.add_argument('--location', help='Specify location information for discovered asset(s).')
         parser.add_argument('--create_empty_asset', action='store_true', help='Create empty asset even if nothing is discovered. Applicable to source code (repo) assets.')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
         parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
@@ -785,6 +790,9 @@ def main(args=None):
 
                 if args.tag:
                     add_asset_tags(assets, args.tag)
+
+                if args.location:
+                    add_asset_location(assets, args.location)
 
                 if args.out is not None:
                     export_assets_to_file(assets, args.out)
