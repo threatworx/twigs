@@ -38,6 +38,7 @@ try:
     from . import linux
     from . import repo
     from . import docker
+    from . import kubernetes
     from . import azure
     from . import acr
     from . import ecr
@@ -61,6 +62,7 @@ except (ImportError,ValueError):
     from twigs import linux
     from twigs import repo
     from twigs import docker
+    from twigs import kubernetes
     from twigs import azure
     from twigs import acr
     from twigs import ecr
@@ -79,8 +81,6 @@ except (ImportError,ValueError):
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
-
-
 
 def export_assets_to_file(assets, json_file):
     logging.info("Exporting assets to JSON file [%s]", json_file)
@@ -551,6 +551,33 @@ def main(args=None):
         parser_docker.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_docker.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
+        # Arguments required for Kubernetes discovery
+        parser_k8s = subparsers.add_parser ("k8s", help = "Discover Kubernetes environment")
+        parser_k8s.add_argument('--deployment_yaml', help='Path to Kubernetes deployment manifest definition YAML file.', required=True)
+        parser_k8s.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
+        parser_k8s.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
+        parser_k8s.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
+        parser_k8s.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
+        parser_k8s.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_k8s.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_k8s.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_k8s.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
+
         # Arguments required for docker CIS benchmarks 
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
         parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
@@ -751,6 +778,8 @@ def main(args=None):
             assets = fingerprint.get_inventory(args)
         elif args.mode == 'docker':
             assets = docker.get_inventory(args)
+        elif args.mode == 'k8s':
+            assets = kubernetes.get_inventory(args)
         elif args.mode == 'file':
             assets = inv_file.get_inventory(args)
         elif args.mode == 'dast':
