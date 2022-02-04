@@ -551,6 +551,12 @@ def main(args=None):
         parser_docker.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_docker.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
+        # Arguments required for docker CIS benchmarks 
+        parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
+        parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+        parser_docker_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI. Defaults to /usr/share/docker-bench-security', default='/usr/share/docker-bench-security')
+
         # Arguments required for Kubernetes discovery
         parser_k8s = subparsers.add_parser ("k8s", help = "Discover Kubernetes environment")
         parser_k8s.add_argument('--deployment_yaml', help='Path to Kubernetes deployment manifest definition YAML file.', required=True)
@@ -577,12 +583,6 @@ def main(args=None):
         parser_k8s.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
         parser_k8s.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_k8s.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
-
-        # Arguments required for docker CIS benchmarks 
-        parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
-        parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-        parser_docker_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI. Defaults to /usr/share/docker-bench-security', default='/usr/share/docker-bench-security')
 
         # Arguments required for Repo discovery
         parser_repo = subparsers.add_parser ("repo", help = "Discover source code repository as asset")

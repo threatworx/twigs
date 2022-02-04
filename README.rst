@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,aws_cis,aws_audit,ecr,azure,azure_cis,acr,azure_functions,gcp,gcp_cis,gcr,gcloud_functions,docker,docker_cis,repo,host,vmware,nmap,file,servicenow,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,aws_cis,aws_audit,ecr,azure,azure_cis,acr,azure_functions,gcp,gcp_cis,gcr,gcloud_functions,docker,docker_cis,k8s,repo,host,vmware,nmap,file,servicenow,ssl_audit,dast}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -68,6 +68,7 @@ optional arguments:
                         be set as "TW_TOKEN" environment variable
   --instance INSTANCE   The ThreatWatch instance. Note this can be set as 
                         "TW_INSTANCE" environment variable
+  --location LOCATION   Specify location information for discovered asset(s).
   --create_empty_asset  Create empty asset even if nothing is discovered.
                         Applicable to source code (repo) assets.
   --tag_critical        Tag the discovered asset(s) as critical
@@ -93,7 +94,7 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,ecr,azure,acr,gcp,gcr,docker,host,nmap,repo,file,servicenow,docker_cis,aws_cis,azure_cis,gcp_cis,ssl_audit,dast}
+{login,logout,aws,aws_cis,aws_audit,ecr,azure,azure_cis,acr,azure_functions,gcp,gcp_cis,gcr,gcloud_functions,docker,docker_cis,k8s,repo,host,vmware,nmap,file,servicenow,ssl_audit,dast}
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
@@ -110,6 +111,7 @@ modes:
     gcloud_functions    Discover and scan Google Cloud Functions soure code
     docker              Discover docker instances
     docker_cis          Run docker CIS benchmarks
+    k8s                 Discover Kubernetes environment
     repo                Discover source code repository as asset
     host                Discover linux host assets
     vmware              Discover VMware vCenter/ESX assets
@@ -422,6 +424,21 @@ optional arguments:
   --docker_bench_home DOCKER_BENCH_HOME
                         Location of docker bench CLI. Defaults to /usr/share
                         /docker-bench-security
+
+Mode: k8s
+usage: twigs k8s [-h] --deployment_yaml DEPLOYMENT_YAML [--tmp_dir TMP_DIR] [--check_vuln CHECK_VULN] [--check_all_vulns]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --deployment_yaml DEPLOYMENT_YAML
+                        Path to Kubernetes deployment manifest definition YAML
+                        file.
+  --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
+  --check_vuln CHECK_VULN
+                        Run plugin to detect impact of specified
+                        vulnerabilities. You can use this option multiple
+                        times to specify multiple vulnerabilities
+  --check_all_vulns     Run plugins to detect impact of all vulnerabilities
 
 Mode: repo
 $ twigs repo --help
