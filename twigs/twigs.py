@@ -208,6 +208,10 @@ def add_asset_tags(assets, tags):
         else:
             existing_tags.extend(tags)
 
+def add_asset_owners(assets, additional_owners):
+    for asset in assets:
+        asset['notify'] = additional_owners
+
 def add_asset_location(assets, location):
     for asset in assets:
         asset['location'] = location
@@ -320,6 +324,7 @@ def main(args=None):
         parser.add_argument('--create_empty_asset', action='store_true', help='Create empty asset even if nothing is discovered. Applicable to source code (repo) assets.')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
         parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
+        parser.add_argument('--owner', action='append', help='Add additional owner(s) to discovered asset(s). You can specify this option multiple times to add multiple owners. Note user discovering the asset is added as owner by default')
         parser.add_argument('--no_auto_tags', action='store_true', help='Disable auto tagging of assets with standard classification tags. Only user specified tags will be applied')
         #parser.add_argument('--asset_criticality', choices=['1', '2', '3','4', '5'], help='Business criticality of the discovered assets on a scale of 1 (low) to 5 (high).', required=False)
         parser.add_argument('--apply_policy', help='One or more policy names as a comma-separated list', required=False)
@@ -819,6 +824,9 @@ def main(args=None):
 
                 if args.tag:
                     add_asset_tags(assets, args.tag)
+
+                if args.owner:
+                    add_asset_owners(assets, args.owner)
 
                 if args.location:
                     add_asset_location(assets, args.location)
