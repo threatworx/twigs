@@ -53,6 +53,7 @@ try:
     from . import azure_cis
     from . import azure_functions
     from . import gcp_cis
+    from . import k8s_cis
     from . import gcloud_functions
     from . import vmware 
     from . import policy as policy_lib
@@ -77,6 +78,7 @@ except (ImportError,ValueError):
     from twigs import azure_cis
     from twigs import azure_functions
     from twigs import gcp_cis
+    from twigs import k8s_cis
     from twigs import gcloud_functions
     from twigs import utils
     from twigs import policy as policy_lib
@@ -355,25 +357,23 @@ def main(args=None):
         parser_aws.add_argument('--aws_region', help='AWS region', required=True)
         parser_aws.add_argument('--aws_s3_bucket', help='AWS S3 inventory bucket', required=True)
         parser_aws.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording AWS specific information (like AWS Account ID, etc.) as asset tags', required=False)
-        # Arguments required for AWS CIS benchmarks
-        parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
-        parser_aws_cis.add_argument('--aws_access_key', help='AWS access key', required=True)
-        parser_aws_cis.add_argument('--aws_secret_key', help='AWS secret key', required=True)
-        parser_aws_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
-        parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
+        
+        # Arguments required for Azure discovery
+        parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
+        parser_azure.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
+        parser_azure.add_argument('--azure_application_id', help='Azure Application ID', required=True)
+        parser_azure.add_argument('--azure_application_key', help='Azure Application Key', required=True)
+        parser_azure.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
+        parser_azure.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
+        parser_azure.add_argument('--azure_workspace', help='Azure Workspace ID. If not specified, then available values will be displayed', required=False)
+        parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
-        # Arguments required for AWS Audit Checks 
-        parser_aws_audit = subparsers.add_parser ("aws_audit", help = "Run AWS audit checks including PCI, GDPR, HIPAA")
-        parser_aws_audit.add_argument('--aws_access_key', help='AWS access key', required=True)
-        parser_aws_audit.add_argument('--aws_secret_key', help='AWS secret key', required=True)
-        parser_aws_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
-        parser_aws_audit.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_aws_audit.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
-
+        # Arguments required for Google Cloud Platform discovery
+        parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform instances")
+        parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)
 
         # Arguments required for AWS Container Registry discovery 
-        parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry (ECR) images")
+        parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry images")
         parser_ecr.add_argument('--registry', help='The AWS Container Registry (AWS account ID) which needs to be inspected for all repositories.')
         parser_ecr.add_argument('--image', help='The fully qualified image name (repositoryUri with optional tag) to be inspected. If tag is not given, latest will be determined for all images under this repository')
         parser_ecr.add_argument ("--repository_type", help = "Specify repository type (public/private). Defaults to private repositories if not specified", choices=['public','private'], default='private')
@@ -402,22 +402,8 @@ def main(args=None):
         parser_ecr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_ecr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
-        # Arguments required for Azure discovery
-        parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
-        parser_azure.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
-        parser_azure.add_argument('--azure_application_id', help='Azure Application ID', required=True)
-        parser_azure.add_argument('--azure_application_key', help='Azure Application Key', required=True)
-        parser_azure.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
-        parser_azure.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
-        parser_azure.add_argument('--azure_workspace', help='Azure Workspace ID. If not specified, then available values will be displayed', required=False)
-        parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
-        # Arguments required for Azure CIS benchmarks
-        parser_az_cis = subparsers.add_parser("azure_cis", help = "Run Azure CIS benchmarks")
-        parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
-        parser_az_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-
         # Arguments required for Azure Container Registry container discovery 
-        parser_acr = subparsers.add_parser ("acr", help = "Discover Azure Container Registry (ACR) images")
+        parser_acr = subparsers.add_parser ("acr", help = "Discover Azure Container Registry images")
         parser_acr.add_argument('--registry', help='The Azure Container Registry which needs to be inspected.')
         parser_acr.add_argument('--image', help='The fully qualified image name (with tag) which needs to be inspected. If tag is not given, latest will be determined and used.')
         parser_acr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
@@ -444,43 +430,8 @@ def main(args=None):
         parser_acr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_acr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
-        # Arguments required for Azure Functions 
-        parser_az_functions = subparsers.add_parser("azure_functions", help = "Discover and scan Azure Functions soure code")
-        parser_az_functions.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_az_functions.add_argument('--type', help=argparse.SUPPRESS)
-        parser_az_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
-        parser_az_functions.add_argument('--assetid', help=argparse.SUPPRESS)
-        parser_az_functions.add_argument('--assetname', help=argparse.SUPPRESS)
-        # Switches related to secrets scan for repo
-        parser_az_functions.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
-        parser_az_functions.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
-        parser_az_functions.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
-        parser_az_functions.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
-        parser_az_functions.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
-        parser_az_functions.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
-        parser_az_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
-        parser_az_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
-        parser_az_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
-        parser_az_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
-        parser_az_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
-        parser_az_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
-        parser_az_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
-
-
-        # Arguments required for Google Cloud Platform discovery
-        parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform (GCP) instances")
-        parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)
-
-        # Arguments required for GCP CIS benchmarks
-        parser_gcp_cis = subparsers.add_parser("gcp_cis", help = "Run Google Cloud Platform CIS benchmarks")
-        parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
-        parser_gcp_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_gcp_cis.add_argument('--projects', help='A comma separated list of GCP project IDs to run the checks against')
-        parser_gcp_cis.add_argument('--expanded', action='store_true', help='Create separate issue for each violation')
-        parser_gcp_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for GCP CIS benchmark tests')
-
         # Arguments required for Google Cloud Registry container discovery 
-        parser_gcr = subparsers.add_parser ("gcr", help = "Discover Google Cloud Registry (GCR) images")
+        parser_gcr = subparsers.add_parser ("gcr", help = "Discover Google Cloud Registry images")
         parser_gcr.add_argument('--repository', help='The GCR image respository url which needs to be inspected.')
         parser_gcr.add_argument('--image', help='The fully qualified image name (with tag / digest) which needs to be inspected. If tag / digest is not given, latest will be determined and used.')
         parser_gcr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
@@ -506,28 +457,6 @@ def main(args=None):
         parser_gcr.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_gcr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
-
-        # Arguments required for Google Cloud Functions 
-        parser_gcloud_functions = subparsers.add_parser("gcloud_functions", help = "Discover and scan Google Cloud Functions soure code")
-        parser_gcloud_functions.add_argument('--projects', help='A comma separated list of GCP project IDs', required=True)
-        parser_gcloud_functions.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_gcloud_functions.add_argument('--type', help=argparse.SUPPRESS)
-        parser_gcloud_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
-        parser_gcloud_functions.add_argument('--assetid', help=argparse.SUPPRESS)
-        parser_gcloud_functions.add_argument('--assetname', help=argparse.SUPPRESS)
-        parser_gcloud_functions.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
-        parser_gcloud_functions.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
-        parser_gcloud_functions.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
-        parser_gcloud_functions.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
-        parser_gcloud_functions.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
-        parser_gcloud_functions.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
-        parser_gcloud_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
-        parser_gcloud_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
-        parser_gcloud_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
-        parser_gcloud_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
-        parser_gcloud_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
-        parser_gcloud_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
-        parser_gcloud_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
         # Arguments required for docker discovery 
         parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
@@ -555,12 +484,6 @@ def main(args=None):
         parser_docker.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
         parser_docker.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_docker.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
-
-        # Arguments required for docker CIS benchmarks 
-        parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
-        parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
-        parser_docker_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI. Defaults to /usr/share/docker-bench-security', default='/usr/share/docker-bench-security')
 
         # Arguments required for Kubernetes discovery
         parser_k8s = subparsers.add_parser ("k8s", help = "Discover Kubernetes environment")
@@ -612,6 +535,51 @@ def main(args=None):
         parser_repo.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
         parser_repo.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
+
+        # Arguments required for Azure Functions 
+        parser_az_functions = subparsers.add_parser("azure_functions", help = "Discover and scan Azure Functions soure code")
+        parser_az_functions.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_az_functions.add_argument('--type', help=argparse.SUPPRESS)
+        parser_az_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
+        parser_az_functions.add_argument('--assetid', help=argparse.SUPPRESS)
+        parser_az_functions.add_argument('--assetname', help=argparse.SUPPRESS)
+        # Switches related to secrets scan for repo
+        parser_az_functions.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+        parser_az_functions.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
+        parser_az_functions.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+        parser_az_functions.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+        parser_az_functions.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
+        parser_az_functions.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+        parser_az_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+        parser_az_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+        parser_az_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+        parser_az_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
+        parser_az_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_az_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
+        parser_az_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
+
+        # Arguments required for Google Cloud Functions 
+        parser_gcloud_functions = subparsers.add_parser("gcloud_functions", help = "Discover and scan Google Cloud Functions soure code")
+        parser_gcloud_functions.add_argument('--projects', help='A comma separated list of GCP project IDs', required=True)
+        parser_gcloud_functions.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--type', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
+        parser_gcloud_functions.add_argument('--assetid', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--assetname', help=argparse.SUPPRESS)
+        parser_gcloud_functions.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+        parser_gcloud_functions.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
+        parser_gcloud_functions.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+        parser_gcloud_functions.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+        parser_gcloud_functions.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
+        parser_gcloud_functions.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+        parser_gcloud_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+        parser_gcloud_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+        parser_gcloud_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+        parser_gcloud_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
+        parser_gcloud_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_gcloud_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
+        parser_gcloud_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
+
         # Arguments required for Host discovery on Linux
         parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
         parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
@@ -650,14 +618,6 @@ def main(args=None):
         parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
         parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
-        # Arguments required for ssl audit 
-        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed")
-        parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
-        parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
-        parser_ssl_audit.add_argument('--info', help='Report LOW / INFO level issues', action='store_true')
-        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
-        parser_ssl_audit.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
-
         # Arguments required for web-app discovery and testing
         parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
         parser_webapp.add_argument('--url', help='Web application URL', required=True)
@@ -666,6 +626,66 @@ def main(args=None):
         parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
         parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
         parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
+
+        # Arguments required for ssl audit 
+        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs")
+        parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
+        parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
+        parser_ssl_audit.add_argument('--info', help='Report LOW / INFO level issues', action='store_true')
+        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
+        parser_ssl_audit.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
+
+        # Arguments required for AWS CIS benchmarks
+        parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
+        parser_aws_cis.add_argument('--aws_access_key', help='AWS access key', required=True)
+        parser_aws_cis.add_argument('--aws_secret_key', help='AWS secret key', required=True)
+        parser_aws_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_aws_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_aws_cis.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
+
+        # Arguments required for AWS Audit Checks 
+        parser_aws_audit = subparsers.add_parser ("aws_audit", help = "Run AWS audit checks including PCI, GDPR, HIPAA")
+        parser_aws_audit.add_argument('--aws_access_key', help='AWS access key', required=True)
+        parser_aws_audit.add_argument('--aws_secret_key', help='AWS secret key', required=True)
+        parser_aws_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_aws_audit.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_aws_audit.add_argument('--prowler_home', help='Location of cloned prowler github repo. Defaults to /usr/share/prowler', default='/usr/share/prowler')
+
+
+        # Arguments required for Azure CIS benchmarks
+        parser_az_cis = subparsers.add_parser("azure_cis", help = "Run Azure CIS benchmarks")
+        parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_az_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+
+
+        # Arguments required for GCP CIS benchmarks
+        parser_gcp_cis = subparsers.add_parser("gcp_cis", help = "Run Google Cloud Platform CIS benchmarks")
+        parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_gcp_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_gcp_cis.add_argument('--projects', help='A comma separated list of GCP project IDs to run the checks against')
+        parser_gcp_cis.add_argument('--expanded', action='store_true', help='Create separate issue for each violation')
+        parser_gcp_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for GCP CIS benchmark tests')
+
+        # Arguments required for docker CIS benchmarks 
+        parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
+        parser_docker_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+        parser_docker_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_docker_cis.add_argument('--docker_bench_home', help='Location of docker bench CLI. Defaults to /usr/share/docker-bench-security', default='/usr/share/docker-bench-security')
+
+        # Arguments required for K8S CIS benchmarks 
+        parser_k8s_cis = subparsers.add_parser ("k8s_cis", help = "Run Kubernetes CIS benchmarks")
+        parser_k8s_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_k8s_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_k8s_cis.add_argument('--target', help='Run test against Kubernetes master or worker nodes', choices=['master','worker'], required=True)
+        parser_k8s_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for Kubernetes CIS benchmarks')
+
+        # Arguments required for GKE CIS benchmarks 
+        parser_gke_cis = subparsers.add_parser ("gke_cis", help = "Run GKE CIS benchmarks")
+        parser_gke_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_gke_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_gke_cis.add_argument('--target', help='Run test against GKE master or worker nodes', choices=['master','worker'], required=True)
+        parser_gke_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for Kubernetes CIS benchmarks')
+
 
 
         args = parser.parse_args()
@@ -797,10 +817,14 @@ def main(args=None):
             assets = aws_cis.get_inventory(args, True)
         elif args.mode == 'azure_cis':
             assets = azure_cis.get_inventory(args)
-        elif args.mode == 'azure_functions':
-            assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcp_cis':
             assets = gcp_cis.get_inventory(args)
+        elif args.mode == 'k8s_cis':
+            assets = k8s_cis.get_inventory(args, 'k8s')
+        elif args.mode == 'gke_cis':
+            assets = k8s_cis.get_inventory(args, 'gke')
+        elif args.mode == 'azure_functions':
+            assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcloud_functions':
             assets = gcloud_functions.get_inventory(args)
         elif args.mode == 'ssl_audit':
