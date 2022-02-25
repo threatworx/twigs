@@ -59,7 +59,7 @@ def get_inventory(args):
                     for a in assets:
                         if a.get('tags') is None:
                             a['tags'] = []
-                        a['tags'].append('Kubernetes')
+                        a['tags'].append('KubernetesCluster')
                         if namespace is not None:
                             a['tags'].append(namespace)
                         a['tags'].append(deployment_name)

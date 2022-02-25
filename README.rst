@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,aws_cis,aws_audit,ecr,azure,azure_cis,acr,azure_functions,gcp,gcp_cis,gcr,gcloud_functions,docker,docker_cis,k8s,repo,host,vmware,nmap,file,servicenow,ssl_audit,dast}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,file,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
 
 ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -75,6 +75,10 @@ optional arguments:
   --tag TAG             Add specified tag to discovered asset(s). You can
                         specify this option multiple times to add multiple
                         tags
+  --owner OWNER         Add additional owner(s) to discovered asset(s). You
+                        can specify this option multiple times to add multiple
+                        owners. Note user discovering the asset is added as
+                        owner by default
   --no_auto_tags        Disable auto tagging of assets with standard
                         classification tags. Only user specified tags will be
                         applied
@@ -94,32 +98,34 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,aws_cis,aws_audit,ecr,azure,azure_cis,acr,azure_functions,gcp,gcp_cis,gcr,gcloud_functions,docker,docker_cis,k8s,repo,host,vmware,nmap,file,servicenow,ssl_audit,dast}
+{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,file,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
-    aws_cis             Run AWS CIS benchmarks
-    aws_audit           Run AWS audit checks including PCI, GDPR, HIPAA
-    ecr                 Discover AWS Container Registry (ECR) images
     azure               Discover Azure instances
-    azure_cis           Run Azure CIS benchmarks
-    acr                 Discover Azure Container Registry (ACR) images
-    azure_functions     Discover and scan Azure Functions soure code
-    gcp                 Discover Google Cloud Platform (GCP) instances
-    gcp_cis             Run Google Cloud Platform CIS benchmarks
-    gcr                 Discover Google Cloud Registry (GCR) images
-    gcloud_functions    Discover and scan Google Cloud Functions soure code
+    gcp                 Discover Google Cloud Platform instances
+    ecr                 Discover AWS Container Registry images
+    acr                 Discover Azure Container Registry images
+    gcr                 Discover Google Cloud Registry images
     docker              Discover docker instances
-    docker_cis          Run docker CIS benchmarks
     k8s                 Discover Kubernetes environment
     repo                Discover source code repository as asset
+    azure_functions     Discover and scan Azure Functions soure code
+    gcloud_functions    Discover and scan Google Cloud Functions soure code
     host                Discover linux host assets
     vmware              Discover VMware vCenter/ESX assets
     nmap                Discover assets using nmap
     file                Ingest asset inventory from file
     servicenow          Ingest inventory from ServiceNow CMDB
-    ssl_audit           Run SSL audit tests against your web URLs. Requires [twigs_ssl_audit] package to be installed
     dast                Discover and test web application using a DAST plugin
+    ssl_audit           Run SSL audit tests against your web URLs
+    aws_cis             Run AWS CIS benchmarks
+    aws_audit           Run AWS audit checks including PCI, GDPR, HIPAA
+    azure_cis           Run Azure CIS benchmarks
+    gcp_cis             Run Google Cloud Platform CIS benchmarks
+    docker_cis          Run docker CIS benchmarks
+    k8s_cis             Run Kubernetes CIS benchmarks
+    gke_cis             Run GKE CIS benchmarks
 
 Mode: login
 usage: twigs login [-h]
@@ -596,6 +602,32 @@ optional arguments:
                         asset
   --assetname ASSETNAME
                         Optional name/label to be assigned to the webapp asset
+
+Mode: k8s_cis
+usage: twigs k8s_cis [-h] --assetid ASSETID [--assetname ASSETNAME] --target {master,worker} [--custom_ratings CUSTOM_RATINGS]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --target TARGET       Run test against Kubernetes master or worker nodes
+  --custom_ratings CUSTOM_RATINGS
+                        Specify JSON file which provides custom ratings for
+                        Kubernetes CIS benchmarks
+
+Mode: gke_cis
+usage: twigs gke_cis [-h] --assetid ASSETID [--assetname ASSETNAME] --target {master,worker} [--custom_ratings CUSTOM_RATINGS]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --target TARGET       Run test against GKE master or worker nodes
+  --custom_ratings CUSTOM_RATINGS
+                        Specify JSON file which provides custom ratings for
+                        Kubernetes CIS benchmarks
 
 Note: For Windows hosts, you can use provided PowerShell script (twigs.ps1) for discovery. It requires PowerShell 3.0 or higher.
 
