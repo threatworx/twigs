@@ -25,11 +25,12 @@ def get_inventory(args):
             basepath = None
             if fad['publishMethod'] == 'FTP':
                 logging.info("Discovering Azure Function")
+                assets = []
                 temp_dir = tempfile.mkdtemp()
                 user = fad['userName'].split('\\')[1].replace('$','')
                 passwd = fad['userPWD']
                 ftpurl = fad['publishUrl']
-                cmd = 'wget -m --user '+user+' --password '+passwd+' '+ftpurl+' -P '+temp_dir
+                cmd = 'wget --timeout=5 -m --user '+user+' --password '+passwd+' '+ftpurl+' -P '+temp_dir
                 out = lib_utils.run_cmd_on_host(args, None, cmd)
                 basepath = temp_dir + '/' + ftpurl.replace('ftp://','') 
                 flist = [os.path.join(basepath, o) for o in os.listdir(basepath)
@@ -63,32 +64,32 @@ def get_inventory(args):
                     assets[0]['type'] = 'Azure Function'
                     assets[0]['tags'].extend(['Azure', 'Azure Function', 'Serverless'])
                     ret_assets.extend(assets)
-                if len(ret_assets) == 1:
+                if len(assets) == 0:
                     dataurl = ftpurl.replace('site/wwwroot','data/SitePackages')
-                    cmd = 'wget -m --user '+user+' --password '+passwd+' '+dataurl+' -P '+temp_dir
+                    cmd = 'wget --timeout=5 -m --user '+user+' --password '+passwd+' '+dataurl+' -P '+temp_dir
                     logging.info("Trying SitePackages - "+cmd)
                     logging.debug(cmd)
                     out = lib_utils.run_cmd_on_host(args, None, cmd)
                     if out == None:
                         logging.debug("No SitePackages found")
-                        return ret_assets 
+                        continue
                     basepath = temp_dir + '/' + dataurl.replace('ftp://','') 
                     args.assetid = fa['id']
                     args.assetname = fa['name']
                     args.repo = basepath.replace(temp_dir,'')
                     path = basepath
-                    cmd = 'cat '+basepath+'/'+'packagename'
+                    cmd = 'cat '+basepath+'/'+'packagename.txt'
                     logging.debug(cmd)
                     packagename = lib_utils.run_cmd_on_host(args, None, cmd)
                     if packagename == None:
                         logging.debug("Error getting function package name")
-                        return ret_assets 
-                    cmd = 'cd '+basepath+';unzip '+packagename+'.zip'
+                        continue
+                    cmd = 'cd '+basepath+';unzip '+packagename
                     logging.debug(cmd)
                     out = lib_utils.run_cmd_on_host(args, None, cmd)
                     if out == None:
                         logging.debug("Error getting function package contents")
-                        return ret_assets 
+                        continue 
                     logging.info("Discovering code dependencies for vulnerability scan.")
                     assets = repo.discover_inventory(args, path)
                     if args.secrets_scan:
@@ -112,5 +113,5 @@ def get_inventory(args):
                     assets[0]['type'] = 'Azure Function'
                     assets[0]['tags'].extend(['Azure', 'Azure Function', 'Serverless'])
                     ret_assets.extend(assets)
-                #shutil.rmtree(temp_dir)
+                shutil.rmtree(temp_dir)
     return ret_assets 
