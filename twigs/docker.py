@@ -61,7 +61,7 @@ def tar_available():
 def untar(tar_file, untar_directory):
     tar_cmd = tar_available()
     if tar_cmd is not None:
-        tar_cmd_failed = False
+        tar_failed = False
         cmdarr = [tar_cmd + ' -C ' + untar_directory + ' -xvf ' + tar_file]
         out = ''
         try:
@@ -201,7 +201,12 @@ def get_image_id(args):
     return imageid
 
 def get_image_digest(args):
-    image_tokens = args.image.split(':')
+    # During kubernetes discovery, we get container image names as "docker.io/bitnami/wordpress"
+    # and we need to strip out the "docker.io" part
+    image_tokens = args.image.split('/')
+    temp_image = "/".join(image_tokens[-2:]) if len(image_tokens) > 2 else args.image 
+
+    image_tokens = temp_image.split(':')
     image = image_tokens[0]
     image_tag = "latest" if len(image_tokens) == 1 else image_tokens[1]
 
@@ -221,7 +226,7 @@ def get_image_digest(args):
         if l_tokens[0] == image and l_tokens[1] == image_tag:
             image_digest = l_tokens[2]
             break
-    image_digest = None if image_digest.strip() == "<none>" else image_digest
+    image_digest = None if image_digest is None or image_digest.strip() == "<none>" else image_digest
     return image_digest
 
 def get_asset_id(args):
@@ -250,7 +255,8 @@ def create_asset(args, os_release, atype, plist, digest, container_fs):
     asset_data['products'] = plist
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_release)
-    asset_tags.append('IMAGE_NAME:' + asset_name)
+    if args.image is not None:
+        asset_tags.append('IMAGE_NAME:' + args.image)
     if args.image is not None and digest is not None:
         asset_tags.append('IMAGE_DIGEST:' + digest)
     asset_tags.append('Docker')
@@ -372,7 +378,8 @@ def create_open_source_asset(args, container_fs, digest):
         oa[0]['id'] = os_asset_id
         oa[0]['type'] = 'Container App'
         oa[0]['tags'].append('IMAGE_NAME:'+args.image)
-        oa[0]['tags'].append('IMAGE_DIGEST:'+digest)
+        if digest is not None:
+            oa[0]['tags'].append('IMAGE_DIGEST:'+digest)
     else:
         return None
     return oa

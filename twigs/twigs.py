@@ -487,7 +487,9 @@ def main(args=None):
 
         # Arguments required for Kubernetes discovery
         parser_k8s = subparsers.add_parser ("k8s", help = "Discover Kubernetes environment")
-        parser_k8s.add_argument('--deployment_yaml', help='Path to Kubernetes deployment manifest definition YAML file.', required=True)
+        group = parser_k8s.add_mutually_exclusive_group(required=True)
+        group.add_argument('--deployment_yaml', help='Path to Kubernetes deployment manifest definition YAML file.')
+        group.add_argument('--helm_chart', help='Specify the helm chart (folder, repo/chartname).')
         parser_k8s.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
         parser_k8s.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
         parser_k8s.add_argument('--assetid', help=argparse.SUPPRESS, required=False)

@@ -432,13 +432,15 @@ optional arguments:
                         /docker-bench-security
 
 Mode: k8s
-usage: twigs k8s [-h] --deployment_yaml DEPLOYMENT_YAML [--tmp_dir TMP_DIR] [--check_vuln CHECK_VULN] [--check_all_vulns]
+usage: twigs k8s [-h] (--deployment_yaml DEPLOYMENT_YAML | --helm_chart HELM_CHART) [--tmp_dir TMP_DIR] [--check_vuln CHECK_VULN] [--check_all_vulns]
 
 optional arguments:
   -h, --help            show this help message and exit
   --deployment_yaml DEPLOYMENT_YAML
                         Path to Kubernetes deployment manifest definition YAML
                         file.
+  --helm_chart HELM_CHART
+                        Specify the helm chart (folder, repo/chartname).
   --tmp_dir TMP_DIR     Temporary directory. Defaults to /tmp
   --check_vuln CHECK_VULN
                         Run plugin to detect impact of specified
