@@ -1,6 +1,8 @@
 import sys
 import platform
 import os
+import tempfile
+import uuid
 import subprocess
 import logging
 import socket
@@ -321,16 +323,29 @@ def discover(args):
                         logging.error("Invalid password")
                         logging.error("Please use the same password as was used previously to secure the file")
                         return None
-            # secure the new rows in the file
-            with open(host_list_file, mode='w') as csvfile:
-                fieldnames = ['hostname','userlogin','userpwd','privatekey','assetname']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_NONE, escapechar='\\')
-                writer.writeheader()
-                for h in remote_hosts:
-                    if h['userpwd'] != '' and not h['userpwd'].startswith('__SECURE__:'):
-                        h['userpwd'] = '__SECURE__:'+f.encrypt(h['userpwd'].encode('utf-8')).decode('utf-8')
-                    del h['remote']
-                    writer.writerow(h)
+            # create new file with secured information. This will be renamed subsequently
+            new_csv_file = uuid.uuid4().hex
+            new_csv_file = tempfile.gettempdir() + os.path.sep + new_csv_file + ".csv"
+            if os.path.isfile(new_csv_file):
+                os.remove(new_csv_file)
+            try:
+                # secure the new rows in the file
+                with open(new_csv_file, mode='w') as csvfile:
+                    fieldnames = ['hostname','userlogin','userpwd','privatekey','assetname']
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames, quoting=csv.QUOTE_NONE, escapechar='\\')
+                    writer.writeheader()
+                    for h in remote_hosts:
+                        if h['userpwd'] != '' and not h['userpwd'].startswith('__SECURE__:'):
+                            h['userpwd'] = '__SECURE__:'+f.encrypt(h['userpwd'].encode('utf-8')).decode('utf-8')
+                        del h['remote']
+                        writer.writerow(h)
+            except Exception as err:
+                logging.error("Unable to save secured CSV file")
+                logging.error("%s", err)
+                os.remove(new_csv_file)
+                return None
+            os.remove(host_list_file)
+            os.rename(new_csv_file, host_list_file)
             logging.info("Host list file secured")
             return None
         else:
