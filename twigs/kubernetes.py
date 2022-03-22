@@ -97,6 +97,9 @@ def discover_assets_from_yaml(args, k8s_yaml, asset_name_override=None):
     allassets = [] 
     with open(k8s_yaml, 'r') as yaml_fd:
         yaml_jsons = yaml.load_all(yaml_fd, Loader=yaml.FullLoader)
+        if yaml_jsons is None:
+            logging.error("Unable to load YAML")
+            return allassets
         for yaml_json in yaml_jsons:
             kind = yaml_json.get('kind')
             if kind is None or kind == "" or kind not in ["Deployment", "ReplicaSet", "Pod", "PodTemplate", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"]:
@@ -141,9 +144,15 @@ def discover_assets_from_helm_chart(args, helm_chart):
     if os.path.isfile(temp_template):
         os.remove(temp_template)
     cmdarr = [ HELM_CMD + " show chart " + helm_chart + " > " + temp_template ]
-    run_helm_command(cmdarr, args.encoding)
+    cmd_output = run_helm_command(cmdarr, args.encoding)
+    if cmd_output is None:
+        logging.error("Unable to get Chart.yaml")
+        return allassets
     with open(temp_template, 'r') as chart_yaml_fd:
         yaml_json = yaml.load(chart_yaml_fd, Loader=yaml.FullLoader)
+        if yaml_json is None:
+            logging.error("Unable to load Chart.yaml")
+            return allassets
         hc_name = yaml_json['name']
         hc_version = yaml_json['version']
         hc_type = yaml_json.get('type')
@@ -157,8 +166,11 @@ def discover_assets_from_helm_chart(args, helm_chart):
     if os.path.isfile(temp_template):
         os.remove(temp_template)
     cmdarr = [ HELM_CMD + " template " + helm_chart + " > " + temp_template ]
-    run_helm_command(cmdarr, args.encoding)
-    allassets = allassets + discover_assets_from_yaml(args, temp_template, asset_name_override)
+    cmd_output = run_helm_command(cmdarr, args.encoding)
+    if cmd_output is None:
+        logging.error("Unable to get Helm chart YAML")
+        return allassets
+    allassets = discover_assets_from_yaml(args, temp_template, asset_name_override)
     if os.path.isfile(temp_template):
         os.remove(temp_template)
 
