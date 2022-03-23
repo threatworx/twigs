@@ -10,6 +10,19 @@ import tempfile
 from . import utils as lib_utils
 from . import docker
 
+def get_helm_command_path():
+    HELM_CMD = os.environ.get('HELM_PATH')
+    if HELM_CMD is None:
+        HELM_CMD = "/usr/local/bin/helm"
+    else:
+        if os.path.isfile(HELM_CMD) == False:
+            logging.error("Helm command not found at specified HELM_PATH [%s]", HELM_CMD)
+            sys.exit(1)
+        elif os.access(HELM_CMD, os.X_OK) == False:
+            logging.error("Helm command file [%s] is not an executable", HELM_CMD)
+            sys.exit(1)
+    return HELM_CMD
+
 def get_deployment_name(yaml_json):
     if yaml_json.get('metadata') is None:
         return None
@@ -125,6 +138,7 @@ def discover_assets_from_yaml(args, k8s_yaml, asset_name_override=None):
 
 def run_helm_command(cmdarr, encoding):
     try:
+        logging.debug("Running command %s", cmdarr)
         out = subprocess.check_output(cmdarr, shell=True)
         return out.decode(encoding)
     except subprocess.CalledProcessError as e:
@@ -138,11 +152,11 @@ def discover_assets_from_helm_chart(args, helm_chart):
     hc_name = None
     hc_version = None
     hc_type = None
-    HELM_CMD = "/usr/local/bin/helm"
     temp_template = uuid.uuid4().hex
     temp_template = tempfile.gettempdir() + os.path.sep + temp_template + ".yaml"
     if os.path.isfile(temp_template):
         os.remove(temp_template)
+    HELM_CMD = get_helm_command_path()
     cmdarr = [ HELM_CMD + " show chart " + helm_chart + " > " + temp_template ]
     cmd_output = run_helm_command(cmdarr, args.encoding)
     if cmd_output is None:
