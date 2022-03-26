@@ -114,6 +114,8 @@ def discover_assets_from_yaml(args, k8s_yaml, asset_name_override=None):
             logging.error("Unable to load YAML")
             return allassets
         for yaml_json in yaml_jsons:
+            if yaml_json is None:
+                continue
             kind = yaml_json.get('kind')
             if kind is None or kind == "" or kind not in ["Deployment", "ReplicaSet", "Pod", "PodTemplate", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"]:
                 # only process those 'kind' with container image
@@ -182,7 +184,8 @@ def discover_assets_from_helm_chart(args, helm_chart):
     cmdarr = [ HELM_CMD + " template " + helm_chart + " > " + temp_template ]
     cmd_output = run_helm_command(cmdarr, args.encoding)
     if cmd_output is None:
-        logging.error("Unable to get Helm chart YAML")
+        logging.error("Unable to get Helm chart template YAML")
+        os.remove(temp_template)
         return allassets
     allassets = discover_assets_from_yaml(args, temp_template, asset_name_override)
     if os.path.isfile(temp_template):
