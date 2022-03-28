@@ -13,13 +13,13 @@ twigs
 
 
 
-ThreatWatch Information Gathering Script
+ThreatWorx Information Gathering Script
 
-https://threatwatch.io/twigs-user-guide/
+https://threatworx.io/twigs-user-guide/
 
 * Free software: GNU General Public License v3
 * Documentation: https://twigs.readthedocs.io
-* User guide: https://threatwatch.io/twigs-user-guide
+* User guide: https://threatworx.io/twigs-user-guide
 
 
 Features
@@ -56,17 +56,17 @@ pip3 install twigs
 $ twigs --help
 usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,file,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
 
-ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
+ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
 optional arguments:
   -h, --help            show this help message and exit
   --version         show program's version number and exit
-  --handle HANDLE       The ThreatWatch registered email id/handle of the
+  --handle HANDLE       The ThreatWorx registered email id/handle of the
                         user. Note this can set as "TW_HANDLE" environment
                         variable
-  --token TOKEN         The ThreatWatch API token of the user. Note this can
+  --token TOKEN         The ThreatWorx API token of the user. Note this can
                         be set as "TW_TOKEN" environment variable
-  --instance INSTANCE   The ThreatWatch instance. Note this can be set as 
+  --instance INSTANCE   The ThreatWorx instance. Note this can be set as 
                         "TW_INSTANCE" environment variable
   --location LOCATION   Specify location information for discovered asset(s).
   --create_empty_asset  Create empty asset even if nothing is discovered.
@@ -304,8 +304,8 @@ optional arguments:
                         indicate files to be excluded in the secrets scan. One
                         pattern per line in file.
   --mask_secret         Mask identified secret before storing for reference in
-                        ThreatWatch.
-  --no_code             Disable storing code for reference in ThreatWatch.
+                        ThreatWorx.
+  --no_code             Disable storing code for reference in ThreatWorx.
   --sast                Perform static code analysis on your source code
   --iac_checks          Perform security checks on IaC templates
 
@@ -389,8 +389,8 @@ optional arguments:
                         indicate files to be excluded in the secrets scan. One
                         pattern per line in file.
   --mask_secret         Mask identified secret before storing for reference in
-                        ThreatWatch.
-  --no_code             Disable storing code for reference in ThreatWatch.
+                        ThreatWorx.
+  --no_code             Disable storing code for reference in ThreatWorx.
   --sast                Perform static code analysis on your source code
   --iac_checks          Perform security checks on IaC templates
 
@@ -477,8 +477,8 @@ optional arguments:
                         Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.
   --exclude_patterns_file EXCLUDE_PATTERNS_FILE
                         Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.
-  --mask_secret         Mask identified secret before storing for reference in ThreatWatch.
-  --no_code             Disable storing code for reference in ThreatWatch.
+  --mask_secret         Mask identified secret before storing for reference in ThreatWorx.
+  --no_code             Disable storing code for reference in ThreatWorx.
   --sast                Perform static code analysis on your source code
   --iac_checks          Perform security checks on IaC templates
 
