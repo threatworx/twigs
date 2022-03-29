@@ -45,6 +45,7 @@ try:
     from . import gcp
     from . import gcr
     from . import servicenow
+    from . import sbom
     from . import inv_file
     from . import fingerprint
     from . import dast
@@ -70,6 +71,7 @@ except (ImportError,ValueError):
     from twigs import gcp
     from twigs import gcr
     from twigs import servicenow
+    from twigs import sbom
     from twigs import inv_file
     from twigs import fingerprint
     from twigs import dast
@@ -175,7 +177,7 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Failed to start impact refresh")
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
-        if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo"):
+        if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo" or args.mode == "sbom"):
             # Start license compliance assessment
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
@@ -253,19 +255,19 @@ def authenticate_user(tw_user, tw_pwd, tw_instance):
 def login_user(args):
     try:
         if sys.version_info.major < 3:
-            tw_user = raw_input("Enter email of ThreatWatch user: ")
+            tw_user = raw_input("Enter email of ThreatWorx user: ")
         else:
-            tw_user = input("Enter email of ThreatWatch user: ")
+            tw_user = input("Enter email of ThreatWorx user: ")
         temp_pwd = getpass.getpass(prompt='Enter password: ')
         if sys.version_info.major < 3:
-            tw_instance = raw_input("Enter ThreatWatch instance [threatwatch.io]: ")
+            tw_instance = raw_input("Enter ThreatWorx instance [threatworx.io]: ")
         else:
-            tw_instance = input("Enter ThreatWatch instance [threatwatch.io]: ")
+            tw_instance = input("Enter ThreatWorx instance [threatworx.io]: ")
     except KeyboardInterrupt:
         print("")
         sys.exit(1)
     if tw_instance == "":
-        tw_instance = "threatwatch.io"
+        tw_instance = "threatworx.io"
     tw_token = authenticate_user(tw_user, temp_pwd, tw_instance)
     auth_dict = {}
     auth_dict['handle'] = tw_user
@@ -315,13 +317,13 @@ def main(args=None):
         logfilename = "twigs.log"
         logging_level = logging.WARN
 
-        parser = argparse.ArgumentParser(description='ThreatWatch Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and source code repositories')
+        parser = argparse.ArgumentParser(description='ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and source code repositories')
         subparsers = parser.add_subparsers(title="modes", description="Discovery modes and commands supported", dest="mode")
         # Required arguments
         parser.add_argument('--version', action='version', version='%(prog)s ' + __version__)
-        parser.add_argument('--handle', help='The ThreatWatch registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
-        parser.add_argument('--token', help='The ThreatWatch API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
-        parser.add_argument('--instance', help='The ThreatWatch instance. Note this can be set as "TW_INSTANCE" environment variable')
+        parser.add_argument('--handle', help='The ThreatWorx registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
+        parser.add_argument('--token', help='The ThreatWorx API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
+        parser.add_argument('--instance', help='The ThreatWorx instance. Note this can be set as "TW_INSTANCE" environment variable')
         parser.add_argument('--location', help='Specify location information for discovered asset(s).')
         parser.add_argument('--create_empty_asset', action='store_true', help='Create empty asset even if nothing is discovered. Applicable to source code (repo) assets.')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
@@ -532,8 +534,8 @@ def main(args=None):
         parser_repo.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
         parser_repo.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
         parser_repo.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
-        parser_repo.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
-        parser_repo.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_repo.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWorx.')
+        parser_repo.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWorx.')
         parser_repo.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
         parser_repo.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
@@ -555,8 +557,8 @@ def main(args=None):
         parser_az_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
         parser_az_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
         parser_az_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
-        parser_az_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
-        parser_az_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_az_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWorx.')
+        parser_az_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWorx.')
         parser_az_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
         parser_az_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
@@ -577,8 +579,8 @@ def main(args=None):
         parser_gcloud_functions.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
         parser_gcloud_functions.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
         parser_gcloud_functions.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
-        parser_gcloud_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWatch.')
-        parser_gcloud_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWatch.')
+        parser_gcloud_functions.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWorx.')
+        parser_gcloud_functions.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWorx.')
         parser_gcloud_functions.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
         parser_gcloud_functions.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
 
@@ -605,6 +607,19 @@ def main(args=None):
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range', required=True)
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
+
+        # Arguments required for SBOM-based discovery
+        parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")
+        parser_sbom.add_argument('--input', help='Absolute path to SBOM artifact', required=True)
+        parser_sbom.add_argument('--standard', choices=sbom.SUPPORTED_SBOM_STANDARDS, help='Specifies SBOM standard. Supported standard(s): CycloneDX', required=False, default=sbom.SUPPORTED_SBOM_STANDARDS[0])
+        all_formats = set()
+        for std in sbom.SUPPORTED_SBOM_FORMATS_FOR_STANDARD:
+            for f in sbom.SUPPORTED_SBOM_FORMATS_FOR_STANDARD[std]:
+                all_formats.add(f)
+        all_formats = list(all_formats)
+        parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=False, default=all_formats[0])
+        parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
+        parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
         # Arguments required for File-based discovery
         parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
@@ -807,6 +822,8 @@ def main(args=None):
             assets = docker.get_inventory(args)
         elif args.mode == 'k8s':
             assets = kubernetes.get_inventory(args)
+        elif args.mode == 'sbom':
+            assets = sbom.get_inventory(args)
         elif args.mode == 'file':
             assets = inv_file.get_inventory(args)
         elif args.mode == 'dast':

@@ -1,17 +1,18 @@
 
- ________                __ _      __     __      __ 
-/_  __/ /  _______ ___ _/ /| | /| / /__ _/ /_____/ / 
- / / / _ \/ __/ -_) _ `/ __/ |/ |/ / _ `/ __/ __/ _ \
-/_/ /_//_/_/  \__/\_,_/\__/|__/|__/\_,_/\__/\__/_//_/
-                                                     
+  ________                    __ _       __               
+ /_  __/ /_  ________  ____ _/ /| |     / /___  ______  __
+  / / / __ \/ ___/ _ \/ __ `/ __/ | /| / / __ \/ ___/ |/_/
+ / / / / / / /  /  __/ /_/ / /_ | |/ |/ / /_/ / /  _>  <  
+/_/ /_/ /_/_/   \___/\__,_/\__/ |__/|__/\____/_/  /_/|_|  
 
+                                                          
 twigs integrated discovery platform 
 
 A compact linux image with everything you need to discover all your assets using twigs.
 
 Please check the twigs user guide for more information on this
-https://threatwatch.io/twigs-user-guide/
+https://threatworx.io/twigs-user-guide/
 
-Setup your trial account by visiting https://threatwatch.io
+Setup your trial account by visiting https://threatworx.io
 
 

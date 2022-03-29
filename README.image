@@ -1,13 +1,13 @@
 About 'twigs'
 
-'twigs' (short for 'ThreatWatch Information Gathering Script') is python based open source (https://github.com/threatwatch/twigs) script to discover your entire attack surface to be secured by ThreatWatch. 
+'twigs' (short for 'ThreatWorx Information Gathering Script') is python based open source (https://github.com/threatworx/twigs) script to discover your entire attack surface to be secured by ThreatWorx. 
 
-A subscription to ThreatWatch is required to scan your assets for vulnerabilities once they are discovered by twigs. Please visit https://threatwatch.io for more details. 
-You can subscribe to a free trial of ThreatWatch here:
-https://threatwatch.io/getfree 
+A subscription to ThreatWorx is required to scan your assets for vulnerabilities once they are discovered by twigs. Please visit https://threatworx.io for more details. 
+You can subscribe to a free trial of ThreatWorx here:
+https://threatworx.io/getfree 
 
 A complete user guide for twigs is available here:
-https://threatwatch.io/twigs-user-guide/
+https://threatworx.io/twigs-user-guide/
 
 A short video on twigs and its capabilities is available here:
 https://youtu.be/TkMe7VL3bvA
@@ -18,8 +18,8 @@ This image is compact linux distribution (currently based on Ubuntu 20.04 LTS) w
 
 Deploying on AWS
 
-Step 1: Subscribe to ThreatWatch
-Sign up to https://threatwatch.io/getfree to get a trial subscription. Or contact info@threatwatch.io for other subscription options.
+Step 1: Subscribe to ThreatWorx
+Sign up to https://threatworx.io/getfree to get a trial subscription. Or contact info@threatwatch.io for other subscription options.
 
 Step 2: Launch a twigs instance
 Any suitable instance type (including free-tier, 1 VCPU 1GB RAM) can be used to deploy this image. The default OS user is 'ubuntu'. Please use appropriate ssh key-pair while creating the instance. 
@@ -31,20 +31,20 @@ $ ssh -i <your private key from the keypair> ubuntu@<instance-ip>
 Step 4: Start discovering your assets
 Once you login to the instance you can explore twigs and all its options using:
 $ twigs -h
-Set up authentication with a ThreatWatch instance that you have subscribed to using:
+Set up authentication with a ThreatWorx instance that you have subscribed to using:
 $ twigs login
-You will be prompted to enter credentials to your ThreatWatch account. Once the authentication is set up, you may discover different kinds of assets and report them to your ThreatWatch account for vulnerability assessment.
+You will be prompted to enter credentials to your ThreatWorx account. Once the authentication is set up, you may discover different kinds of assets and report them to your ThreatWorx account for vulnerability assessment.
 A complete user guide for twigs is available here:
-https://threatwatch.io/twigs-user-guide/
+https://threatworx.io/twigs-user-guide/
 For e.g. a quick link to the user guide to discover AWS assets is here:
-https://threatwatch.io/twigs-user-guide/#aws-discovery
+https://threatworx.io/twigs-user-guide/#aws-discovery
 A short video describing this is available here:
 https://www.youtube.com/watch?v=pYzHU7izRdU
 
 Deploying on DigitalOcean as a droplet 
 
-Step 1: Subscribe to ThreatWatch
-Sign up to https://threatwatch.io/getfree to get a trial subscription. Or contact info@threatwatch.io for other subscription options.
+Step 1: Subscribe to ThreatWorx
+Sign up to https://threatworx.io/getfree to get a trial subscription. Or contact info@threatwatch.io for other subscription options.
 
 Step 2: Search for the 'twigs' app in the Digital Ocean Marketplace https://marketplace.digitalocean.com/
 
@@ -58,6 +58,6 @@ $ ssh -i <your private key from the keypair> root@<droplet-ip>
 Step 6: Once you login to the instance you can explore twigs and all its options using:
 $ twigs -h
 
-Step 7: You can also set up authentication with a ThreatWatch instance that you have subscribed to using:
+Step 7: You can also set up authentication with a ThreatWorx instance that you have subscribed to using:
 $ twigs login
-You will be prompted to enter credentials to your ThreatWatch account. Once the authentication is set up, you may discover different kinds of assets and report them to your ThreatWatch account for vulnerability assessment.
+You will be prompted to enter credentials to your ThreatWorx account. Once the authentication is set up, you may discover different kinds of assets and report them to your ThreatWorx account for vulnerability assessment.

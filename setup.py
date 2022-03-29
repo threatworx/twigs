@@ -36,7 +36,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
-    description="ThreatWatch Information Gathering Script",
+    description="ThreatWorx Information Gathering Script",
     install_requires=requirements,
     license="GNU General Public License v3",
     long_description=readme + '\n\n' + history,
@@ -47,8 +47,8 @@ setup(
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/threatwatch/twigs',
-    version='1.1.10',
+    url='https://github.com/threatworx/twigs',
+    version='1.1.11',
     zip_safe=False,
     entry_points={
         'console_scripts': [
