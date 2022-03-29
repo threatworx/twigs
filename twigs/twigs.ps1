@@ -2,7 +2,7 @@
 .SYNOPSIS
     Windows Host discovery script (twigs equivalent)
 .DESCRIPTION
-    This script helps discover Windows Host(s) as assets in ThreatWatch instance. It is equivalent to twigs.
+    This script helps discover Windows Host(s) as assets in ThreatWorx instance. It is equivalent to twigs.
 .PARAMETER mode
     Specifies the discovery mode (local or remote).
 .PARAMETER remote_hosts_csv
@@ -12,11 +12,11 @@
 .PARAMETER password
     A password used to encrypt / decrypt login information from the host list / remote hosts CSV file. Optional.
 .PARAMETER handle
-    Specifies the handle of the ThreatWatch user. Mandatory.
+    Specifies the handle of the ThreatWorx user. Mandatory.
 .PARAMETER token
-    Specifies the API token of the ThreatWatch user. Optional.
+    Specifies the API token of the ThreatWorx user. Optional.
 .PARAMETER instance
-    Specifies the ThreatWatch instance. Optional.
+    Specifies the ThreatWorx instance. Optional.
 .PARAMETER out
     Specifies the output JSON filename to hold discovered asset details. Optional.
 .PARAMETER assetid
@@ -32,7 +32,7 @@
 .PARAMETER email_report
     After impact refresh is complete, email scan report to self. Optional.
 .EXAMPLE
-    .\twigs.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatwatch.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2' -email_report
+    .\twigs.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatworx.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2' -email_report
 .NOTES
     .    
 #>
@@ -55,15 +55,15 @@ param(
     [String]
     $password,
 
-    [parameter(Mandatory=$true, HelpMessage='Enter the email handle for ThreatWatch instance')]
+    [parameter(Mandatory=$true, HelpMessage='Enter the email handle for ThreatWorx instance')]
     [String]
     $handle,
 
-    [parameter(Mandatory=$false, HelpMessage='Enter the API key for the specified email handle for ThreatWatch instance')]
+    [parameter(Mandatory=$false, HelpMessage='Enter the API key for the specified email handle for ThreatWorx instance')]
     [String]
     $token,
 
-    [parameter(Mandatory=$false, HelpMessage='Specify the ThreatWatch instance')]
+    [parameter(Mandatory=$false, HelpMessage='Specify the ThreatWorx instance')]
     [String]
     $instance,
 
@@ -527,41 +527,41 @@ else {
 
 
 # SIG # Begin signature block
-# MIIGzwYJKoZIhvcNAQcCoIIGwDCCBrwCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# MIIGzAYJKoZIhvcNAQcCoIIGvTCCBrkCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUk4hp8MO/jBMpohqNzQlfVErk
-# RACgggPvMIID6zCCAtOgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBojEYMBYGA1UE
-# AwwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UE
-# CwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVT
-# MRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJl
-# YXR3YXRjaC5pbzAeFw0yMTAyMTAwODQxMjNaFw0yMjAyMTAwODQxMjNaMIGiMRgw
-# FgYDVQQDDA9UaHJlYXRXYXRjaCBJbmMxFDASBgNVBAoMC1RocmVhdFdhdGNoMRQw
-# EgYDVQQLDAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UE
-# BhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEkMCIGCSqGSIb3DQEJARYVcGFyZXNo
-# QHRocmVhdHdhdGNoLmlvMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA
-# lBXLU/vP+fio3ETLZCPu21EEthKKN/IAsfYy3yGvJRFqvHTNNYb2uy1AfgXxpGlA
-# TzYMxyVnq32qIay1YmoVZX+pnzqNkGqSZb1tGxAn+z3cBrQd5Kev6cGwPXjd00P0
-# S2uR0Hw59EAod9XN6ak2qEDDIikhwlSpPfayyZnzlvHi8R/MSDnYwRy9i+gb4bbc
-# R+yuwjsuzQofVRmZdpGQqLEw3veigtZKk//9i50VlRgPJBTxN1JQo7nN3GX6DfES
-# sFrl1cFMYyMy8MbgTCgef574Tv1SiBA4Wrr6IyDFF7wZYbIOCCqcTBL/vuLLGQna
-# f4NayMmINv75H+jv6S9P4QIDAQABoyowKDAOBgNVHQ8BAf8EBAMCB4AwFgYDVR0l
-# AQH/BAwwCgYIKwYBBQUHAwMwDQYJKoZIhvcNAQELBQADggEBAHD45EZVVeLiPBxi
-# ExuvfscMwKhQAE3X+WDoSkYYqrDPXXsYVHb94NjrUlyVhghFiFAvodLjRh+n+fYm
-# IFdh9oppkrlNNhqL2XVQaYGcC4z0kWgP/4AeX8WaHugz06yR0XoE/ngcm7CuyF+F
-# gTiIkrOpC8+TXXhT1oxFrkOMneukghhIStzvaFKIG7MbIBg0dDwXCa84YSreSqjO
-# KMZ4SUp5P39YYOPsWdcBalQ+IqfpAnFQl9FdCOWG6SQedz1G1uonBGlbKM3YcC3Z
-# pvuVesM9ywXlUmG8yJ15vh8Rlsw+xsEhTgRxQj5QIYMCrj322G594pFBUBjbkLG/
-# wWi0i84xggJKMIICRgIBATCBqDCBojEYMBYGA1UEAwwPVGhyZWF0V2F0Y2ggSW5j
-# MRQwEgYDVQQKDAtUaHJlYXRXYXRjaDEUMBIGA1UECwwLRW5naW5lZXJpbmcxEzAR
-# BgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVTMRIwEAYDVQQHDAlMb3MgR2F0
-# b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUr
-# DgMCGgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMx
-# DAYKKwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkq
-# hkiG9w0BCQQxFgQUMB/RuHJrbj//uJqhKVMROU2DkNkwDQYJKoZIhvcNAQEBBQAE
-# ggEAKmYVg2lFMQ+8n4c+LyuhZttW4FkpXIGE/I9HyYnbT3EShrBlG7YMxxkQxXNg
-# wsKoQoL1VAbqRYALq12D/kt1dXC1kO10KQpBcWq0q6ryIF7y0/UgGGWXWhJ9Yg71
-# Tr2KOKkbFS/fq++5kd3TPbbk+8zRfhAZnEeqC+4Bj/QyeZkuOYBm4KJVM6+BAwko
-# Y+EYgUlZ65pMG+ryV5DxTpeZGgG7xEjWr/IH/vZ3OJwOkBe4GehiCtNnxl2stOtG
-# 398+J1Dc0w+EMxbh3oCIQFw2qGf/i2aNNWBrV3fV10xFtxwVenfrMPTuKceycSd3
-# qjjAOd6NqJLCMel1gY0iH5tD/Q==
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUIYni8g5oV1+bBQLIj8C0m5Wd
+# nsygggPtMIID6TCCAtGgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoTETMBEGA1UE
+# AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
+# DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
+# EjAQBgNVBAcMCUxvcyBHYXRvczEkMCIGCSqGSIb3DQEJARYVcGFyZXNoQHRocmVh
+# dHdhdGNoLmlvMB4XDTIyMDMyOTEwMDAxNFoXDTIzMDMyOTEwMDAxNFowgaExEzAR
+# BgNVBAMMClRocmVhdFdvcngxGDAWBgNVBAoMD1RocmVhdFdhdGNoIEluYzEUMBIG
+# A1UECwwLRW5naW5lZXJpbmcxEzARBgNVBAgMCkNhbGlmb3JuaWExCzAJBgNVBAYT
+# AlVTMRIwEAYDVQQHDAlMb3MgR2F0b3MxJDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0
+# aHJlYXR3YXRjaC5pbzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAOjn
+# butJzEXyviidHxY+7DphV75ewtbE94Cat3gr20w6eFBrQGwzGHj95712qxW/DLuJ
+# qA9NNm0FZfKi04fqHxtxQoJFyMhOd+8euNY1QSK61RctNkCBqgqHq8QeCjWGy1ca
+# QWaOLMYbO4PXl+tugt0YbrgV/RBOY3Gf8RMcMWmuzxhP5EEt0v/HN4HKGbdFftdV
+# m4wdp6tibn5+nGGlw773vTCQBWBDBDelEkb52OEZ9UP5GEf9NZA5QDLNzoC9Otxm
+# XwCO4avnXMJvFDOqtkzE9JrDa4/l7/FlxbcSRUgikBO17jlBH2/Jvvlc+sT0tunq
+# Db8MdsKx+KF4HBubnxsCAwEAAaMqMCgwDgYDVR0PAQH/BAQDAgeAMBYGA1UdJQEB
+# /wQMMAoGCCsGAQUFBwMDMA0GCSqGSIb3DQEBCwUAA4IBAQBwrx14gKN0JYN9v/Bb
+# cgUs1T5SxeMApOaXjcuflFCILwkvfMDCNqbVxbDv45n/7r9bIcLghQ70LE604CE0
+# ddDJJ8ekNMaIwyP3nktyt+W2vhar2WZX8I1rwgvxqBuXioCdv7xzpq/tfSSvfFCE
+# kpsoPDBeDvR+wsuCW+BiO9jW9bUduvvHg7DbkWyqWa/oUd/7mdLwwvhNF3tPfVk+
+# 5PH95VK8m4npk+2Zm4zaQJKgE1WZXsz5VPcA63oZTFO4G54paosJUvZFPx37Vf1d
+# vdfw7xZnhl8eT4m43Ewi1MqdsFGwLYfWO8WgDmdWj+WalHTM1VFJAO4g2vF8ZcMy
+# IJRtMYICSTCCAkUCAQEwgacwgaExEzARBgNVBAMMClRocmVhdFdvcngxGDAWBgNV
+# BAoMD1RocmVhdFdhdGNoIEluYzEUMBIGA1UECwwLRW5naW5lZXJpbmcxEzARBgNV
+# BAgMCkNhbGlmb3JuaWExCzAJBgNVBAYTAlVTMRIwEAYDVQQHDAlMb3MgR2F0b3Mx
+# JDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUrDgMC
+# GgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYK
+# KwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG
+# 9w0BCQQxFgQUM/U8zIpJR+qjPQ7QHE7N4yMhU70wDQYJKoZIhvcNAQEBBQAEggEA
+# xywHj0RXhtVgrw0SJyBm/dSaLeBgd36WJSw4MY5Pporj+WQUH3WI9B+SemRnfWBP
+# j9PPWRLsKS4Q8njKPV5MUm70ExzoGMRxB/I1hFrCPDhLP5AiZl6384f+7twN7D/y
+# mMNb5K7whtD/tfjTeQ5HktB//jSbZ/oUTCSaeULWblqa4XEjrRG82DAmhhHZCCnM
+# iVPdY87owgWsMibGzLMjVRUDfxMXe1TuhAb3Qbo55zandX4QkhEqD1rTqZRZy+1V
+# l6/NtuHYIMF7c5R8I2/qMCenVOszfRYi+UszlXotm6hHYXrbZO3Qnl6U7DzKIA4g
+# gCATv3m/DALFnMvP5li+cA==
 # SIG # End signature block
