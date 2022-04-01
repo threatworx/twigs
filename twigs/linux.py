@@ -2,6 +2,7 @@ import sys
 import platform
 import os
 import tempfile
+import shutil
 import uuid
 import subprocess
 import logging
@@ -345,7 +346,8 @@ def discover(args):
                 os.remove(new_csv_file)
                 return None
             os.remove(host_list_file)
-            os.rename(new_csv_file, host_list_file)
+            shutil.copyfile(new_csv_file, host_list_file)
+            os.remove(new_csv_file)
             logging.info("Host list file secured")
             return None
         else:
