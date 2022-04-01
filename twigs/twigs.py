@@ -611,13 +611,13 @@ def main(args=None):
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")
         parser_sbom.add_argument('--input', help='Absolute path to SBOM artifact', required=True)
-        parser_sbom.add_argument('--standard', choices=sbom.SUPPORTED_SBOM_STANDARDS, help='Specifies SBOM standard. Supported standard(s): CycloneDX', required=False, default=sbom.SUPPORTED_SBOM_STANDARDS[0])
+        parser_sbom.add_argument('--standard', choices=sbom.SUPPORTED_SBOM_STANDARDS, help='Specifies SBOM standard.', required=True)
         all_formats = set()
         for std in sbom.SUPPORTED_SBOM_FORMATS_FOR_STANDARD:
             for f in sbom.SUPPORTED_SBOM_FORMATS_FOR_STANDARD[std]:
                 all_formats.add(f)
         all_formats = list(all_formats)
-        parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=False, default=all_formats[0])
+        parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=True)
         parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
         parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 

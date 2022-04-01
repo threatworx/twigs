@@ -540,14 +540,12 @@ optional arguments:
 
 Mode: sbom
 $ twigs sbom --help
-usage: twigs sbom [-h] --input INPUT [--standard {cyclonedx}] [--format {json}] [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs sbom [-h] --input INPUT --standard {spdx,cyclonedx} --format {json,tagvalue} [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
   --input INPUT         Absolute path to SBOM artifact
-  --standard STANDARD
-                        Specifies SBOM standard. Supported standard(s):
-                        CycloneDX
+  --standard STANDARD   Specifies SBOM standard.
   --format FORMAT       Specifies format of SBOM artifact.
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
