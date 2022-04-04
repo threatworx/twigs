@@ -46,7 +46,6 @@ try:
     from . import gcr
     from . import servicenow
     from . import sbom
-    from . import inv_file
     from . import fingerprint
     from . import dast
     from . import docker_cis
@@ -72,7 +71,6 @@ except (ImportError,ValueError):
     from twigs import gcr
     from twigs import servicenow
     from twigs import sbom
-    from twigs import inv_file
     from twigs import fingerprint
     from twigs import dast
     from twigs import docker_cis
@@ -621,13 +619,6 @@ def main(args=None):
         parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
         parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
-        # Arguments required for File-based discovery
-        parser_file = subparsers.add_parser ("file", help = "Ingest asset inventory from file")
-        parser_file.add_argument('--input', help='Absolute path to single input inventory file or a directory containing JSON or CSV files. Supported file formats are: CSV, JSON & PDF', required=True)
-        parser_file.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset. Defaults to input filename if not specified. Applies only for PDF files.')
-        parser_file.add_argument('--assetname', help='A name/label to be assigned to the discovered asset. Defaults to assetid is not specified. Applies only for PDF files.')
-        parser_file.add_argument('--type', choices=['repo'], help='Type of asset. Defaults to repo if not specified. Applies only for PDF files.', required=False, default='repo')
-
         # Arguments required for ServiceNow discovery
         parser_snow = subparsers.add_parser ("servicenow", help = "Ingest inventory from ServiceNow CMDB")
         parser_snow.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
@@ -824,8 +815,6 @@ def main(args=None):
             assets = kubernetes.get_inventory(args)
         elif args.mode == 'sbom':
             assets = sbom.get_inventory(args)
-        elif args.mode == 'file':
-            assets = inv_file.get_inventory(args)
         elif args.mode == 'dast':
             assets = dast.get_inventory(args)
         elif args.mode == 'docker_cis':

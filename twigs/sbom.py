@@ -3,10 +3,12 @@ import logging
 
 from . import sbom_cyclonedx
 from . import sbom_spdx
+from . import sbom_tw
 
 SUPPORTED_SBOM_FORMATS_FOR_STANDARD = {
         "cyclonedx": ["json"],
-        "spdx": ["tagvalue"]
+        "spdx": ["tagvalue"],
+        "threatworx": ["json", "csv"] # keep this one last
 }
 SUPPORTED_SBOM_STANDARDS = list(SUPPORTED_SBOM_FORMATS_FOR_STANDARD.keys())
 
@@ -33,9 +35,14 @@ def get_inventory(args):
     if sbom_standard == "cyclonedx":
         if sbom_format == "json":
             assets = sbom_cyclonedx.process_json(sbom_abs_path, args)
-    if sbom_standard == "spdx":
+    elif sbom_standard == "spdx":
         if sbom_format == "tagvalue":
             assets = sbom_spdx.process_tagvalue(sbom_abs_path, args)
+    elif sbom_standard == "threatworx":
+        if sbom_format == "json":
+            assets = sbom_tw.process_json(sbom_abs_path, args)
+        elif sbom_format == "csv":
+            assets = sbom_tw.process_csv(sbom_abs_path, args)
     logging.info("Done processing SBOM artifact")
 
     return assets

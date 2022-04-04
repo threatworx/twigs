@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,sbom,file,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
 
 ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -98,7 +98,7 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,sbom,file,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
@@ -116,7 +116,6 @@ modes:
     vmware              Discover VMware vCenter/ESX assets
     nmap                Discover assets using nmap
     sbom                Ingest asset inventory from SBOM (Software Bill Of Materials)
-    file                Ingest asset inventory from file
     servicenow          Ingest inventory from ServiceNow CMDB
     dast                Discover and test web application using a DAST plugin
     ssl_audit           Run SSL audit tests against your web URLs
@@ -540,7 +539,7 @@ optional arguments:
 
 Mode: sbom
 $ twigs sbom --help
-usage: twigs sbom [-h] --input INPUT --standard {spdx,cyclonedx} --format {json,tagvalue} [--assetid ASSETID] [--assetname ASSETNAME]
+usage: twigs sbom [-h] --input INPUT --standard {spdx,cyclonedx,threatworx} --format {json,tagvalue,csv} [--assetid ASSETID] [--assetname ASSETNAME]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -550,25 +549,6 @@ optional arguments:
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset
-
-Mode: file
-$ twigs file --help
-usage: twigs file [-h] --input INPUT [--assetid ASSETID] [--assetname ASSETNAME] [--type {OpenSource}]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --input INPUT         Absolute path to single input inventory file or a
-                        directory containing JSON or CSV files. Supported file
-                        formats are: CSV, JSON & PDF
-  --assetid ASSETID     A unique ID to be assigned to the discovered asset.
-                        Defaults to input filename if not specified. Applies
-                        only for PDF files.
-  --assetname ASSETNAME
-                        A name/label to be assigned to the discovered asset.
-                        Defaults to assetid is not specified. Applies only for
-                        PDF files.
-  --type TYPE           Type of asset. Defaults to repo if not specified.
-                        Applies only for PDF files.
 
 Mode: servicenow
 $ twigs servicenow --help
