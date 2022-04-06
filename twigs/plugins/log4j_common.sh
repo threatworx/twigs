@@ -18,9 +18,9 @@ check_log4j_vuln()
 				echo "TYPE:IMPACT"
 				echo "VULN:$CVE"
 				echo "PERCENTAGE:100"
-				echo "AFFECTED_PRODUCT:$BASENAME"
-				echo "VULNERABLE_PRODUCT:$LOG4J_FILE"
-				echo "ANALYSIS:Log4J Jar found on host at [$LOG4J_FILE] is vulnerable to $CVE"
+				echo "AFFECTED_PRODUCT:$LOG4J_FILE"
+				echo "VULNERABLE_PRODUCT:$BASENAME"
+				echo "ANALYSIS:Log4J Jar found at [$LOG4J_FILE] is vulnerable to $CVE"
 				echo "RECOMMENDATION:Upgrade to latest version of Log4J Jar"
 				echo ""
 			fi

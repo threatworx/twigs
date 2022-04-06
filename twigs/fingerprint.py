@@ -62,7 +62,7 @@ def get_inventory(args):
         asset_data['type'] = 'Other' 
         asset_data['owner'] = args.handle
         asset_data['products'] = products 
-        asset_tags = []
+        asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
         asset_data['tags'] = asset_tags
         if args.no_ssh_audit == False:
             ssh_issues = linux.run_ssh_audit(args, addr, addr)
