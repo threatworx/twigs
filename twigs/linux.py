@@ -224,7 +224,7 @@ def discover(args):
                             password = getpass.getpass(prompt="Enter password: ")
                             password = password.encode()
                     else:
-                        password = args.password
+                        password = args.password.encode()
                     salt = base64.b64encode(password)
                     kdf = PBKDF2HMAC(
                             algorithm=hashes.SHA256(),
