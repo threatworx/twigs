@@ -58,6 +58,9 @@ def discover(args):
         datacenter = child
         clusters = datacenter.hostFolder.childEntity
         for cluster in clusters:  
+            if isinstance(cluster, vim.Folder):
+                # ignore folder objects
+                continue
             hosts = cluster.host  
             for host in hosts:  
                 esx_asset = {}
