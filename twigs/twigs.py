@@ -40,6 +40,7 @@ try:
     from . import docker
     from . import kubernetes
     from . import azure
+    from . import o365 
     from . import acr
     from . import ecr
     from . import gcp
@@ -65,6 +66,7 @@ except (ImportError,ValueError):
     from twigs import docker
     from twigs import kubernetes
     from twigs import azure
+    from twigs import o365 
     from twigs import acr
     from twigs import ecr
     from twigs import gcp
@@ -694,7 +696,11 @@ def main(args=None):
         parser_gke_cis.add_argument('--target', help='Run test against GKE master or worker nodes', choices=['master','worker'], required=True)
         parser_gke_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for Kubernetes CIS benchmarks')
 
-
+        # Arguments required for Azure discovery
+        parser_o365 = subparsers.add_parser ("o365")
+        parser_o365.add_argument('--tenant_id', help='O365 Tenant ID', required=True)
+        parser_o365.add_argument('--application_id', help='O365 Application ID', required=True)
+        parser_o365.add_argument('--application_key', help='O365 Application Key', required=True)
 
         args = parser.parse_args()
 
@@ -791,6 +797,8 @@ def main(args=None):
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)
+        elif args.mode == 'o365':
+            assets = o365.get_inventory(args)
         elif args.mode == 'acr':
             assets = acr.get_inventory(args)
         elif args.mode == 'ecr':
