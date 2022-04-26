@@ -4,6 +4,8 @@ import os
 import requests
 import re
 import logging
+import random
+import time
 
 def get_machines(args, token):
     headers = { "Content-Type":"application/json", "Accept": "application/json", "Authorization": "Bearer %s" % token }
@@ -18,21 +20,31 @@ def get_machines(args, token):
         return
     response = resp.json()
     allmachines = response['value']
+    logging.debug("Retrieved "+str(len(allmachines))+" machine details")
     assets = []
     for machine in allmachines:
         asset = {}
         asset['owner'] = args.handle
         asset['id'] = machine['id']
-        asset['name'] = machine['lastIpAddress']
+        asset['name'] = machine['computerDnsName']
         asset['type'] = 'Windows'
         asset_tags = []
         asset_tags.append('Windows')
-        asset_tags.append('Source:O365')
-        asset_tags.append('OS_RELEASE:' + machine['osPlatform'])
-        asset_tags.append('OS_VERSION:' + machine['version'])
+        asset_tags.append('SOURCE:O365')
+        asset_tags.append('OS_RELEASE_ID:' + machine['version'])
+        asset_tags.append('OS_VERSION:' + 'Build '+str(machine['osBuild']))
+        asset_tags.append('OS_ARCH:' + machine['osProcessor'] + '-based PC')
         for tag in machine['machineTags']:
             asset_tags.append(tag)
+        if asset['name'].startswith('lap'):
+            asset_tags.append('LAPTOP')
+        if asset['name'].startswith('wks'):
+            asset_tags.append('WORKSTATION')
+        if asset['name'].startswith('wow'):
+            asset_tags.append('WORKSTATION_ON_WHEELS')
+        asset['tags'] = asset_tags
         products = []
+        logging.debug("Getting product info for "+asset['name'])
         url = "https://api.securitycenter.microsoft.com/api/machines/"+machine['id']+"/software"
         resp = requests.get(url, headers=headers)
         if resp.status_code != 200:
@@ -40,11 +52,14 @@ def get_machines(args, token):
             logging.error("Response content: %s" % resp.text)
             continue
         allproducts = resp.json()['value']
-        for product in products:
+        for product in allproducts:
             newproduct = product['vendor'] + " " + product['name']
             newproduct = newproduct.replace('_',' ')
             products.append(newproduct)
         asset['products'] = products
+        assets.append(asset)
+        r = random.uniform(0.5,1.5)
+        time.sleep(r)
     return assets
 
 def get_access_token(args):
@@ -73,6 +88,5 @@ def get_inventory(args):
     if token is None:
         logging.error("Error unable to get access token for API calls")
         return
-    return [] 
-
+    return get_machines(args,token)
 
