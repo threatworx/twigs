@@ -286,6 +286,30 @@ def process_package_json_files(files, args, localpath):
                     p1list.append(pname)
     return plist, p1list 
 
+def filter_used_npm_dependencies(args, deplist, localpath):
+    logging.debug("Number of dependencies before used filter: "+str(len(deplist)))
+    dev_null_device = open(os.devnull, "w")
+    fdlist = []
+    for d in deplist:
+        dname = d.split()[0].strip()
+        #print("Checking dependency for "+d)
+        cmd = "find "+localpath+" -type f -name '*.js' -or -name '*.ts' | xargs -r egrep -ni '(import|require|loader|plugins|%s).*['\"](%s|.?\d+)[\"']' | wc -l " % (dname, dname)
+        #print(cmd)
+        try:
+            out = subprocess.check_output([cmd], stderr=dev_null_device, shell=True)
+            out = out.decode(args.encoding)
+        except subprocess.CalledProcessError:
+            if logging_enabled:
+                logging.debug("Error running command")
+            dev_null_device.close()
+            continue
+        if out.strip() != '0':
+            #print(dname+" is used")
+            fdlist.append(d)
+    dev_null_device.close()
+    logging.debug("Number of dependencies after used filter: "+str(len(fdlist)))
+    return fdlist
+
 def discover_package_json(args, localpath):
     files = lib_utils.find_files(localpath, 'package-lock.json')
     if len(files) > 0:
@@ -293,6 +317,12 @@ def discover_package_json(args, localpath):
     else:
         files = lib_utils.find_files(localpath, 'package.json')
         plist, p1list = process_package_json_files(files, args, localpath)
+    if args.include_unused_dependencies == False:
+        logging.info("Filtering out unused dependencies")
+        plist = filter_used_npm_dependencies(args, plist, localpath)
+    else:
+        logging.warn("Including unused dependencies")
+        logging.warn("May increase false positives")
     return plist, p1list
 
 def discover_packages_config(args, localpath):
