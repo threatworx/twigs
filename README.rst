@@ -450,7 +450,7 @@ optional arguments:
 
 Mode: repo
 $ twigs repo --help
-usage: twigs repo [-h] --repo REPO [--branch BRANCH] [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}] [--level {shallow,deep}] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
+usage: twigs repo [-h] --repo REPO [--branch BRANCH] [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}] [--level {shallow,deep}] [--include_unused_dependencies] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -458,6 +458,8 @@ optional arguments:
   --branch BRANCH       Optional branch of remote git repo
   --type TYPE           Type of open source component to scan for {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}. Defaults to all supported types if not specified
   --level LEVEL         Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified
+  --include_unused_dependencies
+                        Include unused dependencies in the repository asset (applies to certain types of open source components only, may introduce false positives if used)
   --assetid ASSETID     A unique ID to be assigned to the discovered asset
   --assetname ASSETNAME
                         A name/label to be assigned to the discovered asset

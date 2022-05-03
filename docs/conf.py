@@ -48,7 +48,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'twigs'
-copyright = u"2019, Paresh Borkar"
+copyright = u"2019, ThreatWorx"
 author = u"Paresh Borkar"
 
 # The version info for the project you're documenting, acts as replacement

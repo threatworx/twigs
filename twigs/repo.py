@@ -327,6 +327,52 @@ def discover_package_json(args, localpath):
 
 def discover_packages_config(args, localpath):
     plist = []
+    # Give first preference for dependencies from .csproj files
+    files = lib_utils.find_files(localpath, '.csproj')
+    for file_path in files:
+        fp = lib_utils.tw_open(file_path, args.encoding)
+        if fp == None:
+            continue
+        contents = fp.read()
+        xmldoc = None
+        try:
+            xmldoc = minidom.parseString(contents)
+        except Exception:
+            logging.error("Unable to parse csproj file: %s", file_path)
+            continue
+        temp_plist = xmldoc.getElementsByTagName('PackageReference')
+        for p in temp_plist:
+            libname = p.getAttribute('Include')
+            if libname is None or len(libname.strip()) == 0:
+                continue
+            libver = p.getAttribute('Version')
+            if localpath.startswith('/tmp/'):
+                file_path = file_path.replace(localpath+'/','')
+            if libver is not None and len(libver.strip()) > 0 and not libver.startswith('$('):
+                if '*' in libver:
+                    libver = libver.replace('.*', '.0')
+                if ',' in libver:
+                    libver = libver.replace('(', '')
+                    libver = libver.replace(')', '')
+                    libver = libver.replace('[', '')
+                    libver = libver.replace(']', '')
+                    tokens = libver.split(',')
+                    if len(tokens[0].strip()) > 0:
+                        libver = tokens[0].strip()
+                    elif len(tokens[1].strip()) > 0:
+                        libver = tokens[1].strip()
+                    else:
+                        libver = '' # this case should never occur
+                pname = libname + ' ' + libver + " source:"+file_path
+            else:
+                pname = libname + " source:"+file_path
+            if pname not in plist:
+                plist.append(pname)
+
+    if len(plist) > 0:
+        return plist, plist
+
+    # Fallback to packages.config file if no dependencies found from .csproj files
     files = lib_utils.find_files(localpath, 'packages.config')
     for file_path in files:
         fp = lib_utils.tw_open(file_path, args.encoding)
@@ -348,7 +394,7 @@ def discover_packages_config(args, localpath):
             pname = libname + ' ' + libver + " source:"+file_path
             if pname not in plist:
                 plist.append(pname)
-    return plist, None
+    return plist, plist
 
 def discover_yarn(args, localpath):
     plist = []
