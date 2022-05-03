@@ -233,6 +233,11 @@ def get_asset_type(os):
 # reference: https://gist.github.com/bencord0/7690953
 def get_unique_asset_id(args, host, asset_type):
 
+    # Try to get MAC Address
+    output = get_mac_address(args, host, asset_type)
+    if output is not None and len(output.strip()) > 0:
+        return output
+
     output = run_cmd_on_host(args, host, ["cat /var/lib/dbus/machine-id"], False)
     if output is not None and len(output.strip()) > 0:
         return output.strip()
@@ -251,20 +256,23 @@ def get_unique_asset_id(args, host, asset_type):
     if output is not None and len(output.strip()) > 0:
         return output.strip().split(' ')[1]
 
-    # If nothing worked, then try to get MAC Address
-    return get_mac_address(args, host, asset_type)
 
 def get_mac_address(args, host, asset_type):
-    if asset_type in ['Ubuntu', 'CentOS', 'Red Hat', 'Suse', 'Debian']:
-        interface = 'eth0:' if asset_type != 'Debian' else 'ens4'
-        output = run_cmd_on_host(args, host, ["ip link"], True)
-        lines = output.splitlines()
-        for i in range(len(lines)):
-            if 'eth0:' in lines[i]:
-                return lines[i+1].split()[1]
-    elif asset_type == 'Mac OS':
-        return run_cmd_on_host(args, host, ["ifconfig en1 | awk '/ether/{print $2}'"], True)
-    return None
+
+    # get default interface
+    cmd = "ip route show default | awk '/default/ {print $5}'"
+    defif = run_cmd_on_host(args, host, [cmd], True)
+    if defif == None or defif.strip() == '':
+        return None
+    defif = defif.strip()
+
+    # now list mac address from /sys/class/net
+    cmd = "cat /sys/class/net/"+defif+"/address"
+    macid = run_cmd_on_host(args, host, [cmd], True)
+    if macid == None or macid.strip() == '':
+        return None
+    macid = macid.strip().replace(':','')
+    return macid 
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

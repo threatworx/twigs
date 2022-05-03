@@ -426,7 +426,7 @@ def discover_host(args, host):
         asset_id = host['hostname']
         logging.warning("Using Hostname/IP [%s] for Asset [%s] as Identifier", asset_id, host['hostname'])
 
-    asset_name = host['assetname'] if host.get('assetname') is not None and len(host['assetname']) > 0 else asset_id
+    asset_name = host['assetname'] if host.get('assetname') is not None and len(host['assetname']) > 0 else host['hostname']
 
     asset_id = asset_id.replace(':','')
     asset_name = asset_name.replace('/','-')
