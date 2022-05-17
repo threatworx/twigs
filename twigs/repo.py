@@ -340,12 +340,13 @@ def discover_package_json(args, localpath):
     else:
         files = lib_utils.find_files(localpath, 'package.json')
         plist, p1list = process_package_json_files(files, args, localpath)
-    if args.include_unused_dependencies == False and len(plist) > 0:
-        logging.debug("Filtering out unused npm dependencies")
-        plist = filter_used_npm_dependencies(args, plist, localpath)
-    else:
-        logging.warn("Including unused dependencies")
-        logging.warn("May increase false positives")
+    if len(plist) > 0:
+        if args.include_unused_dependencies == False:
+            logging.debug("Filtering out unused npm dependencies")
+            plist = filter_used_npm_dependencies(args, plist, localpath)
+        else:
+            logging.warn("Including unused dependencies")
+            logging.warn("May increase false positives")
     return plist, p1list
 
 def discover_packages_config(args, localpath):
@@ -421,12 +422,13 @@ def discover_packages_config(args, localpath):
             if pname not in plist:
                 plist.append(pname)
 
-    if args.include_unused_dependencies == False and len(plist) > 0:
-        logging.debug("Filtering out unused dotnet dependencies")
-        plist = filter_used_dotnet_dependencies(args, plist, localpath)
-    else:
-        logging.warn("Including unused dependencies")
-        logging.warn("May increase false positives")
+    if len(plist) > 0:
+        if args.include_unused_dependencies == False:
+            logging.debug("Filtering out unused dotnet dependencies")
+            plist = filter_used_dotnet_dependencies(args, plist, localpath)
+        else:
+            logging.warn("Including unused dependencies")
+            logging.warn("May increase false positives")
 
     if len(plist) > 0:
         return plist, plist
@@ -454,12 +456,13 @@ def discover_packages_config(args, localpath):
             if pname not in plist:
                 plist.append(pname)
 
-    if args.include_unused_dependencies == False and len(plist) > 0:
-        logging.debug("Filtering out unused nuget dependencies")
-        plist = filter_used_dotnet_dependencies(args, plist, localpath)
-    else:
-        logging.warn("Including unused dependencies")
-        logging.warn("May increase false positives")
+    if len(plist) > 0:
+        if args.include_unused_dependencies == False:
+            logging.debug("Filtering out unused nuget dependencies")
+            plist = filter_used_dotnet_dependencies(args, plist, localpath)
+        else:
+            logging.warn("Including unused dependencies")
+            logging.warn("May increase false positives")
 
     return plist, plist
 
@@ -782,21 +785,24 @@ def on_rm_error( func, path, exc_info):
     os.chmod( path, stat.S_IWRITE )
     os.unlink( path )
 
-def get_inventory(args):
+# note this only handles actual repos and not orgs (i.e. all repos in an org)
+def get_inventory_helper(args):
     path = None
     if args.repo.startswith('http'):
         if os.path.isfile(GIT_PATH) == False:
             logging.error("git executable does not exist at [%s]", GIT_PATH)
             return None
+        dev_null_device = open(os.devnull, "w")
         path = tempfile.mkdtemp()
         base_path = path
         new_repo = None
+        logging.info("Cloning repo locally...")
         try:
             if args.branch and args.branch != '':
                 cmdarr = [GIT_PATH, 'clone', '--branch', args.branch, args.repo, path+'/.']
             else:
                 cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
-            out = subprocess.check_output(cmdarr)
+            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
         except:
             logging.error(traceback.format_exc())
             logging.error('Error cloning repo locally')
@@ -839,3 +845,43 @@ def get_inventory(args):
         if args.create_empty_asset is None or not args.create_empty_asset:
             return [] # if there are no products nor secrets then no assets to report
     return assets
+
+def get_inventory(args):
+    if args.org or args.user:
+        owner = args.org if args.org else args.user
+        dev_null_device = open(os.devnull, "w")
+        # check if 'gh' command is available
+        try:
+            cmdarr = ['which', 'gh']
+            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
+        except subprocess.CalledProcessError as e:
+            logging.error("[gh] command not found")
+            return None
+        # check if user is logged in 'gh'
+        try:
+            cmdarr = ['gh', 'auth', 'status']
+            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
+        except subprocess.CalledProcessError as e:
+            logging.error("Please login using [gh auth login] command to list repositories")
+            logging.debug("[gh auth status] command returned exit code [%s]", e.returncode)
+            return None
+        # list repo for org/user
+        try:
+            cmdarr = ['gh', 'repo', 'list', owner, '--json', 'name,url', '--limit', '65535']
+            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
+        except subprocess.CalledProcessError as e:
+            logging.error("Unable to list repos for [%s]", owner)
+            logging.debug("[gh repo list %s --json name,url] command returned %s", owner, e.output)
+            logging.debug("[gh repo list %s --json name,url] command returned exit code [%s]", owner, e.returncode)
+            return None
+        repos = json.loads(out.strip())
+        assets = []
+        for repo in repos:
+            logging.info("Discovering repo [%s] as an asset", repo['name'])
+            args.repo = repo['url']
+            logging.info("Repo URL: %s", args.repo)
+            temp_assets = get_inventory_helper(args)
+            assets.extend(temp_assets)
+        return assets
+    else:
+        return get_inventory_helper(args)
