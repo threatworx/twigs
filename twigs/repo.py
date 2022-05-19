@@ -847,8 +847,8 @@ def get_inventory_helper(args):
     return assets
 
 def get_inventory(args):
-    if args.org or args.user:
-        owner = args.org if args.org else args.user
+    if args.gh_user:
+        owner = args.gh_user
         dev_null_device = open(os.devnull, "w")
         # check if 'gh' command is available
         try:

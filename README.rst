@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
 
 ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -98,7 +98,7 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
@@ -110,6 +110,7 @@ modes:
     docker              Discover docker instances
     k8s                 Discover Kubernetes environment
     repo                Discover source code repository as asset
+    ghe                 Discover GitHub Enterprise repositories as assets
     azure_functions     Discover and scan Azure Functions soure code
     gcloud_functions    Discover and scan Google Cloud Functions soure code
     host                Discover linux host assets
@@ -450,16 +451,50 @@ optional arguments:
 
 Mode: repo
 $ twigs repo --help
-usage: twigs repo [-h] (--repo REPO | --gh_org GH_ORG | --gh_user GH_USER) [--branch BRANCH] [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}] [--level {shallow,deep}] [--include_unused_dependencies] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
+usage: twigs repo [-h] (--repo REPO | --gh_user GH_USER) [--branch BRANCH] [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo,go}] [--level {shallow,deep}] [--include_unused_dependencies] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
 
 optional arguments:
   -h, --help            show this help message and exit
   --repo REPO           Local path or git repo url for project
-  --gh_org GH_ORG       Discover all repositories for specified GitHub
-                        Organization / GitHub Enterprise.
   --gh_user GH_USER     Discover all repositories for specified GitHub User.
   --branch BRANCH       Optional branch of remote git repo
-  --type TYPE           Type of open source component to scan for {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo}. Defaults to all supported types if not specified
+  --type TYPE           Type of open source component to scan for {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo,go}. Defaults to all supported types if not specified
+  --level LEVEL         Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified
+  --include_unused_dependencies
+                        Include unused dependencies in the repository asset (applies to certain types of open source components only, may introduce false positives if used)
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --secrets_scan        Perform a scan to look for secrets in the code
+  --enable_entropy      Identify entropy based secrets
+  --regex_rules_file REGEX_RULES_FILE
+                        Path to JSON file specifying regex rules
+  --check_common_passwords
+                        Look for top common passwords.
+  --common_passwords_file COMMON_PASSWORDS_FILE
+                        Specify your own common passwords file. One password per line in file
+  --include_patterns INCLUDE_PATTERNS
+                        Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.
+  --include_patterns_file INCLUDE_PATTERNS_FILE
+                        Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.
+  --exclude_patterns EXCLUDE_PATTERNS
+                        Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.
+  --exclude_patterns_file EXCLUDE_PATTERNS_FILE
+                        Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.
+  --mask_secret         Mask identified secret before storing for reference in ThreatWorx.
+  --no_code             Disable storing code for reference in ThreatWorx.
+  --sast                Perform static code analysis on your source code
+  --iac_checks          Perform security checks on IaC templates
+
+Mode: ghe
+$ twigs ghe --help
+usage: twigs repo [-h] --gh_user GH_USER [--type {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo,go}] [--level {shallow,deep}] [--include_unused_dependencies] [--assetid ASSETID] [--assetname ASSETNAME] [--secrets_scan] [--enable_entropy] [--regex_rules_file REGEX_RULES_FILE] [--check_common_passwords] [--common_passwords_file COMMON_PASSWORDS_FILE] [--include_patterns INCLUDE_PATTERNS] [--include_patterns_file INCLUDE_PATTERNS_FILE] [--exclude_patterns EXCLUDE_PATTERNS] [--exclude_patterns_file EXCLUDE_PATTERNS_FILE] [--mask_secret] [--no_code] [--sast] [--iac_checks]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --gh_org GH_ORG       Discover all repositories for specified GitHub
+                        Enterprise Organization.
+  --type TYPE           Type of open source component to scan for {pip,ruby,yarn,nuget,npm,maven,gradle,dll,jar,cargo,go}. Defaults to all supported types if not specified
   --level LEVEL         Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified
   --include_unused_dependencies
                         Include unused dependencies in the repository asset (applies to certain types of open source components only, may introduce false positives if used)
