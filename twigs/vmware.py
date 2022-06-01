@@ -47,6 +47,8 @@ def discover(args):
     vcenter_asset['owner'] = args.handle
     plist = []
     plist.append(content.about.fullName)
+    logging.debug("content.about.fullName: ", content.about.fullName)
+    logging.debug("Type of root: ", type(content))
     #plist.append(content.about.productLineId)
     #plist.append(content.about.name)
     vcenter_asset['products'] = plist
@@ -57,21 +59,25 @@ def discover(args):
     for child in children:  
         datacenter = child
         clusters = datacenter.hostFolder.childEntity
+        logging.debug("Number of clusters: ", str(len(clusters)))
         for cluster in clusters:  
             if isinstance(cluster, vim.Folder):
                 # ignore folder objects
                 continue
             hosts = cluster.host  
+            logging.debug("Number of hosts in cluster: ", str(len(hosts)))
             for host in hosts:  
                 esx_asset = {}
                 summary = host.summary.config
                 hostname = summary.name
+                logging.debug("summary.name: ", summary.name)
                 esx_asset['id'] = hostname
                 esx_asset['name'] = hostname
                 esx_asset['type'] = 'VMware ESXi'
                 esx_asset['owner'] = args.handle
                 plist = []
                 plist.append(summary.product.fullName)
+                logging.debug("summary.product.fullName: ", summary.product.fullName)
                 #plist.append(summary.product.productLineId)
                 #plist.append(summary.product.name)
                 esx_asset['products'] = plist

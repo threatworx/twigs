@@ -290,10 +290,21 @@ def filter_used_npm_dependencies(args, deplist, localpath):
     logging.debug("Number of dependencies before used filter: "+str(len(deplist)))
     dev_null_device = open(os.devnull, "w")
     fdlist = []
+    f_handle, f_path = tempfile.mkstemp('.txt', 'tw-find-output-')
+    find_cmd = "find "+localpath+" -type f -name '*.js' -or -name '*.ts' > " + f_path
+    try:
+        out = subprocess.check_output([find_cmd], stderr=dev_null_device, shell=True)
+        out = out.decode(args.encoding)
+    except subprocess.CalledProcessError:
+        if logging_enabled:
+            logging.debug("Error running command...unable to filter used npm depdencies")
+        return deplist
     for d in deplist:
         dname = d.split()[0].strip()
+        if dname in fdlist:
+            continue
         #print("Checking dependency for "+d)
-        cmd = "find "+localpath+" -type f -name '*.js' -or -name '*.ts' | xargs -r egrep -ni '(import|require|loader|plugins|%s).*['\"](%s|.?\d+)[\"']' | wc -l " % (dname, dname)
+        cmd = "cat %s | xargs -r egrep -ni '(import|require|loader|plugins|%s).*['\"](%s|.?\d+)[\"']' -m 1 | wc -l " % (f_path, dname, dname)
         #print(cmd)
         try:
             out = subprocess.check_output([cmd], stderr=dev_null_device, shell=True)
@@ -307,6 +318,7 @@ def filter_used_npm_dependencies(args, deplist, localpath):
             #print(dname+" is used")
             fdlist.append(d)
     dev_null_device.close()
+    os.remove(f_path)
     logging.debug("Number of dependencies after used filter: "+str(len(fdlist)))
     return fdlist
 
@@ -314,10 +326,21 @@ def filter_used_dotnet_dependencies(args, deplist, localpath):
     logging.debug("Number of dependencies before used filter: "+str(len(deplist)))
     dev_null_device = open(os.devnull, "w")
     fdlist = []
+    f_handle, f_path = tempfile.mkstemp('.txt', 'tw-find-output-')
+    find_cmd = "find "+localpath+" -type f -name '*.cs' > " + f_path
+    try:
+        out = subprocess.check_output([find_cmd], stderr=dev_null_device, shell=True)
+        out = out.decode(args.encoding)
+    except subprocess.CalledProcessError:
+        if logging_enabled:
+            logging.debug("Error running command...unable to filter used npm depdencies")
+        return deplist
     for d in deplist:
         dname = d.split()[0].strip()
+        if dname in fdlist:
+            continue
         #logging.debug("Checking dependency for "+d)
-        cmd = "find "+localpath+" -type f -name '*.cs' | xargs -r egrep -ni 'using.*%s' | wc -l " % (dname)
+        cmd = "cat %s | xargs -r egrep -ni 'using.*%s' -m 1 | wc -l " % (f_path, dname)
         try:
             out = subprocess.check_output([cmd], stderr=dev_null_device, shell=True)
             out = out.decode(args.encoding)
@@ -330,6 +353,7 @@ def filter_used_dotnet_dependencies(args, deplist, localpath):
             #logging.debug(dname+" is used")
             fdlist.append(d)
     dev_null_device.close()
+    os.remove(f_path)
     logging.debug("Number of dependencies after used filter: "+str(len(fdlist)))
     return fdlist
 
@@ -342,7 +366,7 @@ def discover_package_json(args, localpath):
         plist, p1list = process_package_json_files(files, args, localpath)
     if len(plist) > 0:
         if args.include_unused_dependencies == False:
-            logging.debug("Filtering out unused npm dependencies")
+            logging.debug("Filtering out unused npm dependencies. This may take some time...")
             plist = filter_used_npm_dependencies(args, plist, localpath)
         else:
             logging.warn("Including unused dependencies")
@@ -424,7 +448,7 @@ def discover_packages_config(args, localpath):
 
     if len(plist) > 0:
         if args.include_unused_dependencies == False:
-            logging.debug("Filtering out unused dotnet dependencies")
+            logging.debug("Filtering out unused dotnet dependencies. This may take some time...")
             plist = filter_used_dotnet_dependencies(args, plist, localpath)
         else:
             logging.warn("Including unused dependencies")
@@ -458,7 +482,7 @@ def discover_packages_config(args, localpath):
 
     if len(plist) > 0:
         if args.include_unused_dependencies == False:
-            logging.debug("Filtering out unused nuget dependencies")
+            logging.debug("Filtering out unused nuget dependencies. This may take some time...")
             plist = filter_used_dotnet_dependencies(args, plist, localpath)
         else:
             logging.warn("Including unused dependencies")
