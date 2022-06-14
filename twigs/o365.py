@@ -43,6 +43,7 @@ def get_machines(args, token):
         if asset['name'].startswith('wow'):
             asset_tags.append('WORKSTATION_ON_WHEELS')
         asset['tags'] = asset_tags
+
         products = []
         logging.debug("Getting product info for "+asset['name'])
         url = "https://api.securitycenter.microsoft.com/api/machines/"+machine['id']+"/software"
@@ -57,7 +58,37 @@ def get_machines(args, token):
             newproduct = newproduct.replace('_',' ')
             products.append(newproduct)
         asset['products'] = products
+
+        # get vulnerabilities for machine id
+        impacts = []
+        logging.debug("Getting vulnerabilities for "+asset['name'])
+        url = "https://api.securitycenter.microsoft.com/api/vulnerabilities/machinesVulnerabilities?$filter=machineId+eq+'"+machine['id']+"'"
+        resp = requests.get(url, headers=headers)
+        if resp.status_code != 200:
+            logging.error("Error could not get asset inventory details from O365")
+            logging.error("Response content: %s" % resp.text)
+            continue
+        allvulns = resp.json()['value']
+        for v in allvulns:
+            finding = {}
+            finding['type'] = 'IMPACT'
+            finding['id_str'] = v['cveId']
+            findinf['percentage'] = 100
+            prod = v['productVendor'] + ' ' + v['productName'] + ' ' + v['productVersion']
+            prod = prod.replace('_',' ')
+            finding['keyword'] = prod
+            finding['product'] = prod
+            finding['analysis'] = ''
+            if v['fixingKbId'] != None:
+                reco = 'Install patch '+v['fixingKbId']
+            else:
+                reco = 'No patch available yet'
+            finding['recommendation'] = reco 
+            impacts.append(finding)
+        asset['impacts'] = impacts
+
         assets.append(asset)
+
         r = random.uniform(0.5,1.5)
         time.sleep(r)
     return assets
