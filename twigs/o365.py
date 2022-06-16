@@ -42,6 +42,8 @@ def get_machines(args, token):
             asset_tags.append('WORKSTATION')
         if asset['name'].startswith('wow'):
             asset_tags.append('WORKSTATION_ON_WHEELS')
+        if asset['name'].startswith('sh'):
+            asset_tags.append('SHC_SERVER')
         asset['tags'] = asset_tags
 
         products = []
@@ -73,16 +75,16 @@ def get_machines(args, token):
             finding = {}
             finding['type'] = 'IMPACT'
             finding['id_str'] = v['cveId']
-            findinf['percentage'] = 100
+            finding['percentage'] = 100
             prod = v['productVendor'] + ' ' + v['productName'] + ' ' + v['productVersion']
             prod = prod.replace('_',' ')
             finding['keyword'] = prod
             finding['product'] = prod
             finding['analysis'] = ''
             if v['fixingKbId'] != None:
-                reco = 'Install patch '+v['fixingKbId']
+                reco = 'Requires Windows patch/KB: '+v['fixingKbId']
             else:
-                reco = 'No patch available yet'
+                reco = 'Please look for patches/remediations for "'+prod+'" in related advisories' 
             finding['recommendation'] = reco 
             impacts.append(finding)
         asset['impacts'] = impacts
