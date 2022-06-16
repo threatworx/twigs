@@ -87,6 +87,10 @@ def get_machines(args, token):
                 reco = 'Please look for patches/remediations for "'+prod+'" in related advisories' 
             finding['recommendation'] = reco 
             impacts.append(finding)
+        if len(impacts) == 0:
+            logging.debug("No vulnerabilities for "+asset['name'])
+            continue
+
         asset['impacts'] = impacts
 
         assets.append(asset)
