@@ -29,6 +29,8 @@
     Specify tags for the asset. Optional.
 .PARAMETER no_scan
     Do not initiate a baseline assessment. Optional.
+.PARAMETER no_host_benchmark
+    Do not run host benchmark tests. Optional.
 .PARAMETER email_report
     After impact refresh is complete, email scan report to self. Optional.
 .EXAMPLE
@@ -90,6 +92,10 @@ param(
     [parameter(Mandatory=$false, HelpMessage='Do not initiate a baseline assessment')]
     [Switch]
     $no_scan,
+
+    [parameter(Mandatory=$false, HelpMessage='Do not run host benchmark tests')]
+    [Switch]
+    $no_host_benchmark,
 
     [parameter(Mandatory=$false, HelpMessage='After impact refresh is complete email scan report to self')]
     [Switch]
@@ -277,7 +283,7 @@ function Invoke-RemoteDiscovery {
         }
         foreach ($remotehost in $remotehosts) {
             Write-Host "Running remote discovery for: ",$remotehost
-            Invoke-Command -ComputerName $remotehost -FilePath $scriptpath -ArgumentList 'local',$null,$null,$null,$handle,$token,$instance -Credential $logincredentials
+            Invoke-Command -ComputerName $remotehost -FilePath $scriptpath -ArgumentList 'local',$null,$null,$null,$handle,$token,$instance,$null,$null,$null,$null,$null,$null,$true -Credential $logincredentials
         }
     } 
     Write-Host "Completed remote Windows host discovery."
@@ -427,6 +433,31 @@ function Invoke-LocalDiscovery {
         }
     }
 
+    $misconfigs_json_array = New-Object System.Collections.Generic.List[System.Object]
+    # Run host benchmark if specified
+    if (-not $no_host_benchmark) {
+        Write-Host "Running host benchmarks. This may take some time..."
+        $hk_script = $PSScriptRoot + '\Invoke-HardeningKitty.ps1'
+        $hbm_csv_rpt = $PSScriptRoot + '\twigs_hbm.csv'
+        if (Test-Path $hbm_csv_rpt) { Remove-Item $hbm_csv_rpt }
+        . ($hk_script)
+        Invoke-HardeningKitty -Mode Audit -Report -ReportFile $hbm_csv_rpt
+        $misconfigs = Import-Csv $hbm_csv_rpt
+        foreach ($misconfig in $misconfigs) {
+            if ($misconfig.Severity -ne 'Passed') {
+                if ($misconfig.Severity -eq 'Low') { $mc_rating = '2' }
+                elseif ($misconfig.Severity -ne 'Medium') { $mc_rating = '3' }
+                elseif ($misconfig.Severity -ne 'High') { $mc_rating = '5' }
+                if ($misconfig.Result -eq '') { $cv = 'Not available' }
+                else { $cv = $misconfig.Result }
+                $details_msg = 'Current value is [' + $cv + '] and recommended value is [' + $misconfig.Recommended + '].'
+                $misconfig_entry_json = @{asset_id='abcd';twc_id=$misconfig.ID;twc_title=$misconfig.Name;type='Host Benchmark';details=$details_msg;rating=$mc_rating;object_id='';object_meta=''}
+                $misconfigs_json_array.add($misconfig_entry_json)
+            }
+        }
+        if (Test-Path $hbm_csv_rpt) { Remove-Item $hbm_csv_rpt }
+    }
+
     $url = ''
     $http_method = ''
     if ($asset_exists -eq 0) {
@@ -449,6 +480,7 @@ function Invoke-LocalDiscovery {
         owner=$handle
         patches=$patch_json_array
         products=$product_json_array
+        config_issues=$misconfigs_json_array
         tags=$tags_json_array
     }
     $body = (ConvertTo-Json -Depth 100 $payload)
@@ -529,8 +561,8 @@ else {
 # SIG # Begin signature block
 # MIIGzAYJKoZIhvcNAQcCoIIGvTCCBrkCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUIYni8g5oV1+bBQLIj8C0m5Wd
-# nsygggPtMIID6TCCAtGgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoTETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUjNSGjOLoq68QP+vHtHIDTCJu
+# zVSgggPtMIID6TCCAtGgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoTETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEkMCIGCSqGSIb3DQEJARYVcGFyZXNoQHRocmVh
@@ -557,11 +589,11 @@ else {
 # JDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUrDgMC
 # GgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYK
 # KwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG
-# 9w0BCQQxFgQUM/U8zIpJR+qjPQ7QHE7N4yMhU70wDQYJKoZIhvcNAQEBBQAEggEA
-# xywHj0RXhtVgrw0SJyBm/dSaLeBgd36WJSw4MY5Pporj+WQUH3WI9B+SemRnfWBP
-# j9PPWRLsKS4Q8njKPV5MUm70ExzoGMRxB/I1hFrCPDhLP5AiZl6384f+7twN7D/y
-# mMNb5K7whtD/tfjTeQ5HktB//jSbZ/oUTCSaeULWblqa4XEjrRG82DAmhhHZCCnM
-# iVPdY87owgWsMibGzLMjVRUDfxMXe1TuhAb3Qbo55zandX4QkhEqD1rTqZRZy+1V
-# l6/NtuHYIMF7c5R8I2/qMCenVOszfRYi+UszlXotm6hHYXrbZO3Qnl6U7DzKIA4g
-# gCATv3m/DALFnMvP5li+cA==
+# 9w0BCQQxFgQUoEiPpyUpQ1vP7/AfqqoxZWbzhsIwDQYJKoZIhvcNAQEBBQAEggEA
+# CvSsIX1VU2sxfwW+0gCTNH2Oay6tAo7v5fVD8rdk2efMBpFdCwXrQNbAVALfMkbt
+# yICsg9Fl0hYPE45ZSMIQt4eq+JaeuDOUaitvIcBBlj7CM6kHIIYmmp/O3rnCcaH3
+# rCslY8449+QYEiBhrHYF6JlWUaYpb87dNcOQNU0baEwAa8+Hkni8vbvHO/qu3PiU
+# jhgf6oeHQOXMIlFI+6s73JiVqLZXF2Q/yGaRuhZJMTdd61tHD92LWU/8Nr/d6moR
+# kWso+bfKl1vHQleccXtLwW5HFKufycMGi8P3sVkVgGUQv6897Kb1306abGZf0uPO
+# EdjnSFPxYUPxbO73nGHdaQ==
 # SIG # End signature block
