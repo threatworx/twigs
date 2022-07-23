@@ -7,7 +7,7 @@ from xml.dom.minidom import parse, parseString
 import csv
 from . import linux
 
-NMAP = "/usr/local/bin/nmap"
+NMAP = "/usr/bin/nmap"
 
 def nmap_exists():
     return os.path.isfile(NMAP) and os.access(NMAP, os.X_OK)
