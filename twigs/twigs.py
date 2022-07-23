@@ -656,6 +656,7 @@ def main(args=None):
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range', required=True)
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
+        parser_nmap.add_argument('--wordpress', action='store_true', help='Find all wordpress plugins')
 
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")

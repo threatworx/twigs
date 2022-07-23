@@ -7,7 +7,7 @@ from xml.dom.minidom import parse, parseString
 import csv
 from . import linux
 
-NMAP = "/usr/bin/nmap"
+NMAP = "/usr/local/bin/nmap"
 
 def nmap_exists():
     return os.path.isfile(NMAP) and os.access(NMAP, os.X_OK)
@@ -69,5 +69,22 @@ def get_inventory(args):
             if len(ssh_issues) != 0:
                 asset_data['tags'].append('SSH Audit')
             asset_data['config_issues'] = ssh_issues
+        if args.wordpress == True:
+            word = [NMAP + ' -sV --script http-wordpress-enum '+ args.hosts]
+            try:
+                word_out = subprocess.check_output(word, shell=True)
+            except subprocess.CalledProcessError:
+                logging.error("Error determining OS release")
+                return None 
+            plugins = str(word_out).split('plugins')[-1]
+            plugins = plugins.split('_http')[0]
+            plugins = plugins.split('\\n')
+            for p in range(len(plugins)):
+                plugins[p] = plugins[p].replace(' ','')
+                plugins[p] = plugins[p].replace('|','')
+            plugins = [i for i in plugins if i]
+            asset_data['wordpress_plugins'] = plugins
+
         assets.append(asset_data)
     return assets
+
