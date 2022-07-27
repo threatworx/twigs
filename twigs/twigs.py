@@ -654,9 +654,9 @@ def main(args=None):
 
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
-        parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range', required=True)
+        parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
-        parser_nmap.add_argument('--wordpress', action='store_true', help='Find all wordpress plugins')
+        parser_nmap.add_argument('--wordpress', help='Find all wordpress plugins')
 
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")
@@ -869,7 +869,10 @@ def main(args=None):
         elif args.mode == 'vmware':
             assets = vmware.get_inventory(args)
         elif args.mode == 'nmap':
-            assets = fingerprint.get_inventory(args)
+            if args.hosts is not None:
+                assets = fingerprint.get_inventory(args)
+            elif args.wordpress is not None:
+                assets = fingerprint.get_wordpress(args)
         elif args.mode == 'docker':
             assets = docker.get_inventory(args)
         elif args.mode == 'k8s':
