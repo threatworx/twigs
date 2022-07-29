@@ -189,8 +189,10 @@ def run(args):
     cmdarr = [SKIPFISH + " " + params]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as cpe:
         logging.error("Error running skipfish")
+        logging.debug("[skipfish] command: %s", cmdarr[0])
+        logging.debug("Output of [skipfish]: %s", cpe.output)
         shutil.rmtree(path, onerror = on_rm_error)
         return None 
     logging.info("skipfish run completed")

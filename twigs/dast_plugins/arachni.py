@@ -79,8 +79,10 @@ def run(args):
     cmdarr = [arachni + " " + params]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as cpe:
         logging.error("Error running arachni CLI")
+        logging.debug("[arachni] command: %s", cmdarr[0])
+        logging.debug("Output of [arachni]: %s", cpe.output)
         shutil.rmtree(path, onerror = on_rm_error)
         return None 
     logging.info("arachni run completed")
@@ -90,8 +92,10 @@ def run(args):
     cmdarr = [reporter_cmd]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as cpe:
         logging.error("Error running arachni_reporter CLI")
+        logging.debug("[arachni_reporter] command: %s", cmdarr[0])
+        logging.debug("Output of [arachni_reporter]: %s", cpe.output)
         shutil.rmtree(path, onerror = on_rm_error)
         return None 
     logging.info("arachni_reporter run completed")
