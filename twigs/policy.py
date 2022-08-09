@@ -47,7 +47,7 @@ def process_policy_job_actions(pj_json):
         pa = policy['actions']
         policy_outcome = policies_outcome[pn]
         for assetid in policy_outcome.keys():
-            po = policy_outcome[assetid]
+            po = policy_outcome[assetid][0]
             if po == "PASSED":
                 lookup = 'on_pass'
             elif po == "FAILED":
