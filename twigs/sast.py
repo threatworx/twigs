@@ -24,7 +24,10 @@ def get_description(result):
         desc = desc + '\n' + 'Suggested fix: '+result['extra']['fix']
     if 'metadata' in result['extra']:
         if 'cwe' in result['extra']['metadata']:
-            desc = desc + '\n' + 'CWE: '+result['extra']['metadata']['cwe']
+            if isinstance(result['extra']['metadata']['cwe'], list):
+                desc = desc + '\n' + 'CWE: '+ ",".join(result['extra']['metadata']['cwe'])
+            else:
+                desc = desc + '\n' + 'CWE: '+result['extra']['metadata']['cwe']
         if 'owasp' in result['extra']['metadata']:
             owasp = result['extra']['metadata']['owasp']
             if isinstance(owasp, list):
