@@ -56,12 +56,10 @@ def process_compute_inventory_json(args, project_id, ci_id, ci_json):
     asset_data['products'] = plist
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + asset_os)
+    asset_tags.append('GCP_PROJECT:' + project_id)
     if atype is not None:
         asset_tags.append(atype)
-    if args.enable_tracking_tags == True:
-        asset_tags.append('SOURCE:GCP:'+project_id)
-    else:
-        asset_tags.append('SOURCE:GCP')
+    asset_tags.append('SOURCE:GCP')
     asset_data['tags'] = asset_tags
     return asset_data
 
