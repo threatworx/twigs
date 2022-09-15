@@ -43,7 +43,7 @@ def get_machines(args, token):
         if asset['name'].startswith('wow'):
             asset_tags.append('WORKSTATION_ON_WHEELS')
         if asset['name'].startswith('sh'):
-            asset_tags.append('SHC_SERVER')
+            asset_tags.append('SERVER')
         asset['tags'] = asset_tags
 
         products = []
