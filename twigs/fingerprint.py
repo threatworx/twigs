@@ -18,50 +18,46 @@ def discover(args):
     instance = args.instance
 
     hosts = args.hosts
+
 def get_wordpress(args):
     if not nmap_exists():
         logging.error('nmap CLI not found')
         return None
-    logging.info("Fingerprinting "+args.wordpress)
-    cmdarr = [NMAP + ' -oX - -sV -PN -T4 -F '+args.wordpress]
-    try:
-        out = subprocess.check_output(cmdarr, shell=True)
-        out = out.decode(args.encoding)
-    except subprocess.CalledProcessError:
-        logging.error("Error determining OS release")
-        return None 
+    logging.info("Discovering wordpress website on "+args.host)
     assets = []
-    dom = parseString(out)
-    hosts = dom.getElementsByTagName("host")
-    word = [NMAP + ' -sV --script http-wordpress-enum '+ args.wordpress]
+    word = [NMAP + ' --script http-wordpress-enum '+ args.host]
     try:
         word_out = subprocess.check_output(word, shell=True)
     except subprocess.CalledProcessError:
-        logging.error("Error determining OS release")
+        logging.error("Error running nmap discovery for wordpress")
         return None 
-    for h in hosts:
-        addr = h.getElementsByTagName("address")[0]
-        addr = addr.getAttribute('addr')
-        hostname = addr
-        harr = h.getElementsByTagName("hostname")
-        if harr != None and len(harr) > 0:
-            hostname = h.getElementsByTagName("hostname")[0]
-            hostname = hostname.getAttribute('name')
-        plugins = str(word_out).split('plugins')[-1]
-        plugins = plugins.split('_http')[0]
-        plugins = plugins.split('\\n')
-        for p in range(len(plugins)):
-            plugins[p] = plugins[p].replace(' ','')
-            plugins[p] = plugins[p].replace('|','')
-        products = [i for i in plugins if i]
-        asset_data = {}
-        asset_data['id'] = addr
-        asset_data['name'] = hostname
-        asset_data['type'] = 'WordPress'
-        asset_data['owner'] = args.handle
-        asset_data['products'] = products
-        asset_data['tags'] = ['wordpress']
-        assets.append(asset_data)
+    plugins = str(word_out).split('plugins')[-1]
+    plugins = plugins.split('_http')[0]
+    plugins = plugins.split('|')
+    products = []
+    for p in plugins:
+        p = p.strip()
+        if p == '':
+            continue
+        if p == 'themes':
+            continue
+        if p.startswith('_'):
+            p = p.replace('_','')
+            p = p.strip()
+        if 'Nmap done:' in p:
+            p = p.split('\n')[0]
+        products.append(p)
+    asset_data = {}
+    if args.assetid != None:
+        asset_data['id'] = args.assetid
+    else:
+        asset_data['id'] = args.host
+    asset_data['name'] = args.host 
+    asset_data['type'] = 'WordPress'
+    asset_data['owner'] = args.handle
+    asset_data['products'] = products
+    asset_data['tags'] = ['wordpress']
+    assets.append(asset_data)
     return assets
 
 def get_inventory(args):
