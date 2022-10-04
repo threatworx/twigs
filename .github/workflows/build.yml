@@ -3,10 +3,10 @@
 name: twigs build and publish to pypi
 
 on:
-  push:
-    branches: [ "master" ]
-    paths:
-      - 'twigs/__init__.py'
+#  push:
+#    branches: [ "master" ]
+#    paths:
+#      - 'twigs/__init__.py'
   schedule:
     - cron: "*/5 * * * *"
 
