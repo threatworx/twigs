@@ -1,0 +1,26 @@
+# Build and publish latest twigs package to pypi
+
+name: twigs build and publish to pypi
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'twigs/__init__.py'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo content
+        uses: actions/checkout@v2 # checkout the repository content to github runner
+
+      - name: checkout repo content
+        run: pip install twine
+
+      - name: build and publish twigs
+        run: python ${GITHUB_WORKSPACE}/setup.py sdist bdist_wheel
+
+      - name: verify package using twine
+        run: twine ${GITHUB_WORKSPACE}/dist/*.whl
+        
