@@ -27,10 +27,10 @@ def run_az_cmd(cmd):
         ret_json = json.loads(cmd_output)
     except subprocess.CalledProcessError:
         logging.error("Error running az command [%s]", cmd)
-        sys.exit(1)
+        utils.tw_exit(1)
     except ValueError:
         logging.error("Error parsing JSON output for az command [%s]: %s", cmd, cmd_output)
-        sys.exit(1)
+        utils.tw_exit(1)
     return ret_json
 
 def get_latest_tag_with_digest(image_name, repository):

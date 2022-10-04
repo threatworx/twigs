@@ -344,7 +344,7 @@ def discover(args):
                 logging.error("Unable to save secured CSV file")
                 logging.error("%s", err)
                 os.remove(new_csv_file)
-                return None
+                utils.tw_exit(1)
             os.remove(host_list_file)
             shutil.copyfile(new_csv_file, host_list_file)
             os.remove(new_csv_file)
@@ -464,6 +464,7 @@ def discover_host(args, host):
         asset_tags.append('Linux')
     asset_tags.append(atype)
     asset_data['tags'] = asset_tags
+    utils.update_tool_run_record()
 
     plugin_processor.process_plugins(asset_data, host, args, '/')
 

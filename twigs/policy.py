@@ -5,6 +5,8 @@ import json
 import logging
 import requests
 
+from . import utils
+
 def apply_policy(policy_names, asset_id_list, args):
     url = "https://" + args.instance + "/api/v1/policies/apply/"
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
@@ -19,7 +21,7 @@ def apply_policy(policy_names, asset_id_list, args):
     else:
         logging.error("Error applying specified policy")
         logging.error("Response details: %s", resp.content)
-        sys.exit(1)
+        utils.tw_exit(1)
 
 def is_policy_job_done(policy_job_id, args):
     url = "https://" + args.instance + "/api/v1/policyjobs/" + policy_job_id + "/"

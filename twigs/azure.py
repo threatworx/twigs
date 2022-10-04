@@ -5,6 +5,8 @@ import requests
 import re
 import logging
 
+from . import utils
+
 gAllVMs = None
 
 def get_all_vms(params):
@@ -38,7 +40,7 @@ def print_details(token):
     print("")
     print("Please re-run twigs with appropriate values for subscription, resource group and workspace.")
     print("")
-    sys.exit(1)
+    utils.tw_exit(0)
 
 # Main entry point
 def get_inventory(args):
@@ -208,7 +210,7 @@ def retrieve_inventory(params):
     else:
         logging.error("Error could not get asset inventory details from Azure...")
         logging.error("Response content: %s" % resp.text)
-        sys.exit(1)
+        utils.tw_exit(1)
 
 #Get access token using  an AAD, an app id associted with that AAD and the API key/secret for that app
 def get_access_token(params, resource):
@@ -226,7 +228,7 @@ def get_access_token(params, resource):
     else:
         logging.error("Error unable to get access token for API calls")
         logging.error("Response content: %s" % resp.text)
-        sys.exit(1)
+        utils.tw_exit(1)
 
     return token
 
@@ -311,7 +313,7 @@ def get_all_subscriptions(token):
     else:
         logging.error("API call to get all subscriptions failed")
         logging.error("Response content: %s" % resp.text)
-        sys.exit(1)
+        utils.tw_exit(1)
     return allsubs
 
 #Get all resource groups for a subscription
@@ -328,7 +330,7 @@ def get_all_resourcegroups_for_subscription(subid,token):
     else:
         logging.error("API call to get all resource groups failed")
         logging.error("Response content: %s" % resp.text)
-        sys.exit(1)
+        utils.tw_exit(1)
 
     return allresourcegroups
 
@@ -347,7 +349,7 @@ def get_all_workspaces_for_subscription(subid,token):
     else:
         logging.error("API call to get all workspaces failed")
         logging.error("Response content: %s" % resp.text)
-        sys.exit(1)
+        utils.tw_exit(1)
 
     return allworkspaces
 

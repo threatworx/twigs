@@ -202,7 +202,7 @@ def read_patterns(patterns, patterns_file, msg):
     if patterns_file:
         if os.path.isfile(patterns_file) == False:
             logging.error("Error unable to read patterns file [%s]", patterns_file)
-            sys.exit(1)
+            utils.tw_exit(1)
         with open(patterns_file, 'r') as fd:
             data = fd.read()
             temp_patterns = data.split('\n')
@@ -247,11 +247,11 @@ def scan_for_secrets(args, local_path, base_path):
         except IOError as ioe:
             logging.error("Unable to open file [%s]",args.regex_rules_file)
             logging.error("Got exception: [%s]", str(ioe))
-            sys.exit(1)
+            utils.tw_exit(1)
         except ValueError as ve:
             logging.error("Unable to parse JSON content")
             logging.error("Got exception [%s]", str(ve))
-            sys.exit(1)
+            utils.tw_exit(1)
     else:
         regex_rules = cs_defaults.default_regex_rules
     for key in regex_rules:
@@ -262,7 +262,7 @@ def scan_for_secrets(args, local_path, base_path):
         if args.common_passwords_file:
             if os.path.isfile(args.common_passwords_file) == False:
                 logging.error("Error unable to read common passwords file [%s]", args.common_passwords_file)
-                sys.exit(1)
+                utils.tw_exit(1)
             with open(args.common_passwords_file, 'r') as fd:
                 buf = fd.read()
             common_passwords_list = buf.split('\n')

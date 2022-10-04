@@ -801,7 +801,8 @@ def discover_inventory(args, localpath):
     asset_data['tags'] = asset_tags
     if len(tech2prod_dict) > 0:
         asset_data['compliance_metadata'] = {"source_metadata": {"technology_products":tech2prod_dict, "shallow_technology_products":shallow_tech2prod_dict}}
-    
+   
+    lib_utils.update_tool_run_record()
     return [ asset_data ]
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
@@ -846,17 +847,20 @@ def get_inventory_helper(args):
         logging.info("Discovering secrets/sensitive information. This may take some time.")
         secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
         assets[0]['secrets'] = secret_records
+    lib_utils.update_tool_run_record()
 
     code_issues = []
     if args.sast:
         logging.info("Performing static analysis. This may take some time.")
         sast_records = sast.run_sast(args, path, base_path)
         code_issues.extend(sast_records)
+    lib_utils.update_tool_run_record()
 
     if args.iac_checks:
         logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
         iac_records = iac.run_iac_checks(args, path, base_path)
         code_issues.extend(iac_records)
+    lib_utils.update_tool_run_record()
 
     if len(code_issues) > 0:
         assets[0]['sast'] = code_issues

@@ -8,7 +8,13 @@ import logging
 import requests
 import time
 
+try:
+    from .__init__ import __version__
+except (ImportError,ValueError):
+    from twigs.__init__ import __version__
+
 GoDaddyCABundle = True
+run_args = None
 
 SYSTEM_TAGS = ['IMAGE_NAME', 'OS_VERSION', 'OS_RELEASE', 'SOURCE', 'OS_RELEASE_ID', 'CRITICALITY', 'http', 'https', 'OS_ARCH', 'IMAGE_DIGEST', 'DISCOVERY_TYPE']
 
@@ -405,3 +411,73 @@ def tw_open(in_file, in_encoding, in_mode='rt'):
     else:
         f = open(in_file, mode=in_mode, encoding=in_encoding)
     return f
+
+def set_run_args(args):
+    global run_args
+    run_args = args
+
+def get_run_args():
+    global run_args
+    return run_args
+
+def create_new_tool_run_record():
+    args = get_run_args()
+    run_id  = args.mode if args.run_id is None else args.run_id
+    machine_id = get_ip()
+    tool_name = 'twigs'
+    tool_version = __version__
+    email = args.handle
+    url = "https://" + args.instance + "/api/v1/toolrun/new/"
+    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    post_payload = { "run_id": run_id, "machine_id": machine_id, "email": email, "name": tool_name, "version": tool_version }
+    response = requests_post(url + auth_data, post_payload)
+    if response.status_code == 200:
+        args.run_record_id = response.json()['id']
+    return response
+
+def update_tool_run_record(status='RUNNING', observations=None):
+    args = get_run_args()
+    run_record_id = args.run_record_id
+    url = "https://" + args.instance + "/api/v1/toolrun/" + str(run_record_id) + "/"
+    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    if status != 'RUNNING':
+        logging.shutdown()
+        observations = { } if observations is None else observations
+        observations['log_snippet'] = tail('twigs.log', args.encoding, 100)
+    put_payload = { "status": status, "observations": observations }
+    response = requests_put(url + auth_data, put_payload)
+    return response
+
+def tw_exit(exit_code, observations = None):
+    status = 'SUCCESS' if exit_code == 0 else 'FAIL'
+    update_tool_run_record(status, observations)
+    sys.exit(exit_code)
+
+def tail(fn, encoding, lines=20):
+    with open(fn, 'rb') as f:
+        total_lines_wanted = lines
+
+        BLOCK_SIZE = 1024
+        f.seek(0, 2)
+        block_end_byte = f.tell()
+        lines_to_go = total_lines_wanted
+        block_number = -1
+        blocks = [] # blocks of size BLOCK_SIZE, in reverse order starting
+                    # from the end of the file
+        while lines_to_go > 0 and block_end_byte > 0:
+            if (block_end_byte - BLOCK_SIZE > 0):
+                # read the last block we haven't yet read
+                f.seek(block_number*BLOCK_SIZE, 2)
+                blocks.append(f.read(BLOCK_SIZE).decode(encoding))
+            else:
+                # file too small, start from begining
+                f.seek(0,0)
+                # only read what was not read
+                blocks.append(f.read(block_end_byte).decode(encoding))
+            lines_found = blocks[-1].count('\n')
+            lines_to_go -= lines_found
+            block_end_byte -= BLOCK_SIZE
+            block_number -= 1
+        all_read_text = ''.join(reversed(blocks))
+        return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
+

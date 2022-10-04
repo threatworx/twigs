@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--run_id RUN_ID] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--out OUT] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
 
 ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -68,6 +68,8 @@ optional arguments:
                         be set as "TW_TOKEN" environment variable
   --instance INSTANCE   The ThreatWorx instance. Note this can be set as 
                         "TW_INSTANCE" environment variable
+  --run_id RUN_ID       Specify a distinct identifier for this twigs discovery
+                        run
   --location LOCATION   Specify location information for discovered asset(s).
   --create_empty_asset  Create empty asset even if nothing is discovered.
                         Applicable to source code (repo) assets.

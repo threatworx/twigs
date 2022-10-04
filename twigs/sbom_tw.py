@@ -14,7 +14,7 @@ def get_assets_from_json_file(in_file):
             assets = json.load(fd)
         except ValueError:
             logging.error("Error loading JSON file [%s]", in_file)
-            sys.exit(1)
+            utils.tw_exit(1)
     return assets
 
 def get_assets_from_csv_file(in_file, args):
@@ -67,7 +67,7 @@ def validate_update_csv_asset(asset, args):
             response = utils.requests_get(url + auth_data)
             if response is not None and response.status_code != 200:
                 logging.error("Unable to get valid asset types.")
-                sys.exit(1)
+                utils.tw_exit(1)
             all_asset_types = response.json()
         if asset['type'] not in all_asset_types:
             logging.warning("Skipping asset [%s] with invalid asset type [%s]", asset['name'],asset['type'])
@@ -83,7 +83,7 @@ def process_json(sbom_abs_path, args):
 def process_csv(sbom_abs_path, args):
     if args.token is None or len(args.token) == 0:
         logging.error("API token is required to validate asset types in CSV")
-        sys.exit(1)
+        utils.tw_exit(1)
     assets = get_assets_from_csv_file(sbom_abs_path, args)
     return assets
     

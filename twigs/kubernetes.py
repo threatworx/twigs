@@ -17,10 +17,10 @@ def get_helm_command_path():
     else:
         if os.path.isfile(HELM_CMD) == False:
             logging.error("Helm command not found at specified HELM_PATH [%s]", HELM_CMD)
-            sys.exit(1)
+            lib_utils.tw_exit(1)
         elif os.access(HELM_CMD, os.X_OK) == False:
             logging.error("Helm command file [%s] is not an executable", HELM_CMD)
-            sys.exit(1)
+            lib_utils.tw_exit(1)
     return HELM_CMD
 
 def get_deployment_name(yaml_json):

@@ -10,16 +10,17 @@ import tempfile
 import traceback
 from .dast_plugins import skipfish as skipfish
 from .dast_plugins import arachni as arachni 
+from . import utils
 
 dast_plugins = ["skipfish", "arachni"]
 
 def get_inventory(args):
     if args.plugin not in dast_plugins:
         logging.error('Not a supported DAST plugin')
-        sys.exit(1) 
+        utils.tw_exit(1) 
     if args.assetid.strip() == "":
         logging.error('[assetid] cannot be empty')
-        sys.exit(1)
+        utils.tw_exit(1)
     asset_id = args.assetid
     if asset_id == None:
         asset_id = args.url

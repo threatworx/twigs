@@ -153,10 +153,10 @@ def run_scan(asset_id_list, pj_json, args):
         run_lic_scan = True
         if pj_json is not None:
             for policy in pj_json['policy_json']:
-                if policy['type'] == 'vulnerability':
+                if policy['type'] == 'cicdvulnpolicy':
                     logging.info("Impact assessment performed as part of policy evaluation")
                     run_va_scan = False # VA scan already done, so don't do it again
-                elif policy['type'] == 'license':
+                elif policy['type'] == 'cicdlicensepolicy':
                     logging.info("License compliance performed as part of policy evaluation")
                     run_lic_scan = False # License scan already done, so don't do it again
 
@@ -231,7 +231,7 @@ def sub_pkg_get_inventory(args):
     except pkg_resources.DistributionNotFound:
         logging.error("Error required package [%s] is not installed", dist)
         logging.error("Please install using command [sudo pip install %s]", dist)
-        sys.exit(1)
+        utils.tw_exit(1)
     module = importlib.import_module('%s.%s' % (dist,dist))
     get_inventory_func = getattr(module, "get_inventory")
     assets = get_inventory_func(args)
@@ -324,6 +324,9 @@ def main(args=None):
         parser.add_argument('--handle', help='The ThreatWorx registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWorx API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWorx instance. Note this can be set as "TW_INSTANCE" environment variable')
+        parser.add_argument('--run_id', help='Specify a distinct identifier for this twigs discovery run')
+        # Hidden argument to track the record identifier for a run
+        parser.add_argument('--run_record_id', help=argparse.SUPPRESS)
         parser.add_argument('--location', help='Specify location information for discovered asset(s).')
         parser.add_argument('--create_empty_asset', action='store_true', help='Create empty asset even if nothing is discovered. Applicable to source code (repo) assets.')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
@@ -836,12 +839,17 @@ def main(args=None):
             logging.error('[token] argument is not specified and [out] argument is not specified. Unable to share discovered assets.')
             sys.exit(1)
 
-        if args.schedule is not None and sys.platform != 'win32':
+        if sys.platform != 'win32' and args.schedule is not None:
             from crontab import CronSlices
             # validate schedule
             if CronSlices.is_valid(args.schedule) == False:
                 logging.error("Error: Invalid cron schedule [%s] specified!" % args.schedule)
                 sys.exit(1)
+
+        utils.set_run_args(args)
+        response = utils.create_new_tool_run_record()
+        if response.status_code != 200:
+            utils.tw_exit(1)
 
         assets = []
         sub_pkg_list = ['ssl_audit']
@@ -982,6 +990,7 @@ def main(args=None):
                         logging.info("Added to crontab with comment [%s]", cron_comment)
 
         logging.info('Run completed')
+        utils.update_tool_run_record('SUCCESS')
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
             sys.exit(exit_code)
@@ -990,7 +999,7 @@ def main(args=None):
         logging.error("Something went wrong with this twigs run")
         st = traceback.format_exc()
         logging.error("Exception trace details: %s", st)
-        sys.exit(1)
+        utils.tw_exit(1)
 
 if __name__ == '__main__':
     main()

@@ -102,6 +102,7 @@ def execute_plugin(args, asset_dict, host, plugin_dict, root_folder):
     if exit_code == 0:
         logging.info("Processing output from plugin [%s]", plugin_dict['name'])
         process_plugin_output(script_output, asset_dict)
+        utils.update_tool_run_record()
     elif exit_code == 1:
         logging.error("Plugin [%s] failed to run successfully", plugin_dict['name'])
 

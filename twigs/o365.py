@@ -7,6 +7,8 @@ import logging
 import random
 import time
 
+from . import utils
+
 def get_machines(args, token):
     headers = { "Content-Type":"application/json", "Accept": "application/json", "Authorization": "Bearer %s" % token }
     url = "https://api.securitycenter.microsoft.com/api/machines?$filter=riskScore+eq+'High'"
@@ -115,7 +117,7 @@ def get_access_token(args):
     else:
         logging.error("Error unable to get access token for API calls")
         logging.error("Response content: %s" % resp.text)
-        sys.exit(1)
+        utils.tw_exit(1)
 
     return token
 

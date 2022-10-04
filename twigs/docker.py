@@ -399,10 +399,14 @@ def discover_container_from_image(args, digest):
         logging.info("Retrieving container filesystem")
         if args.image is not None:
             container_tar = save_image(args, temp_dir)
+            utils.update_tool_run_record()
             container_fs = get_container_fs(container_tar)
+            utils.update_tool_run_record()
         else:
             container_tar = export_container(args, temp_dir)
+            utils.update_tool_run_record()
             container_fs = unpack_container_fs(container_tar)
+            utils.update_tool_run_record()
 
         if container_fs is None:
             logging.warning("Unable to analyze container filesystem")
@@ -433,6 +437,7 @@ def discover_container_from_image(args, digest):
             plist = discover_ubuntu_from_container_image(container_fs)
         elif atype == 'Alpine Linux':
             plist = discover_alpine_from_container_image(container_fs)
+        utils.update_tool_run_record()
 
         shutil.rmtree(temp_dir, onerror = on_rm_error)
         if plist is None or len(plist) == 0:

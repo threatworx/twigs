@@ -14,13 +14,13 @@ def run_docker_bench(args):
     os_release = utils.get_os_release(args, None)
     if os_release == None:
         logging.error('Unsupported OS type for running docker bench')
-        sys.exit(1)
+        utils.tw_exit(1)
     atype = utils.get_asset_type(os_release)
 
     dbench_path = args.docker_bench_home + DBENCH
     if not os.path.isfile(dbench_path) or not os.access(dbench_path, os.X_OK):
         logging.error('Docker bench script not found')
-        sys.exit(1)
+        utils.tw_exit(1)
     logging.info('Running docker bench script: '+dbench_path)
     cwd = os.getcwd()
     try:

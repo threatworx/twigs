@@ -16,7 +16,7 @@ def run_cis_aws_bench(args, extra_checks=False):
     PROWLER_SH = '/prowler'
     if args.assetid.strip() == "":
         logging.error("[assetid] cannot be empty")
-        sys.exit(1)
+        utils.tw_exit(1)
     asset_id = args.assetid
     asset_name = asset_id if args.assetname is None or args.assetname.strip() == "" else args.assetname
     if args.prowler_home is None:
@@ -26,7 +26,7 @@ def run_cis_aws_bench(args, extra_checks=False):
     prowler_path = args.prowler_home + PROWLER_SH
     if not os.path.isfile(prowler_path) or not os.access(prowler_path, os.X_OK):
         logging.error('AWS Bench script not found')
-        sys.exit(1)
+        utils.tw_exit(1)
 
     logging.info("Running AWS Bench script [%s]", prowler_path)
     logging.info("This may take some time...")
@@ -51,7 +51,7 @@ def run_cis_aws_bench(args, extra_checks=False):
         exit_code = proc.wait()
     except subprocess.CalledProcessError:
         logging.error("Error running AWS bench script")
-        sys.exit(1)
+        utils.tw_exit(1)
 
     os.chdir(cwd) 
     asset = { }

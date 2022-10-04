@@ -11,11 +11,11 @@ def run_k8s_cis(args, ctype):
     k8s_cis_path = os.path.dirname(os.path.realpath(__file__)) + '/kubernetes-cis-benchmark/'
     if args.target == None or (args.target != 'master' and args.target != 'worker'):
         logging.error("No target [master | worker] specified or invalid target")
-        sys.exit(1)
+        utils.tw_exit(1)
 
     if args.assetid.strip() == "":
         logging.error("[assetid] cannot be empty")
-        sys.exit(1)
+        utils.tw_exit(1)
 
     custom_rating_dict = None
     if args.custom_ratings:
@@ -27,18 +27,18 @@ def run_k8s_cis(args, ctype):
                     for rating in temp_cr:
                         if rating not in ["1", "2", "3", "4", "5"]:
                             logging.error("Invalid rating [%s] specified in custom rating JSON file [%s]", rating, args.custom_ratings)
-                            sys.exit(1)
+                            utils.tw_exit(1)
                         tests = temp_cr[rating]
                         for test in tests:
                             custom_rating_dict[test] = rating
                 except ValueError as ve:
                     logging.error('Unable to load JSON file %s', args.custom_ratings)
                     logging.error(ve)
-                    sys.exit(1)
+                    utils.tw_exit(1)
         else:
             logging.error('Unable to access JSON file %s', args.custom_ratings)
             logging.error('Please check it exists and is accessible')
-            sys.exit(1)
+            utils.tw_exit(1)
 
     asset = {}
     asset['id'] = args.assetid
