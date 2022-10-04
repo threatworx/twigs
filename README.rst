@@ -10,7 +10,7 @@ twigs
         :target: https://twigs.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-
+[![twigs build and publish to pypi](https://github.com/threatworx/twigs/actions/workflows/build.yml/badge.svg)](https://github.com/threatworx/twigs/actions/workflows/build.yml)
 
 
 ThreatWorx Information Gathering Script
