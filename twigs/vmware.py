@@ -7,6 +7,7 @@ import ssl
 import json
 from pyVim.connect import SmartConnectNoSSL
 from pyVmomi import vim
+from . import utils
 
 # Method that populates objects of type vimtype
 def get_all_objs(content, vimtype):
@@ -28,15 +29,15 @@ def discover(args):
         si = SmartConnectNoSSL(host=args.host, user=args.user, pwd=pwd)
     except:
          logging.error("Failed to connect to vCenter host "+args.host)
-         return None
+         utils.tw_exit(1)
     if si == None:
          logging.error("Failed to connect to vCenter host "+args.host)
-         return None
+         utils.tw_exit(1)
 
     content = si.content
     if content == None:
          logging.error("No information from vCenter host "+args.host)
-         return None
+         utils.tw_exit(1)
 
     esx_root_found = content.about.fullName.startswith('VMware ESX')
     logging.debug("Found ESX product in root node: %s", esx_root_found)

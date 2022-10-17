@@ -917,6 +917,7 @@ def main(args=None):
         if args.mode != 'host' or args.secure == False:
             if assets is None or len(assets) == 0:
                 logging.info("No assets found!")
+                utils.update_tool_run_record('WARNING')
             else:
                 """
                 if args.asset_criticality is not None:
@@ -988,9 +989,11 @@ def main(args=None):
                         njob = user_cron.new(command=cron_cmd, comment=cron_comment)
                         njob.setall(args.schedule)
                         logging.info("Added to crontab with comment [%s]", cron_comment)
+                utils.update_tool_run_record('SUCCESS')
+        else:
+            utils.update_tool_run_record('SUCCESS')
 
         logging.info('Run completed')
-        utils.update_tool_run_record('SUCCESS')
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
             sys.exit(exit_code)
