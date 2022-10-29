@@ -996,7 +996,7 @@ def main(args=None):
         logging.info('Run completed')
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
-            sys.exit(exit_code)
+            sys.exit(int(exit_code))
 
     except Exception as e:
         logging.error("Something went wrong with this twigs run")
