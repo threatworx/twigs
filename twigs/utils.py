@@ -422,6 +422,8 @@ def get_run_args():
 
 def create_new_tool_run_record():
     args = get_run_args()
+    if args.token is None or len(args.token) == 0:
+        return None
     run_id  = args.mode if args.run_id is None else args.run_id
     machine_id = get_ip()
     tool_name = 'twigs'
@@ -437,6 +439,8 @@ def create_new_tool_run_record():
 
 def update_tool_run_record(status='RUNNING', observations=None):
     args = get_run_args()
+    if args.token is None or len(args.token) == 0:
+        return None
     run_record_id = args.run_record_id
     url = "https://" + args.instance + "/api/v1/toolrun/" + str(run_record_id) + "/"
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
