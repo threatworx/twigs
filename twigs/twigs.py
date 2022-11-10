@@ -848,7 +848,7 @@ def main(args=None):
 
         utils.set_run_args(args)
         response = utils.create_new_tool_run_record()
-        if response.status_code != 200:
+        if response is not None and response.status_code != 200:
             utils.tw_exit(1)
 
         assets = []
