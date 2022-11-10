@@ -761,9 +761,9 @@ def get_inventory(args, digest=None):
 
     global docker_cli
 
-    if os.geteuid() != 0:
-        logging.error("Docker operations need root privilege. Please run as 'sudo' or 'root'")
-        return None
+#    if os.geteuid() != 0:
+#        logging.error("Docker operations need root privilege. Please run as 'sudo' or 'root'")
+#        return None
 
     docker_cli = docker_available()
     if not docker_cli:
