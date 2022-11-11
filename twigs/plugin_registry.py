@@ -7,6 +7,10 @@ plugin_registry = {
         "cve-2021-45105": {"name": "Check for CVE-2021-45105 (log4j)", "file": "cve-2021-45105.sh", "enabled": True},
         "cve-2021-44832": {"name": "Check for CVE-2021-44832 (log4j)", "file": "cve-2021-44832.sh", "enabled": True},
         "cve-2022-22965": {"name": "Check for CVE-2022-22965 (Spring4Shell)", "file": "cve-2022-22965.sh", "enabled": True},
+        "cve-2017-12626": {"name": "Check for CVE-2017-12626 (poi)", "file": "cve-2017-12626.sh", "enabled": True},
+        "tomcat_vulns": {"name": "Check for apache tomcat vulns", "file": "tomcat_vulns.sh", "enabled": True},
+        "apache_vulns": {"name": "Check for apache server vulns", "file": "apache_vulns.sh", "enabled": True},
+        "spring_framework_vulns": {"name": "Check for spring framework vulns", "file": "spring_framework_vulns.sh", "enabled": True},
 }
 
 def get_plugin_dir():
