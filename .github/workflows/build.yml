@@ -1,6 +1,6 @@
 # Build and publish latest twigs package to pypi
 
-name: twigs build and publish to pypi
+name: twigs build
 
 on:
 #  push:
