@@ -9,8 +9,9 @@ twigs
 .. image:: https://readthedocs.org/projects/twigs/badge/?version=latest
         :target: https://twigs.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
-
-![twigs build and publish to pypi](https://github.com/threatworx/twigs/actions/workflows/build.yml/badge.svg)
+.. image:: https://github.com/threatworx/twigs/actions/workflows/build.yml/badge.svg
+        :target: https://github.com/threatworx/twigs/actions/workflows/build.yml
+        :alt: twigs build
 
 ThreatWorx Information Gathering Script
 
