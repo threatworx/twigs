@@ -9,7 +9,6 @@ VERSIONS=''
 VERFILES=`find $ROOT_FOLDER -path "*/tomcat*/bin/version.sh"`
 for v in $VERFILES
 do
-	echo $v
 	VEROUT=`$v | grep "version:" | cut -d"/" -f2`
 	VERSIONS=`echo "$VERSIONS $VEROUT"`
 done
@@ -52,8 +51,7 @@ do
 		echo "VULN:CVE-2021-30640"
 		echo "PERCENTAGE:100"
 		echo "AFFECTED_PRODUCT:apache tomcat $v"
-		echo "VULNERABLE_PRODUCT:apache tomcat 7.0.x <= 7.0.108 / 8.5.x <= 8.5.65 / 9.0.x
-<= 9.0.45 / 10.0.x <= 10.0.5"
+		echo "VULNERABLE_PRODUCT:apache tomcat 7.0.x <= 7.0.108 / 8.5.x <= 8.5.65 / 9.0.x <= 9.0.45 / 10.0.x <= 10.0.5"
 		echo "ANALYSIS:apache tomcat $v is vulnerable to CVE-2021-30640"
 		echo "RECOMMENDATION:Upgrade to version 7.0.109, 8.5.66, 9.0.46, 10.0.6 or later"
 		echo ""
