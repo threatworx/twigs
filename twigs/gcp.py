@@ -6,6 +6,12 @@ import json
 from . import utils
 from .gcp_cis_tool import gcp_cis_utils
 
+def get_cos_packages(package_list):
+    plist = []
+    for package in package_list:
+        plist.append(package['Arch'] + ' ' + package['Name'] + ' ' + package['Version'])
+    return plist
+
 def get_deb_packages(package_list):
     plist = []
     for package in package_list:
@@ -19,6 +25,14 @@ def get_rpm_packages(package_list):
         plist.append(package['Name'] + ' ' + package['Version'] + '.' + arch)
     return plist
 
+def get_cos_version(ci_json):
+    if len(ci_json['InstalledPackages']['cos']) > 0:
+        cosver = ci_json['SystemInformation']['ShortName'] + '-' + ci_json['SystemInformation']['Version'] + '-'
+        cosver = cosver + ci_json['InstalledPackages']['cos'][0]['Version']
+        cosver = cosver.replace('.','-')
+        return cosver
+    return None
+
 def get_installed_packages(ci_json):
     plist = []
     ip = ci_json['InstalledPackages']
@@ -30,6 +44,8 @@ def get_installed_packages(ci_json):
         elif ptype in ['zypperPatches', 'gem']:
             # Skip these packages
             continue
+        elif ptype == 'cos':
+            plist.extend(get_cos_packages(ip[ptype]))
         else:
             logging.error("Error: Compute instance [%s] has unknown package type [%s]", ci_json['SystemInformation']['LongName'], ptype)
     return plist
@@ -57,6 +73,10 @@ def process_compute_inventory_json(args, project_id, ci_id, ci_json):
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + asset_os)
     asset_tags.append('GCP_PROJECT:' + project_id)
+    if atype == 'Google Container-Optimized OS':
+        cosversion = get_cos_version(ci_json)
+        if cosversion:
+            asset_tags.append('COS_VERSION:'+cosversion)
     if atype is not None:
         asset_tags.append(atype)
     asset_tags.append('SOURCE:GCP')
