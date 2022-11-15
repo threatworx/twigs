@@ -80,18 +80,6 @@ check_log4j_vulns()
 			check_embedded_log4j_vuln_version "$WAR_FILE" "$LOG4J_FILE" "CVE-2021-45105" $CVE_2021_45105_LOG4J_VERSIONS
 		done
 	done
-	JAR_FILES=`find $ROOT_FOLDER -name "*.jar" -type f`
-	for JAR_FILE in $JAR_FILES
-	do
-		LOG4J_FILES=`jar -tf $JAR_FILE | grep 'log4j-core-.*\.jar'`
-		for LOG4J_FILE in $LOG4J_FILES
-		do
-			check_embedded_log4j_vuln_version "$JAR_FILE" "$LOG4J_FILE" "CVE-2021-44228" $CVE_2021_44228_LOG4J_VERSIONS
-			check_embedded_log4j_vuln_version "$JAR_FILE" "$LOG4J_FILE" "CVE-2021-44832" $CVE_2021_44832_LOG4J_VERSIONS
-			check_embedded_log4j_vuln_version "$JAR_FILE" "$LOG4J_FILE" "CVE-2021-45046" $CVE_2021_45046_LOG4J_VERSIONS
-			check_embedded_log4j_vuln_version "$JAR_FILE" "$LOG4J_FILE" "CVE-2021-45105" $CVE_2021_45105_LOG4J_VERSIONS
-		done
-	done
 }
 
 check_log4j_vulns "$1"
