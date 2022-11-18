@@ -1,7 +1,9 @@
 #!/bin/bash
 
+
 SCRIPT=`realpath -s $0`
 SCRIPTPATH=`dirname $SCRIPT`
+. $SCRIPTPATH/common.sh
 ROOT_FOLDER="$1"
 
 # find all spring framework versions
@@ -11,7 +13,12 @@ SPRING_JARS=`find $ROOT_FOLDER -name 'spring-core-*.jar'`
 for s in $SPRING_JARS
 do
 	v=`echo $s | grep -Po '(?<=spring-core-)\d.\d.\d'`
-	if [[ $v = 5.2* && $v < "5.2.20" ]] || [[ $v = 5.3* && $v < "5.3.17" ]]; then
+	vercomp $v 5.2.20
+	vout1=$?
+	vercomp $v 5.3.17
+	vout2=$?
+	#if [[ $v = 5.2* && $v < "5.2.20" ]] || [[ $v = 5.3* && $v < "5.3.17" ]]; then
+	if [[ $v = 5.2* && $vout1 = 2  ]] || [[ $v = 5.3* && $vout2 = 2 ]]; then
 		echo "TYPE:IMPACT"
 		echo "VULN:CVE-2022-22950"
 		echo "PERCENTAGE:100"
