@@ -29,7 +29,7 @@ if GIT_PATH is None:
     else:
         GIT_PATH = '/usr/bin/git'
 
-SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar', 'cargo', 'go']
+SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar', 'cargo', 'go', 'composer']
 
 def cleanse_semver_version(pv):
     pv = pv.replace('"','')
@@ -49,6 +49,24 @@ def cleanse_semver_version(pv):
         for token_index in range(2, len(temp_tokens)):
             pv = pv + " " + temp_tokens[token_index]
     return pv
+
+def discover_composer_json(args, localpath):
+    plist = []
+    files = lib_utils.find_files(localpath, 'composer.json')
+    prop_dict = None
+    for file_path in files:
+        fp = lib_utils.tw_open(file_path, args.encoding)
+        if fp == None:
+            continue
+        contents = fp.read()
+        fp.close()
+        composer_json = json.loads(contents)
+        requires = composer_json['require']
+        for pname in requires.keys():
+            pver = requires[pname]
+            prod = pname + " " + pver + " source:"+file_path
+            plist.append(prod)
+    return plist, None
 
 def discover_go_mod(args, localpath):
     plist = []
@@ -719,6 +737,8 @@ def discover_specified_type(repo_type, args, localpath):
         plist, p1list = discover_cargo_toml(args, localpath)
     elif repo_type == 'go':
         plist, p1list = discover_go_mod(args, localpath)
+    elif repo_type == 'composer':
+        plist, p1list = discover_composer_json(args, localpath)
 
     return plist, p1list
 
