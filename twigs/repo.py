@@ -16,6 +16,8 @@ import zipfile
 from xml.dom import minidom
 import toml
 import re
+import ast
+import textwrap
 
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
@@ -628,6 +630,53 @@ def discover_python(args, localpath):
         except:
             logging.error("Unable to parse python dependencies")
             continue
+
+    files = lib_utils.find_files(localpath, 'setup.py')
+    for file_path in files:
+        """Parse setup.py and return args and keywords args to its setup
+        function call
+
+        """
+        mock_setup = textwrap.dedent('''\
+        def setup(*args, **kwargs):
+            __setup_calls__.append((args, kwargs))
+        ''')
+        parsed_mock_setup = ast.parse(mock_setup, filename=file_path)
+        with open(file_path, 'rt') as setup_file:
+            parsed = ast.parse(setup_file.read())
+            for index, node in enumerate(parsed.body[:]):
+                if (
+                    not isinstance(node, ast.Expr) or
+                    not isinstance(node.value, ast.Call) or
+                    node.value.func.id != 'setup'
+                ):
+                    continue
+                parsed.body[index:index] = parsed_mock_setup.body
+                break
+
+        fixed = ast.fix_missing_locations(parsed)
+        codeobj = compile(fixed, file_path, 'exec')
+        local_vars = {}
+        global_vars = {'__setup_calls__': []}
+        exec(codeobj, global_vars, local_vars)
+        reqs = global_vars['__setup_calls__'][0][1]['install_requires']
+        for r in reqs:
+            prod = r
+            prod = prod.replace("==", " ")
+            prod = prod.replace(">=", " ")
+            prod = prod.replace("<=", " ")
+            prod = prod.replace("~=", " ")
+            prod = prod.replace(">", " ")
+            prod = prod.replace("<", " ")
+            pfound = False
+            for p in plist:
+                if prod in p:
+                    pfound = True
+                    break
+            if pfound:
+                continue
+            prod = prod + " source:" + file_path
+            plist.append(prod)
     return plist, None
 
 def LOWORD(dword):
