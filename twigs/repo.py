@@ -52,9 +52,11 @@ def cleanse_semver_version(pv):
             pv = pv + " " + temp_tokens[token_index]
     return pv
 
-def discover_composer_json(args, localpath):
+def discover_composer(args, localpath):
     plist = []
-    files = lib_utils.find_files(localpath, 'composer.json')
+    files = lib_utils.find_files(localpath, 'composer.lock')
+    if len(files) <= 0:
+        files = lib_utils.find_files(localpath, 'composer.json')
     prop_dict = None
     for file_path in files:
         fp = lib_utils.tw_open(file_path, args.encoding)
@@ -787,7 +789,7 @@ def discover_specified_type(repo_type, args, localpath):
     elif repo_type == 'go':
         plist, p1list = discover_go_mod(args, localpath)
     elif repo_type == 'composer':
-        plist, p1list = discover_composer_json(args, localpath)
+        plist, p1list = discover_composer(args, localpath)
 
     return plist, p1list
 
