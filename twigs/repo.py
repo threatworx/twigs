@@ -57,7 +57,6 @@ def discover_composer(args, localpath):
     files = lib_utils.find_files(localpath, 'composer.lock')
     if len(files) <= 0:
         files = lib_utils.find_files(localpath, 'composer.json')
-    prop_dict = None
     for file_path in files:
         fp = lib_utils.tw_open(file_path, args.encoding)
         if fp == None:
@@ -65,11 +64,17 @@ def discover_composer(args, localpath):
         contents = fp.read()
         fp.close()
         composer_json = json.loads(contents)
-        requires = composer_json['require']
-        for pname in requires.keys():
-            pver = requires[pname]
-            prod = pname + " " + pver + " source:"+file_path
-            plist.append(prod)
+        if file_path.endswith('composer.json'):
+            requires = composer_json['require']
+            for pname in requires.keys():
+                pver = requires[pname]
+                prod = pname + " " + pver + " source:"+file_path
+                plist.append(prod)
+        else:
+            packages = composer_json['packages']
+            for p in packages:
+                prod = p['name'] + ' ' + p['version'] + ' source:'+file_path
+                plist.append(prod)
     return plist, None
 
 def discover_go_mod(args, localpath):
