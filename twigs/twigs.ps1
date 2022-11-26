@@ -514,7 +514,6 @@ function Invoke-LocalDiscovery {
             $assets_array = New-Object System.Collections.Generic.List[string]
             $assets_array.Add($assetid)
             $payload = @{
-                scan_type='full'
                 assets=$assets_array
             }
             if ($email_report) {
@@ -561,8 +560,8 @@ else {
 # SIG # Begin signature block
 # MIIGzAYJKoZIhvcNAQcCoIIGvTCCBrkCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUjNSGjOLoq68QP+vHtHIDTCJu
-# zVSgggPtMIID6TCCAtGgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoTETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtHhCa9jXOtxFrDBCvQeVFqVb
+# 0vWgggPtMIID6TCCAtGgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoTETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEkMCIGCSqGSIb3DQEJARYVcGFyZXNoQHRocmVh
@@ -589,11 +588,11 @@ else {
 # JDAiBgkqhkiG9w0BCQEWFXBhcmVzaEB0aHJlYXR3YXRjaC5pbwIBATAJBgUrDgMC
 # GgUAoHgwGAYKKwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYK
 # KwYBBAGCNwIBBDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAjBgkqhkiG
-# 9w0BCQQxFgQUoEiPpyUpQ1vP7/AfqqoxZWbzhsIwDQYJKoZIhvcNAQEBBQAEggEA
-# CvSsIX1VU2sxfwW+0gCTNH2Oay6tAo7v5fVD8rdk2efMBpFdCwXrQNbAVALfMkbt
-# yICsg9Fl0hYPE45ZSMIQt4eq+JaeuDOUaitvIcBBlj7CM6kHIIYmmp/O3rnCcaH3
-# rCslY8449+QYEiBhrHYF6JlWUaYpb87dNcOQNU0baEwAa8+Hkni8vbvHO/qu3PiU
-# jhgf6oeHQOXMIlFI+6s73JiVqLZXF2Q/yGaRuhZJMTdd61tHD92LWU/8Nr/d6moR
-# kWso+bfKl1vHQleccXtLwW5HFKufycMGi8P3sVkVgGUQv6897Kb1306abGZf0uPO
-# EdjnSFPxYUPxbO73nGHdaQ==
+# 9w0BCQQxFgQUOOaFm+M50rI4yrfBbgw8aD+rVgkwDQYJKoZIhvcNAQEBBQAEggEA
+# kz5JzDqNEJVaKfWXrJXkyvfmAcyyLuednwCCicK/pGaAk28vkG0frOSne+i41ARR
+# 2V0Af41T5qzsE4m6Xoz9sOTRFLId3H1l7bJqRKjRh1zSXdPGnz5lAUYnxExO9h3J
+# 3qnmG6HtMEyzU3CK63S4zX9VfH0pJ99/SXCmC9c0rtwuMm4Vpjxo5vrhkf8JgL2J
+# 0gGGccomyheudsE+CxYEBH6OtDp/bJKsKFEM0ChDmNzborWRIZeV649Fb9GbG3N0
+# 9Lw3GKeU3m+m/YWVu008aS9rFKyhtN7Sj02+9ZL7wtaWq49DBJCnkf8UWpjMQEXb
+# 1QjrqilhScjJIW5vaAMliQ==
 # SIG # End signature block
