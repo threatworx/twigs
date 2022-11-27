@@ -662,7 +662,7 @@ def main(args=None):
 
         # Arguments required for nmap discovery
         parser_wp = subparsers.add_parser ("wordpress", help = "Discover wordpress website plugins and themes using nmap")
-        parser_wp.add_argument('--host', help='A hostname or IP address')
+        parser_wp.add_argument('--host', help='A hostname or IP address', required=True)
         parser_wp.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
 
         # Arguments required for SBOM-based discovery
