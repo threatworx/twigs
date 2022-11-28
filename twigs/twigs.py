@@ -164,7 +164,6 @@ def run_scan(asset_id_list, pj_json, args):
         if run_va_scan:
             # Start VA
             scan_payload = { }
-            scan_payload['scan_type'] = 'full' 
             scan_payload['assets'] = asset_id_list
             # if args.purge_assets:
             #    scan_payload['mode'] = 'email-purge'
