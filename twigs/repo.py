@@ -667,7 +667,13 @@ def discover_python(args, localpath):
         global_vars = {'__setup_calls__': []}
         cwd = os.getcwd()
         os.chdir(os.path.dirname(file_path))
-        exec(codeobj, global_vars, local_vars)
+        try:
+            exec(codeobj, global_vars, local_vars)
+        except Exception:
+            # move on
+            logging.warn("Unable to parse python dependencies %s", file_path)
+            os.chdir(cwd)
+            continue
         os.chdir(cwd)
         reqs = global_vars['__setup_calls__'][0][1]['install_requires']
         for r in reqs:
