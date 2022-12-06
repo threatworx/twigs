@@ -675,15 +675,38 @@ def discover_python(args, localpath):
             prod = prod.replace("~=", " ")
             prod = prod.replace(">", " ")
             prod = prod.replace("<", " ")
-            pfound = False
-            for p in plist:
-                if prod in p:
-                    pfound = True
-                    break
-            if pfound:
-                continue
             prod = prod + " source:" + file_path
-            plist.append(prod)
+            if prod not in plist:
+                plist.append(prod)
+
+    files = lib_utils.find_files(localpath, 'pyproject.toml')
+    for file_path in files:
+        fp = lib_utils.tw_open(file_path, args.encoding)
+        if fp == None:
+            continue
+        contents = fp.read()
+        tdict = toml.loads(contents)
+        fp.close()
+        if localpath.startswith('/tmp/'):
+            file_path = file_path.replace(localpath+'/','')
+        if 'tool' in tdict and 'poetry' in tdict['tool'] and 'dependencies' in tdict['tool']['poetry']:
+            for d in tdict['tool']['poetry']['dependencies']:
+                ver = cleanse_semver_version(tdict['tool']['poetry']['dependencies'][d])
+                prod = d + " " + ver + " source:" + file_path
+                if prod not in plist:
+                    plist.append(prod)
+        if 'project' in tdict and 'dependencies' in tdict['project']: 
+            for d in tdict['project']['dependencies']:
+                prod = d 
+                prod = prod.replace("==", " ")
+                prod = prod.replace(">=", " ")
+                prod = prod.replace("<=", " ")
+                prod = prod.replace("~=", " ")
+                prod = prod.replace(">", " ")
+                prod = prod.replace("<", " ")
+                prod = prod + " source:" + file_path
+                if prod not in plist:
+                    plist.append(prod)
     return plist, None
 
 def LOWORD(dword):
