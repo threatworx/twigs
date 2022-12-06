@@ -665,7 +665,10 @@ def discover_python(args, localpath):
         codeobj = compile(fixed, file_path, 'exec')
         local_vars = {}
         global_vars = {'__setup_calls__': []}
+        cwd = os.getcwd()
+        os.chdir(os.path.dirname(file_path))
         exec(codeobj, global_vars, local_vars)
+        os.chdir(cwd)
         reqs = global_vars['__setup_calls__'][0][1]['install_requires']
         for r in reqs:
             prod = r
