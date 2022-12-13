@@ -61,7 +61,7 @@ def get_inventory(args):
     if args.azure_subscription is None or args.azure_resource_group is None or args.azure_workspace is None:
         print_details(token)
         return
-    assets = retrieve_inventory(params)
+    assets = retrieve_inventory(args, params)
     return assets
 
 def parse_inventory(email,data,params):
@@ -189,7 +189,7 @@ def get_os_type(ostype):
     logging.debug("Mapped OS [%s] to Asset Type [%s]", ostype, asset_type)
     return asset_type
 
-def retrieve_inventory(params):
+def retrieve_inventory(args, params):
     email = params['handle']
     sub_id = params['subscription']
     resource_group = params['resource_group']
@@ -201,7 +201,10 @@ def retrieve_inventory(params):
 
     logging.info("Retrieving inventory details from Azure...") 
 
-    resp = requests.post(url, headers=headers, json=json_data)
+    if args.insecure:
+        resp = requests.post(url, headers=headers, json=json_data, verify=False)
+    else:
+        resp = requests.post(url, headers=headers, json=json_data)
     if resp.status_code == 200:
         response = resp.json()
         if response.get('tables'):
