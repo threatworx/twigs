@@ -11,7 +11,8 @@ def get_assets_from_json_file(in_file):
     assets = []
     with open(in_file,'r') as fd:
         try:
-            assets = json.load(fd)
+            sbom_json = json.load(fd)
+            assets = sbom_json['assets']
         except ValueError:
             logging.error("Error loading JSON file [%s]", in_file)
             utils.tw_exit(1)

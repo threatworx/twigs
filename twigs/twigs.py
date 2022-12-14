@@ -86,11 +86,19 @@ except (ImportError,ValueError):
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
 
-def export_assets_to_file(assets, json_file):
-    logging.info("Exporting assets to JSON file [%s]", json_file)
+def export_assets_to_sbom_file(assets, timestamp, args):
+    json_file = args.sbom
+    logging.info("Exporting assets to SBOM JSON file [%s]", json_file)
+    sbom_json = { }
+    sbom_json['meta'] = { }
+    sbom_json['meta']['generated_by'] = args.handle
+    sbom_json['meta']['generated_on'] = str(timestamp)
+    sbom_json['meta']['tool_name'] = 'twigs'
+    sbom_json['meta']['tool_version'] = __version__
+    sbom_json['assets'] = assets
     with open(json_file, "w") as fd:
-        json.dump(assets, fd, indent=2, sort_keys=True)
-    logging.info("Successfully exported assets to JSON file!")
+        json.dump(sbom_json, fd, indent=2, sort_keys=True)
+    logging.info("Successfully exported assets to SBOM JSON file!")
 
 def push_asset_to_TW(asset, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
@@ -219,6 +227,10 @@ def add_asset_location(assets, location):
     for asset in assets:
         asset['location'] = location
 
+def add_asset_timestamp(assets, timestamp):
+    for asset in assets:
+        asset['timestamp'] = str(timestamp)
+
 def add_asset_criticality_tag(assets, asset_criticality):
     asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
     add_asset_tags(assets, [asset_criticality_tag])
@@ -334,7 +346,8 @@ def main(args=None):
         parser.add_argument('--no_auto_tags', action='store_true', help='Disable auto tagging of assets with standard classification tags. Only user specified tags will be applied')
         #parser.add_argument('--asset_criticality', choices=['1', '2', '3','4', '5'], help='Business criticality of the discovered assets on a scale of 1 (low) to 5 (high).', required=False)
         parser.add_argument('--apply_policy', help='One or more policy names as a comma-separated list', required=False)
-        parser.add_argument('--out', help='Specify name of the JSON file to hold the exported asset information.')
+        parser.add_argument('--sbom', help='Specify name of the SBOM file to hold the exported asset information.')
+        parser.add_argument('--out', help=argparse.SUPPRESS)
         parser.add_argument('--no_scan', action='store_true', help='Do not initiate a baseline assessment')
         parser.add_argument('--email_report', action='store_true', help='After impact refresh is complete email scan report to self')
         group = parser.add_mutually_exclusive_group()
@@ -759,6 +772,8 @@ def main(args=None):
         parser_o365.add_argument('--application_key', help='O365 Application Key', required=True)
 
         args = parser.parse_args()
+        if args.out is not None:
+            args.sbom  = args.out
 
         logging_level = logging.WARNING
         if args.verbosity >= 1:
@@ -834,7 +849,7 @@ def main(args=None):
 #        logging.error('Purge assets option (--purge_assets) is used with Email report (--email_report)')
 #        sys.exit(1)
 
-        if (args.token is None or len(args.token) == 0) and args.out is None:
+        if (args.token is None or len(args.token) == 0) and args.sbom is None:
             logging.error('[token] argument is not specified and [out] argument is not specified. Unable to share discovered assets.')
             sys.exit(1)
 
@@ -938,8 +953,13 @@ def main(args=None):
                 if args.location:
                     add_asset_location(assets, args.location)
 
-                if args.out is not None:
-                    export_assets_to_file(assets, args.out)
+                timestamp = int(time.time())
+                if args.mode != "sbom":
+                    # SBOM assets will have their own timestamp
+                    add_asset_timestamp(assets, timestamp)
+
+                if args.sbom is not None:
+                    export_assets_to_sbom_file(assets, timestamp, args)
 
                 if args.token is not None and len(args.token) > 0:
                     asset_id_list, scan_asset_id_list = push_assets_to_TW(assets, args)
