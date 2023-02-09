@@ -54,7 +54,7 @@ def run_iac_checks(args, path, base_path):
         iac_issues = [ iac_issues ]
 
     for iac_issue in iac_issues:
-        failed_results = iac_issue['results'].get('failed_checks')
+        failed_results = iac_issue['results'].get('failed_checks') if 'results' in iac_issue else None
         if failed_results is None:
             continue
         for r in failed_results:
