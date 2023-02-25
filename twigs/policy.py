@@ -12,7 +12,7 @@ def apply_policy(policy_names, asset_id_list, args):
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
     policy_names_list = policy_names.split(',')
     payload = { "asset_ids": asset_id_list, "policy_names": policy_names_list }
-    resp = requests.post(url + auth_data, json=payload)
+    resp = utils.requests_post(url + auth_data, json=payload)
     if resp.status_code == 200:
         logging.info("Applying specified policy....")
         policy_job_id = resp.json()['policy_job_id']
@@ -26,7 +26,7 @@ def apply_policy(policy_names, asset_id_list, args):
 def is_policy_job_done(policy_job_id, args):
     url = "https://" + args.instance + "/api/v1/policyjobs/" + policy_job_id + "/"
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
-    resp = requests.get(url + auth_data)
+    resp = utils.requests_get(url + auth_data)
     if resp.status_code == 200:
         policy_job_json = resp.json()
         if policy_job_json['status'] == "COMPLETED":
