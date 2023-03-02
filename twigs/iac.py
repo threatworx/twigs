@@ -13,7 +13,7 @@ from . import iac_meta
 
 checkov_plugin = "/usr/local/bin/checkov"
 
-sevmap = {"LOW": "1","MEDIUM": "3","HIGH": "5"}
+sevmap = {"LOW": "1","MEDIUM": "3","HIGH": "4","CRITICAL": "5"}
 
 def get_code_snippet(r):
     code_snippet = ''
