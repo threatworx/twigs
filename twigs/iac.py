@@ -9,7 +9,11 @@ import json
 import tempfile
 import traceback
 
+from . import iac_meta
+
 checkov_plugin = "/usr/local/bin/checkov"
+
+sevmap = {"LOW": "1","MEDIUM": "3","HIGH": "5"}
 
 def get_code_snippet(r):
     code_snippet = ''
@@ -58,9 +62,13 @@ def run_iac_checks(args, path, base_path):
         if failed_results is None:
             continue
         for r in failed_results:
+            imeta = iac_meta.metadata.get(r['check_id'])
             finding = {}
             finding['issue_id'] = r['check_id']
-            finding['rating'] = '4' # default rating
+            if imeta:
+                finding['rating'] = sevmap[imeta['severity']]
+            else:
+                finding['rating'] = '3' # default rating
             finding['filename'] = r['file_path'][1:]
             if args.no_code:
                 finding['code_snippet'] = ''
@@ -68,7 +76,10 @@ def run_iac_checks(args, path, base_path):
                 finding['code_snippet'] = get_code_snippet(r)
             finding['lineno_start'] = r['file_line_range'][0] if r['file_line_range'][0] is not None else -1
             finding['lineno_end'] = r['file_line_range'][1] if r['file_line_range'][1] is not None else -1
-            finding['description'] = r['check_name']
+            if imeta:
+                finding['description'] = r['check_name'] + '\n' + imeta['description']
+            else:
+                finding['description'] = r['check_name']
             finding['resource'] = r['resource']
             finding['refs'] = get_refs(r)
             finding['type'] = 'IaC'
