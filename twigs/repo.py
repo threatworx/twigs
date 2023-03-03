@@ -700,7 +700,10 @@ def discover_python(args, localpath):
             file_path = file_path.replace(localpath+'/','')
         if 'tool' in tdict and 'poetry' in tdict['tool'] and 'dependencies' in tdict['tool']['poetry']:
             for d in tdict['tool']['poetry']['dependencies']:
-                ver = cleanse_semver_version(tdict['tool']['poetry']['dependencies'][d])
+                ver = tdict['tool']['poetry']['dependencies'][d]
+                if isinstance(ver, dict):
+                    ver = ver['version']
+                ver = cleanse_semver_version(ver)
                 prod = d + " " + ver + " source:" + file_path
                 if prod not in plist:
                     plist.append(prod)
