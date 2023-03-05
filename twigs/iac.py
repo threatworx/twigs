@@ -77,7 +77,7 @@ def run_iac_checks(args, path, base_path):
             finding['lineno_start'] = r['file_line_range'][0] if r['file_line_range'][0] is not None else -1
             finding['lineno_end'] = r['file_line_range'][1] if r['file_line_range'][1] is not None else -1
             if imeta:
-                finding['description'] = r['check_name'] + '\n' + imeta['description']
+                finding['description'] = "<h3>" + r['check_name'] + "</h3>" + imeta['description']
             else:
                 finding['description'] = r['check_name']
             finding['resource'] = r['resource']
