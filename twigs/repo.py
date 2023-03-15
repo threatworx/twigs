@@ -637,13 +637,12 @@ def discover_python(args, localpath):
         except:
             logging.error("Unable to parse python dependencies")
             continue
-
+    """
     files = lib_utils.find_files(localpath, 'setup.py')
     for file_path in files:
-        """Parse setup.py and return args and keywords args to its setup
-        function call
+        #Parse setup.py and return args and keywords args to its setup
+        #function call
 
-        """
         mock_setup = textwrap.dedent('''\
         def setup(*args, **kwargs):
             __setup_calls__.append((args, kwargs))
@@ -654,8 +653,9 @@ def discover_python(args, localpath):
             for index, node in enumerate(parsed.body[:]):
                 if (
                     not isinstance(node, ast.Expr) or
-                    not isinstance(node.value, ast.Call) or
-                    node.value.func.id != 'setup'
+                    not isinstance(node.value, ast.Call)
+                    #not isinstance(node.value, ast.Call) or
+                    #node.value.func.id != 'setup'
                 ):
                     continue
                 parsed.body[index:index] = parsed_mock_setup.body
@@ -687,6 +687,7 @@ def discover_python(args, localpath):
             prod = prod + " source:" + file_path
             if prod not in plist:
                 plist.append(prod)
+    """
 
     files = lib_utils.find_files(localpath, 'pyproject.toml')
     for file_path in files:
