@@ -651,8 +651,9 @@ def main(args=None):
 
         # Arguments required for Host discovery on Linux
         parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
-        parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
-        parser_linux.add_argument('--host_list', help='Same as the option: remote_hosts_csv. A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
+        #parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.', help=argparse.SUPPRESS)
+        parser_linux.add_argument('--remote_hosts_csv', help=argparse.SUPPRESS)
+        parser_linux.add_argument('--host_list', help='A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
         parser_linux.add_argument('--secure', action='store_true', help='Use this option to encrypt clear text passwords in the host list file')
         parser_linux.add_argument('--password', help='A password used to encrypt / decrypt login information from the host list file')
         parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
@@ -669,14 +670,9 @@ def main(args=None):
         parser_vmware.add_argument('--password', help='Password for the vCenter user. Note this can be set as "VCENTER_PASSWD" environment variable')
 
         # Arguments required for nmap discovery
-        parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
+        parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
-
-        # Arguments required for nmap discovery
-        parser_wp = subparsers.add_parser ("wordpress", help = "Discover wordpress website plugins and themes using nmap")
-        parser_wp.add_argument('--host', help='A hostname or IP address', required=True)
-        parser_wp.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
 
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")
@@ -897,8 +893,6 @@ def main(args=None):
             assets = vmware.get_inventory(args)
         elif args.mode == 'nmap':
             assets = fingerprint.get_inventory(args)
-        elif args.mode == 'wordpress':
-            assets = fingerprint.get_wordpress(args)
         elif args.mode == 'docker':
             assets = docker.get_inventory(args)
         elif args.mode == 'k8s':
