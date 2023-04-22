@@ -934,13 +934,17 @@ def get_inventory_helper(args):
         base_path = path
         new_repo = None
         logging.info("Cloning repo locally...")
+        out = ""
         try:
             if args.branch and args.branch != '':
                 cmdarr = [GIT_PATH, 'clone', '--branch', args.branch, args.repo, path+'/.']
             else:
                 cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
-            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-        except:
+            #out = subprocess.check_output(cmdarr, stderr=dev_null_device)
+            out = subprocess.check_output(cmdarr)
+        except Exception as e:
+            logging.eror(out)
+            logging.error(str(e))
             logging.error(traceback.format_exc())
             logging.error('Error cloning repo locally')
             shutil.rmtree(path, onerror = on_rm_error)
