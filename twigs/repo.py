@@ -943,7 +943,7 @@ def get_inventory_helper(args):
             #out = subprocess.check_output(cmdarr, stderr=dev_null_device)
             out = subprocess.check_output(cmdarr)
         except Exception as e:
-            logging.eror(out)
+            logging.error(out)
             logging.error(str(e))
             logging.error(traceback.format_exc())
             logging.error('Error cloning repo locally')
