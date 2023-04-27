@@ -396,8 +396,8 @@ def discover_package_json(args, localpath):
             logging.debug("Filtering out unused npm dependencies. This may take some time...")
             plist = filter_used_npm_dependencies(args, plist, localpath)
         else:
-            logging.warn("Including unused dependencies")
-            logging.warn("May increase false positives")
+            logging.warning("Including unused dependencies")
+            logging.warning("May increase false positives")
     return plist, p1list
 
 def discover_packages_config(args, localpath):
@@ -478,8 +478,8 @@ def discover_packages_config(args, localpath):
             logging.debug("Filtering out unused dotnet dependencies. This may take some time...")
             plist = filter_used_dotnet_dependencies(args, plist, localpath)
         else:
-            logging.warn("Including unused dependencies")
-            logging.warn("May increase false positives")
+            logging.warning("Including unused dependencies")
+            logging.warning("May increase false positives")
 
     if len(plist) > 0:
         return plist, plist
@@ -512,8 +512,8 @@ def discover_packages_config(args, localpath):
             logging.debug("Filtering out unused nuget dependencies. This may take some time...")
             plist = filter_used_dotnet_dependencies(args, plist, localpath)
         else:
-            logging.warn("Including unused dependencies")
-            logging.warn("May increase false positives")
+            logging.warning("Including unused dependencies")
+            logging.warning("May increase false positives")
 
     return plist, plist
 
@@ -671,7 +671,7 @@ def discover_python(args, localpath):
             exec(codeobj, global_vars, local_vars)
         except Exception:
             # move on
-            logging.warn("Unable to parse python dependencies %s", file_path)
+            logging.warning("Unable to parse python dependencies %s", file_path)
             os.chdir(cwd)
             continue
         os.chdir(cwd)
@@ -776,7 +776,7 @@ def discover_jar(args, localpath):
                 #print "Error: No manifest found"
                 pass
         except zipfile.BadZipfile:
-            logging.warn("Unable to inspect file: %s", os.path.basename(file_path))
+            logging.warning("Unable to inspect file: %s", os.path.basename(file_path))
 
         if prod == '' or ver == '':
             jfile = os.path.basename(file_path)

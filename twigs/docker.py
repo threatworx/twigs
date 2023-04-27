@@ -793,7 +793,7 @@ def get_inventory(args, digest=None):
     # If image digest is available, then check if image has changed using digest
     if digest is not None and digest != -1:
         if (args.token is None or len(args.token) == 0):
-            logging.warn("Unable to compare image digest as [token] argument is not specified")
+            logging.warning("Unable to compare image digest as [token] argument is not specified")
         else:
             no_change = False
             digest_tag = "IMAGE_DIGEST:%s" % digest

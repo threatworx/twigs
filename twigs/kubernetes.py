@@ -176,7 +176,7 @@ def discover_assets_from_helm_chart(args, helm_chart):
             hc_type = 'applicaton'
     asset_name_override = hc_name + ':' + hc_version
     if hc_type == 'library':
-        logging.warn("Helm Chart [%s] is of library type...Skipping it", asset_name_override)
+        logging.warning("Helm Chart [%s] is of library type...Skipping it", asset_name_override)
         return allassets
     logging.info("Processing Helm Chart [%s]", asset_name_override)
     if os.path.isfile(temp_template):

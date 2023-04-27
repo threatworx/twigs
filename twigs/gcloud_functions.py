@@ -20,11 +20,11 @@ def get_inventory(args):
         cmd = "gsutil ls -p "+proj
         out = lib_utils.run_cmd_on_host(args, None, cmd)
         if out == None:
-            logging.warn("No cloud storage urls found for "+proj)
+            logging.warning("No cloud storage urls found for "+proj)
             continue
         for gsurl in out.splitlines():
             if 'gcf-sources' not in gsurl:
-                logging.warn("No Google Function storage urls found for "+proj)
+                logging.warning("No Google Function storage urls found for "+proj)
                 continue
             cmd = "gsutil ls -r "+gsurl.strip()
             urlls = lib_utils.run_cmd_on_host(args, None, cmd)

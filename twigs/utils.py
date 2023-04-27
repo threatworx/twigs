@@ -345,12 +345,12 @@ def requests_get(url):
             resp = requests.get(url, verify=get_requests_verify())
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
-            logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
+            logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
             if rc >= 10:
-                logging.warn("Max retries exceeded....giving up...")
+                logging.warning("Max retries exceeded....giving up...")
                 return None
             else:
-                logging.warn("Sleeping for [%s] seconds...", st)
+                logging.warning("Sleeping for [%s] seconds...", st)
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
@@ -365,12 +365,12 @@ def requests_post(url, json):
             resp =  requests.post(url, json=json, verify=get_requests_verify())
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
-            logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
+            logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
             if rc >= 10:
-                logging.warn("Max retries exceeded....giving up...")
+                logging.warning("Max retries exceeded....giving up...")
                 return None
             else:
-                logging.warn("Sleeping for [%s] seconds...", st)
+                logging.warning("Sleeping for [%s] seconds...", st)
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
@@ -385,12 +385,12 @@ def requests_put(url, json):
             resp = requests.put(url, json=json, verify=get_requests_verify())
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
-            logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
+            logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
             if rc >= 10:
-                logging.warn("Max retries exceeded....giving up...")
+                logging.warning("Max retries exceeded....giving up...")
                 return None
             else:
-                logging.warn("Sleeping for [%s] seconds...", st)
+                logging.warning("Sleeping for [%s] seconds...", st)
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
