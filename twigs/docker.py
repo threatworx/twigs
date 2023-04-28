@@ -41,15 +41,23 @@ def fix_symbolic_links_helper(container_fs):
                 if os.path.isabs(symlink_path) and not symlink_path.startswith(container_fs):
                     nested_path = container_fs + symlink_path
                     if os.path.exists(nested_path):
-                        # Fix symbolic link to point within container_fs
-                        os.remove(file_path)
-                        os.symlink(nested_path, file_path)
+                        try:
+                            # Fix symbolic link to point within container_fs
+                            os.remove(file_path)
+                            os.symlink(nested_path, file_path)
+                        except Exception as e:
+                            logging.warning("Unable to fix symbolic link ["+file_path+"]")
+                            logging.warning(str(e))
 
 def fix_symbolic_links(container_fs):
-    # This is a two phase operation as there could be symbolic links that could not be processed
-    # due to a symbolic that will be processed later...
-    fix_symbolic_links_helper(container_fs)
-    fix_symbolic_links_helper(container_fs)
+    try:
+        # This is a two phase operation as there could be symbolic links that could not be processed
+        # due to a symbolic that will be processed later...
+        fix_symbolic_links_helper(container_fs)
+        fix_symbolic_links_helper(container_fs)
+    except Exception as e:
+        logging.warning("Encountering issue while fixing symbolic links")
+        logging.warning(str(e))
 
 def tar_available():
     if os.path.isfile("/bin/tar"):

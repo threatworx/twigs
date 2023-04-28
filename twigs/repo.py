@@ -65,7 +65,7 @@ def discover_composer(args, localpath):
         fp.close()
         composer_json = json.loads(contents)
         if file_path.endswith('composer.json'):
-            requires = composer_json['require']
+            requires = composer_json['require'] if 'require' in composer_json else {}
             for pname in requires.keys():
                 pver = requires[pname]
                 prod = pname + " " + pver + " source:"+file_path
