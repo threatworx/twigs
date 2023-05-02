@@ -27,8 +27,11 @@ def make_temp_directory(tmp_dir):
     return temp_dir
 
 def on_rm_error( func, path, exc_info):
-    os.chmod( path, stat.S_IWRITE )
-    os.unlink( path )
+    try:
+        os.chmod( path, stat.S_IWRITE )
+        os.unlink( path )
+    except Exception:
+        return
 
 # Note this routine only handles direct symbolic links and not nested ones
 def fix_symbolic_links_helper(container_fs):
