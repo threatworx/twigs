@@ -772,6 +772,7 @@ def main(args=None):
         if args.out is not None:
             args.sbom  = args.out
 
+
         logging_level = logging.WARNING
         if args.verbosity >= 1:
             logging_level = logging.INFO
@@ -785,6 +786,7 @@ def main(args=None):
         console.setLevel(logging_level)
         console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
         logging.getLogger('').addHandler(console)
+
 
         # In insecure mode, we want to set verify=False for requests
         if args.insecure:
@@ -1008,6 +1010,13 @@ def main(args=None):
             utils.update_tool_run_record('SUCCESS')
 
         logging.info('Run completed')
+
+        # check for upgrade
+        latest_version = utils.get_latest_version()
+        if __version__ != latest_version:
+            logging.warn('You are using twigs version '+__version__+'; however version '+latest_version+' is available.')
+            logging.warn('You should consider upgrading via the "pip install twigs --upgrade" command.')
+
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
             sys.exit(int(exit_code))

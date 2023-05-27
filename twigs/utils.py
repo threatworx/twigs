@@ -491,3 +491,7 @@ def tail(fn, encoding, lines=20):
         all_read_text = ''.join(reversed(blocks))
         return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
 
+def get_latest_version():
+    response = requests.get('https://pypi.org/pypi/twigs/json')
+    latest_version = response.json()['info']['version']
+    return latest_version
