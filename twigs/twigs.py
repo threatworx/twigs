@@ -89,6 +89,7 @@ except (ImportError,ValueError):
 def export_assets_to_sbom_file(assets, timestamp, args):
     json_file = args.sbom
     logging.info("Exporting assets to SBOM JSON file [%s]", json_file)
+    add_asset_tags(assets, ["SBOM"])
     sbom_json = { }
     sbom_json['meta'] = { }
     sbom_json['meta']['generated_by'] = args.handle
@@ -686,6 +687,8 @@ def main(args=None):
         parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=True)
         parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
         parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_sbom.add_argument('--org', help='Associate discovered asset with specified organization')
+        parser_sbom.add_argument('--comment', help='Specify user comment for SBOM')
 
         # Arguments required for ServiceNow discovery
         parser_snow = subparsers.add_parser ("servicenow", help = "Ingest inventory from ServiceNow CMDB")
@@ -772,7 +775,6 @@ def main(args=None):
         if args.out is not None:
             args.sbom  = args.out
 
-
         logging_level = logging.WARNING
         if args.verbosity >= 1:
             logging_level = logging.INFO
@@ -786,7 +788,6 @@ def main(args=None):
         console.setLevel(logging_level)
         console.setFormatter(logging.Formatter('%(levelname)-8s %(message)s'))
         logging.getLogger('').addHandler(console)
-
 
         # In insecure mode, we want to set verify=False for requests
         if args.insecure:
@@ -900,7 +901,11 @@ def main(args=None):
         elif args.mode == 'k8s':
             assets = kubernetes.get_inventory(args)
         elif args.mode == 'sbom':
-            assets = sbom.get_inventory(args)
+            ret_code = sbom.upload_sbom(args)
+            if ret_code:
+                utils.tw_exit(0)
+            else:
+                utils.tw_exit(1)
         elif args.mode == 'dast':
             assets = dast.get_inventory(args)
         elif args.mode == 'docker_cis':
@@ -1014,8 +1019,8 @@ def main(args=None):
         # check for upgrade
         latest_version = utils.get_latest_version()
         if __version__ != latest_version:
-            logging.warn('You are using twigs version '+__version__+'; however version '+latest_version+' is available.')
-            logging.warn('You should consider upgrading via the "pip install twigs --upgrade" command.')
+            logging.warning('You are using twigs version '+__version__+'; however version '+latest_version+' is available.')
+            logging.warning('You should consider upgrading via the "pip install twigs --upgrade" command.')
 
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)

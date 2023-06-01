@@ -377,6 +377,26 @@ def requests_post(url, json):
                 continue
         return resp
 
+def requests_post_files(url, files):
+    rc = 0
+    st = 1
+    while True:
+        try:
+            resp =  requests.post(url, files=files, verify=get_requests_verify())
+            resp_status_code = resp.status_code
+        except requests.exceptions.RequestException as e:
+            logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
+            if rc >= 10:
+                logging.warn("Max retries exceeded....giving up...")
+                return None
+            else:
+                logging.warn("Sleeping for [%s] seconds...", st)
+                time.sleep(st)
+                rc = rc + 1
+                st = st * 2
+                continue
+        return resp
+
 def requests_put(url, json):
     rc = 0
     st = 1
@@ -495,3 +515,4 @@ def get_latest_version():
     response = requests.get('https://pypi.org/pypi/twigs/json')
     latest_version = response.json()['info']['version']
     return latest_version
+
