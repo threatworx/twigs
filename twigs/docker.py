@@ -277,7 +277,7 @@ def create_asset(args, os_release, atype, plist, digest, container_fs):
     asset_data['tags'] = asset_tags
 
     if container_fs is not None:
-        host = {'remote' : False}
+        host = {'remote' : False, 'assetid': asset_id}
         plugin_processor.process_plugins(asset_data, host, args, container_fs)
 
     return [ asset_data ]
