@@ -6,7 +6,7 @@ from . import utils
 
 SUPPORTED_SBOM_FORMATS_FOR_STANDARD = {
         "cyclonedx": ["json"],
-        "spdx": ["tagvalue"],
+        "spdx": ["tagvalue", "json"],
         "threatworx": ["json", "csv"] # keep this one last
 }
 SUPPORTED_SBOM_STANDARDS = list(SUPPORTED_SBOM_FORMATS_FOR_STANDARD.keys())
@@ -18,16 +18,16 @@ def upload_sbom(args):
 
     if sbom_standard not in SUPPORTED_SBOM_STANDARDS:
         logging.error("Unsupported SBOM standard [%s]", sbom_standard)
-        return assets
+        return False
 
     supported_sbom_formats = SUPPORTED_SBOM_FORMATS_FOR_STANDARD[sbom_standard]
     if sbom_format not in supported_sbom_formats:
         logging.error("Unsupported format [%s] for SBOM standard [%s]", sbom_format, sbom_standard)
-        return assets
+        return False
 
     if os.path.isfile(sbom_abs_path) == False:
         logging.error("Unable to access SBOM file [%s]", sbom_abs_path)
-        return assets
+        return False
 
     json_data = { }
     json_data['sbom_standard'] = sbom_standard
@@ -57,5 +57,6 @@ def upload_sbom(args):
         return True
     else:
         logging.error("Uploading SBOM artifact failed")
+        logging.error(resp.text)
         return False
 
