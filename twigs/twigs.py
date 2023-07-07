@@ -82,6 +82,7 @@ except (ImportError,ValueError):
     from twigs import gcp_cis
     from twigs import k8s_cis
     from twigs import gcloud_functions
+    from twigs import vmware
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
