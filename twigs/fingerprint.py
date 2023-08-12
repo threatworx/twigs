@@ -23,47 +23,6 @@ def discover(args):
 
     hosts = args.hosts
 
-def get_wordpress(args):
-    if not nmap_exists():
-        logging.error('nmap CLI not found')
-        return None
-    logging.info("Discovering wordpress website on "+args.host)
-    assets = []
-    word = [NMAP + ' --script http-wordpress-enum '+ args.host]
-    try:
-        word_out = subprocess.check_output(word, shell=True)
-    except subprocess.CalledProcessError:
-        logging.error("Error running nmap discovery for wordpress")
-        return None 
-    plugins = str(word_out).split('plugins')[-1]
-    plugins = plugins.split('_http')[0]
-    plugins = plugins.split('|')
-    products = []
-    for p in plugins:
-        p = p.strip()
-        if p == '':
-            continue
-        if p == 'themes':
-            continue
-        if p.startswith('_'):
-            p = p.replace('_','')
-            p = p.strip()
-        if 'Nmap done:' in p:
-            p = p.split('\n')[0]
-        products.append(p)
-    asset_data = {}
-    if args.assetid != None:
-        asset_data['id'] = args.assetid
-    else:
-        asset_data['id'] = args.host
-    asset_data['name'] = args.host 
-    asset_data['type'] = 'WordPress'
-    asset_data['owner'] = args.handle
-    asset_data['products'] = products
-    asset_data['tags'] = ['wordpress']
-    assets.append(asset_data)
-    return assets
-
 def get_private_ip_cidrs():
     """
     Returns a list of class A, B, or C private IP CIDRs visible on the local host.
@@ -94,7 +53,7 @@ def get_inventory(args):
     assets = []
     for host in args.hosts:
         logging.info("Fingerprinting "+host)
-        cmdarr = [NMAP + ' -oX - -sV --script http-wordpress-enum -A -PN -T4 -F '+host]
+        cmdarr = [NMAP + ' -oX - -p- -A --script http-wordpress-enum,mysql-info -PN -T5 '+host]
         try:
             out = subprocess.check_output(cmdarr, shell=True)
             out = out.decode(args.encoding)
@@ -128,14 +87,29 @@ def get_inventory(args):
                 prodstr = prodstr.replace('_',' ')
                 if prodstr not in products:
                     products.append(prodstr)
-            if 'linux linux kernel' in products:
-                ostype = 'Generic Linux'
-            elif 'microsoft windows' in products:
-                ostype = 'Generic Windows'
-            else:
-                ostype = 'Unknown'
 
-            # check for wordpress output
+            if 'linux linux kernel' in products:
+                ostype = 'Linux'
+            elif 'microsoft windows' in products:
+                ostype = 'Windows'
+            else:
+                ostype = 'Other'
+
+            # check for services
+            services = h.getElementsByTagName("service")
+            if services is not None:
+                for s in services:
+                    prod = s.getAttribute('product')
+                    if not prod:
+                        continue
+                    ver = s.getAttribute('version')
+                    if not ver:
+                        continue
+                    prod = prod + ' ' + ver
+                    if prod not in products:
+                        products.append(prod)
+
+            # check for script output
             scripts = h.getElementsByTagName("script")
             for s in scripts:
                 if s.getAttribute('id') == 'http-wordpress-enum':
@@ -153,11 +127,18 @@ def get_inventory(args):
                             if wp == 'themes':
                                 continue
                             prodstr = 'wordpress plugin '+wp
+                            if prodstr not in products:
+                                products.append(prodstr)
+                if s.getAttribute('id') == 'mysql-info':
+                    wpout = s.getAttribute('output')
+                    if wpout != None:
+                        prodstr = wpout.split('Version:')[1].split('#')[0].strip()
+                        if prodstr not in products:
                             products.append(prodstr)
             asset_data = {}
             asset_data['id'] = addr 
             asset_data['name'] = hostname 
-            asset_data['type'] = 'Other' 
+            asset_data['type'] = os_type
             asset_data['owner'] = args.handle
             asset_data['products'] = products 
             asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
@@ -167,6 +148,6 @@ def get_inventory(args):
                 if len(ssh_issues) != 0:
                     asset_data['tags'].append('SSH Audit')
                 asset_data['config_issues'] = ssh_issues
-            assets.append(asset_data)        
+            assets.append(asset_data)
     return assets
 
