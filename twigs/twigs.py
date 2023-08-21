@@ -90,6 +90,7 @@ except (ImportError,ValueError):
 def export_assets_to_sbom_file(assets, timestamp, args):
     json_file = args.sbom
     logging.info("Exporting assets to SBOM JSON file [%s]", json_file)
+    add_attack_surface_label(args, assets)
     add_asset_tags(assets, ["SBOM"])
     sbom_json = { }
     sbom_json['meta'] = { }
@@ -202,6 +203,102 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Failed to start license compliance assessment")
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
+
+def get_host_as_label(in_label, asset):
+    if asset['type'] == "Google Container-Optimized OS":
+        return in_label + "::Google COS"
+    else:
+        return in_label + "::" + asset['type']
+
+def get_container_as_label(in_label, asset):
+    if asset['type'] == "Container App":
+        return in_label + "::App"
+    else:
+        return in_label + "::Image::" + asset['type']
+
+def get_code_as_label(in_label, asset):
+    if asset.get('tags') is None:
+        asset_tags_set = set()
+    else:
+        asset_tags_set = set(asset['tags'])
+    supported_types_set = set(repo.SUPPORTED_TYPES)
+    supported_types_set = supported_types_set.union({'Secret','SAST', 'IaC'})
+    intersection_set = supported_types_set & asset_tags_set
+    if len(intersection_set) == 0:
+        return in_label + "::Empty"
+    elif len(intersection_set) == 1:
+        return in_label + "::" + list(intersection_set)[0]
+    else:
+        return in_label + "::Multiple"
+
+def add_attack_surface_label(args, assets):
+    for asset in assets:
+        as_label = None
+        if args.mode == 'ssl_audit':
+            pass
+        elif args.mode == 'aws':
+            as_label = get_host_as_label("Cloud::AWS::EC2", asset)
+        elif args.mode == 'azure':
+            as_label = get_host_as_label("Cloud::Azure::VM", asset)
+        elif args.mode == 'o365':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'acr':
+            as_label = get_container_as_label("Cloud::Azure::ACR", asset)
+        elif args.mode == 'ecr':
+            as_label = get_container_as_label("Cloud::AWS::ECR", asset)
+        elif args.mode == 'gcp':
+            as_label = get_host_as_label("Cloud::GCP::Compute", asset)
+        elif args.mode == 'gcr':
+            as_label = get_container_as_label("Cloud::GCP::GCR", asset)
+        elif args.mode == 'servicenow':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'repo':
+            as_label = get_code_as_label("Code", asset)
+        elif args.mode == "ghe":
+            as_label = get_code_as_label("Code", asset)
+        elif args.mode == 'host':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'vmware':
+            if asset['type'] == 'VMware vCenter':
+                as_label = "Corporate::VMWare::vCenter"
+            elif asset['type'] == 'VMware ESXi':
+                as_label = "Corporate::VMWare::ESXi"
+        elif args.mode == 'nmap':
+            pass
+            #as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'docker':
+            as_label = get_container_as_label("Container::Docker", asset)
+        elif args.mode == 'k8s':
+            as_label = get_container_as_label("Container::Kubernetes", asset)
+        elif args.mode == 'sbom':
+            # Skip for TW SBOM, other sboms populate TP along with Code
+            if args.standard != "threatworx" and args.org is not None and len(args.org) > 0:
+                tp_name = args.org
+                as_label = "Third Party::%s::Code" % tp_name
+                as_label = get_code_as_label(as_label, asset)
+        elif args.mode == 'dast':
+            pass
+        elif args.mode == 'docker_cis':
+            as_label = "Container::Docker::Misconfig"
+        elif args.mode == 'aws_cis':
+            as_label = "Cloud::AWS::Account"
+        elif args.mode == 'aws_audit':
+            as_label = "Cloud::AWS::Account"
+        elif args.mode == 'azure_cis':
+            as_label = "Cloud::Azure::Tenant"
+        elif args.mode == 'gcp_cis':
+            as_label = "Cloud::GCP::Org"
+        elif args.mode == 'k8s_cis':
+            as_label = "Container::Kubernetes::Misconfig"
+        elif args.mode == 'gke_cis':
+            as_label = "Cloud::GCP::GKE::Misconfig"
+        elif args.mode == 'azure_functions':
+            as_label = get_code_as_label("Cloud::Azure::Serverless", asset)
+        elif args.mode == 'gcloud_functions':
+            as_label = get_code_as_label("Cloud::GCP::Serverless", asset)
+
+        if as_label is not None:
+            asset['attack_surface_label'] = as_label
 
 def remove_standard_tags(assets):
     for asset in assets:
@@ -940,6 +1037,8 @@ def main(args=None):
                 if args.asset_criticality is not None:
                     add_asset_criticiality_tag(assets, args.asset_criticality)
                 """
+
+                add_attack_surface_label(args, assets)
 
                 if args.no_auto_tags:
                     remove_standard_tags(assets)

@@ -15,7 +15,6 @@ def run_docker_bench(args):
     if os_release == None:
         logging.error('Unsupported OS type for running docker bench')
         utils.tw_exit(1)
-    atype = utils.get_asset_type(os_release)
 
     dbench_path = args.docker_bench_home + DBENCH
     if not os.path.isfile(dbench_path) or not os.access(dbench_path, os.X_OK):
@@ -38,7 +37,7 @@ def run_docker_bench(args):
     asset_data = {}
     asset_data['id'] = asset_id
     asset_data['name'] = asset_name
-    asset_data['type'] = atype
+    asset_data['type'] = 'Docker'
     asset_data['owner'] = args.handle
     asset_data['products'] = []
     asset_tags = []
@@ -47,7 +46,6 @@ def run_docker_bench(args):
     asset_tags.append('CIS')
     asset_tags.append('Container')
     asset_tags.append('Linux')
-    asset_tags.append(atype)
     asset_data['tags'] = asset_tags
 
     findings = []

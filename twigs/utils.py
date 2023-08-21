@@ -217,7 +217,7 @@ def get_asset_type(os):
     elif "debian" in os:
         return "Debian"
     elif "amazon linux" in os:
-        return "Amazon Linux"
+        return "Amazon Linux AMI"
     elif "oracle linux" in os:
         return "Oracle Linux"
     elif "freebsd" in os:

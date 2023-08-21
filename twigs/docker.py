@@ -385,7 +385,7 @@ def create_open_source_asset(args, container_fs, digest):
     os_asset_id = get_opensource_asset_id(args)
     # skip unused dependencies filtering for container app assets
     args.include_unused_dependencies = True
-    oa = repo.discover_inventory(args, container_fs)
+    oa = repo.discover_inventory(args, container_fs, container_fs)
     if oa != None and len(oa[0]['products']) != 0:
         if args.assetname is not None:
             oa[0]['name'] = args.assetname+'-container-app'
