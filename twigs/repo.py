@@ -869,7 +869,7 @@ def get_asset_id(args):
     asset_id = asset_id.replace(':','-')
     return asset_id
 
-def discover_inventory(args, localpath):
+def discover_inventory(args, localpath, base_path):
     asset_name = None
     if args.assetname == None or args.assetname.strip() == "":
         asset_name = get_last_component(args.repo)
@@ -913,8 +913,35 @@ def discover_inventory(args, localpath):
     asset_data['tags'] = asset_tags
     if len(tech2prod_dict) > 0:
         asset_data['compliance_metadata'] = {"source_metadata": {"technology_products":tech2prod_dict, "shallow_technology_products":shallow_tech2prod_dict}}
-   
     lib_utils.update_tool_run_record()
+
+    if args.secrets_scan:
+        logging.info("Discovering secrets/sensitive information. This may take some time.")
+        secret_records = lib_code_secrets.scan_for_secrets(args, localpath, base_path)
+        asset_data['secrets'] = secret_records
+        if len(secret_records) > 0:
+            asset_tags.append('Secret')
+    lib_utils.update_tool_run_record()
+
+    code_issues = []
+    if args.sast:
+        logging.info("Performing static analysis. This may take some time.")
+        sast_records = sast.run_sast(args, localpath, base_path)
+        code_issues.extend(sast_records)
+        if len(sast_records) > 0:
+            asset_tags.append('SAST')
+    lib_utils.update_tool_run_record()
+
+    if args.iac_checks:
+        logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
+        iac_records = iac.run_iac_checks(args, localpath, base_path)
+        code_issues.extend(iac_records)
+        if len(iac_records) > 0:
+            asset_tags.append('IaC')
+    lib_utils.update_tool_run_record()
+
+    if len(code_issues) > 0:
+        asset_data['sast'] = code_issues
     return [ asset_data ]
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
@@ -958,28 +985,7 @@ def get_inventory_helper(args):
         logging.error('Not a valid repo')
         return None
 
-    assets = discover_inventory(args, path)
-    if args.secrets_scan:
-        logging.info("Discovering secrets/sensitive information. This may take some time.")
-        secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
-        assets[0]['secrets'] = secret_records
-    lib_utils.update_tool_run_record()
-
-    code_issues = []
-    if args.sast:
-        logging.info("Performing static analysis. This may take some time.")
-        sast_records = sast.run_sast(args, path, base_path)
-        code_issues.extend(sast_records)
-    lib_utils.update_tool_run_record()
-
-    if args.iac_checks:
-        logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
-        iac_records = iac.run_iac_checks(args, path, base_path)
-        code_issues.extend(iac_records)
-    lib_utils.update_tool_run_record()
-
-    if len(code_issues) > 0:
-        assets[0]['sast'] = code_issues
+    assets = discover_inventory(args, path, base_path)
 
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)
