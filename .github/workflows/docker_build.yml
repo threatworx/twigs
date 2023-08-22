@@ -26,7 +26,3 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: threatworx/twigs
-#      - name: build container image
-#        run: |
-#            cd ${GITHUB_WORKSPACE}
-#            docker build . -t threatworx/twigs:latest
