@@ -3,12 +3,12 @@
 name: twigs build
 
 on:
-#  push:
-#    branches: [ "master" ]
-#    paths:
-#      - 'twigs/__init__.py'
-  schedule:
-    - cron: "*/5 * * * *"
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'twigs/__init__.py'
+#  schedule:
+#    - cron: "*/5 * * * *"
 
 jobs:
   build:
