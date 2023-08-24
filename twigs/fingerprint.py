@@ -138,7 +138,7 @@ def get_inventory(args):
             asset_data = {}
             asset_data['id'] = addr 
             asset_data['name'] = hostname 
-            asset_data['type'] = os_type
+            asset_data['type'] = ostype
             asset_data['owner'] = args.handle
             asset_data['products'] = products 
             asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
