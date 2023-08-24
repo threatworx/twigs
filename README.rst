@@ -12,9 +12,6 @@ twigs
 .. image:: https://github.com/threatworx/twigs/actions/workflows/build.yml/badge.svg
         :target: https://github.com/threatworx/twigs/actions/workflows/build.yml
         :alt: twigs build
-.. image:: https://github.com/threatworx/twigs/actions/workflows/docker_build.yml/badge.svg
-        :target: https://github.com/threatworx/twigs/actions/workflows/docker_build.yml
-        :alt: twigs docker image build
 
 ThreatWorx Information Gathering Script
 
