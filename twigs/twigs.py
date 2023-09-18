@@ -455,7 +455,8 @@ def main(args=None):
         if sys.platform != 'win32':
             parser.add_argument('--schedule', help='Run this twigs command at specified schedule (crontab format)')
         parser.add_argument('--encoding', help='Specify the encoding. Default is "latin-1"', default='latin-1')
-        parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS)
+        parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS) # deprecated
+        parser.add_argument('--nosslverify', action='store_true', help=argparse.SUPPRESS)
         # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
 
@@ -771,6 +772,7 @@ def main(args=None):
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
+        parser_nmap.add_argument('--credential_check', action='store_true', help='Check if certain services are using default or common credentials')
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
         # Arguments required for SBOM-based discovery
@@ -888,7 +890,7 @@ def main(args=None):
         logging.getLogger('').addHandler(console)
 
         # In insecure mode, we want to set verify=False for requests
-        if args.insecure:
+        if args.insecure or args.nosslverify:
             utils.set_requests_verify(False)
 
         logging.info('Started new run')
