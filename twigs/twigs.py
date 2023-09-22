@@ -207,6 +207,8 @@ def run_scan(asset_id_list, pj_json, args):
 def get_host_as_label(in_label, asset):
     if asset['type'] == "Google Container-Optimized OS":
         return in_label + "::Google COS"
+    elif asset['type'] == 'Other':
+        return in_label + "::Unclassified"
     else:
         return in_label + "::" + asset['type']
 
@@ -260,12 +262,11 @@ def add_attack_surface_label(args, assets):
             as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'vmware':
             if asset['type'] == 'VMware vCenter':
-                as_label = "Corporate::VMWare::vCenter"
+                as_label = "Corporate::VMware::vCenter"
             elif asset['type'] == 'VMware ESXi':
-                as_label = "Corporate::VMWare::ESXi"
+                as_label = "Corporate::VMware::ESXi"
         elif args.mode == 'nmap':
-            pass
-            #as_label = get_host_as_label("Corporate::Server", asset)
+            as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'docker':
             as_label = get_container_as_label("Container::Docker", asset)
         elif args.mode == 'k8s':
