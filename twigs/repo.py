@@ -641,7 +641,10 @@ def discover_python(args, localpath):
 
     files = lib_utils.find_files(localpath, 'setup.py')
     for file_path in files:
-        setup = distutils.core.run_setup(file_path, stop_after="config")
+        try:
+            setup = distutils.core.run_setup(file_path, stop_after="config")
+        except:
+            continue
         req = setup.install_requires 
         for prod in req:
             prod = prod.replace("==", " ")
