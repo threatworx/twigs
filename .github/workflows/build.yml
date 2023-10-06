@@ -17,9 +17,7 @@ jobs:
 
       - name: Get version tag
         run: |
-          echo "TAG_NAME=$(cat twigs/__init__.py | grep version | cut -f2 -d"'" )"
           echo "TAG_NAME=$(cat twigs/__init__.py | grep version | cut -f2 -d"'" )" >> $GITHUB_ENV
-          echo ${{ env.TAG_NAME }}
           
       - name: checkout repo content
         run: pip install twine
