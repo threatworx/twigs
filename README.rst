@@ -577,6 +577,12 @@ usage: twigs nmap [-h] --hosts HOSTS
 optional arguments:
   -h, --help     show this help message and exit
   --hosts HOSTS  A hostname, IP address or CIDR range
+  --timing TIMING
+                        Timing Template value (range 0 to 5) as per nmap
+                        documentation. Defaults to 5 if not specified. Refer
+                        https://nmap.org/book/performance-timing-templates.html
+  --credential_check    Check if certain services are using default or common
+                        credentials
   --no_ssh_audit  Skip ssh audit
 
 Mode: sbom

@@ -53,7 +53,7 @@ def get_inventory(args):
     assets = []
     for host in args.hosts:
         logging.info("Fingerprinting "+host)
-        cmdarr = [NMAP + ' -oX - -A --script http-wordpress-enum,mysql-info -PN -T5 '+host]
+        cmdarr = [NMAP + ' -oX - -A --script http-wordpress-enum,mysql-info -PN -T' + args.timing + ' ' + host]
         try:
             out = subprocess.check_output(cmdarr, shell=True)
             out = out.decode(args.encoding)
