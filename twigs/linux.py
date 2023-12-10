@@ -492,7 +492,7 @@ def run_ssh_audit(args, assetid, ip):
         dev_null_device.close()
     except subprocess.CalledProcessError as e:
         logging.error("Error running ssh audit: %s" % str(e))
-        logging.error(traceback.format_exc())
+        #logging.error(traceback.format_exc())
         return issue_list
     key_issues = {}
     recs = {}
