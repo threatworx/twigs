@@ -708,6 +708,16 @@ def discover_python(args, localpath):
                 prod = d + " " + ver + " source:" + file_path
                 if prod not in plist:
                     plist.append(prod)
+        if 'tool' in tdict and 'poetry' in tdict['tool'] and 'dev-dependencies' in tdict['tool']['poetry']:
+            for d in tdict['tool']['poetry']['dev-dependencies']:
+                ver = tdict['tool']['poetry']['dev-dependencies'][d]
+                if isinstance(ver, dict):
+                    ver = ver['version']
+                ver = cleanse_semver_version(ver)
+                prod = d + " " + ver + " source:" + file_path
+                if prod not in plist:
+                    plist.append(prod)
+
         if 'project' in tdict and 'dependencies' in tdict['project']: 
             for d in tdict['project']['dependencies']:
                 prod = d 
