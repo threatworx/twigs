@@ -280,7 +280,7 @@ def get_os_details(host, vmuuid, params):
         else:
             return False, None, None
     else:
-        logging.warn("Warning unable to get OS version details for VM [%s]. It might not be running..." % host)
+        logging.warning("Warning unable to get OS version details for VM [%s]. It might not be running..." % host)
         return False, None, None
 
 # Get details for all VMs

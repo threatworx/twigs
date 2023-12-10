@@ -135,6 +135,9 @@ def discover_rh(args, host):
     cmdarr = ["/usr/bin/yum list installed"]
     logging.info("Retrieving product details")
     yumout = utils.run_cmd_on_host(args, host, cmdarr)
+    if yumout == None:
+        logging.error("Error getting yum list output")
+        return plist
 
     begin = False
     for l in yumout.splitlines():

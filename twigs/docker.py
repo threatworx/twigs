@@ -27,8 +27,11 @@ def make_temp_directory(tmp_dir):
     return temp_dir
 
 def on_rm_error( func, path, exc_info):
-    os.chmod( path, stat.S_IWRITE )
-    os.unlink( path )
+    try:
+        os.chmod( path, stat.S_IWRITE )
+        os.unlink( path )
+    except Exception:
+        return
 
 # Note this routine only handles direct symbolic links and not nested ones
 def fix_symbolic_links_helper(container_fs):
@@ -41,15 +44,23 @@ def fix_symbolic_links_helper(container_fs):
                 if os.path.isabs(symlink_path) and not symlink_path.startswith(container_fs):
                     nested_path = container_fs + symlink_path
                     if os.path.exists(nested_path):
-                        # Fix symbolic link to point within container_fs
-                        os.remove(file_path)
-                        os.symlink(nested_path, file_path)
+                        try:
+                            # Fix symbolic link to point within container_fs
+                            os.remove(file_path)
+                            os.symlink(nested_path, file_path)
+                        except Exception as e:
+                            logging.warning("Unable to fix symbolic link ["+file_path+"]")
+                            logging.warning(str(e))
 
 def fix_symbolic_links(container_fs):
-    # This is a two phase operation as there could be symbolic links that could not be processed
-    # due to a symbolic that will be processed later...
-    fix_symbolic_links_helper(container_fs)
-    fix_symbolic_links_helper(container_fs)
+    try:
+        # This is a two phase operation as there could be symbolic links that could not be processed
+        # due to a symbolic that will be processed later...
+        fix_symbolic_links_helper(container_fs)
+        fix_symbolic_links_helper(container_fs)
+    except Exception as e:
+        logging.warning("Encountering issue while fixing symbolic links")
+        logging.warning(str(e))
 
 def tar_available():
     if os.path.isfile("/bin/tar"):
@@ -266,7 +277,7 @@ def create_asset(args, os_release, atype, plist, digest, container_fs):
     asset_data['tags'] = asset_tags
 
     if container_fs is not None:
-        host = {'remote' : False}
+        host = {'remote' : False, 'assetid': asset_id}
         plugin_processor.process_plugins(asset_data, host, args, container_fs)
 
     return [ asset_data ]
@@ -374,7 +385,7 @@ def create_open_source_asset(args, container_fs, digest):
     os_asset_id = get_opensource_asset_id(args)
     # skip unused dependencies filtering for container app assets
     args.include_unused_dependencies = True
-    oa = repo.discover_inventory(args, container_fs)
+    oa = repo.discover_inventory(args, container_fs, container_fs)
     if oa != None and len(oa[0]['products']) != 0:
         if args.assetname is not None:
             oa[0]['name'] = args.assetname+'-container-app'
@@ -793,7 +804,7 @@ def get_inventory(args, digest=None):
     # If image digest is available, then check if image has changed using digest
     if digest is not None and digest != -1:
         if (args.token is None or len(args.token) == 0):
-            logging.warn("Unable to compare image digest as [token] argument is not specified")
+            logging.warning("Unable to compare image digest as [token] argument is not specified")
         else:
             no_change = False
             digest_tag = "IMAGE_DIGEST:%s" % digest

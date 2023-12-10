@@ -18,6 +18,7 @@ import toml
 import re
 import ast
 import textwrap
+import distutils.core
 
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
@@ -65,7 +66,7 @@ def discover_composer(args, localpath):
         fp.close()
         composer_json = json.loads(contents)
         if file_path.endswith('composer.json'):
-            requires = composer_json['require']
+            requires = composer_json['require'] if 'require' in composer_json else {}
             for pname in requires.keys():
                 pver = requires[pname]
                 prod = pname + " " + pver + " source:"+file_path
@@ -396,8 +397,8 @@ def discover_package_json(args, localpath):
             logging.debug("Filtering out unused npm dependencies. This may take some time...")
             plist = filter_used_npm_dependencies(args, plist, localpath)
         else:
-            logging.warn("Including unused dependencies")
-            logging.warn("May increase false positives")
+            logging.warning("Including unused dependencies")
+            logging.warning("May increase false positives")
     return plist, p1list
 
 def discover_packages_config(args, localpath):
@@ -478,8 +479,8 @@ def discover_packages_config(args, localpath):
             logging.debug("Filtering out unused dotnet dependencies. This may take some time...")
             plist = filter_used_dotnet_dependencies(args, plist, localpath)
         else:
-            logging.warn("Including unused dependencies")
-            logging.warn("May increase false positives")
+            logging.warning("Including unused dependencies")
+            logging.warning("May increase false positives")
 
     if len(plist) > 0:
         return plist, plist
@@ -512,8 +513,8 @@ def discover_packages_config(args, localpath):
             logging.debug("Filtering out unused nuget dependencies. This may take some time...")
             plist = filter_used_dotnet_dependencies(args, plist, localpath)
         else:
-            logging.warn("Including unused dependencies")
-            logging.warn("May increase false positives")
+            logging.warning("Including unused dependencies")
+            logging.warning("May increase false positives")
 
     return plist, plist
 
@@ -637,47 +638,15 @@ def discover_python(args, localpath):
         except:
             logging.error("Unable to parse python dependencies")
             continue
-    """
+
     files = lib_utils.find_files(localpath, 'setup.py')
     for file_path in files:
-        #Parse setup.py and return args and keywords args to its setup
-        #function call
-
-        mock_setup = textwrap.dedent('''\
-        def setup(*args, **kwargs):
-            __setup_calls__.append((args, kwargs))
-        ''')
-        parsed_mock_setup = ast.parse(mock_setup, filename=file_path)
-        with open(file_path, 'rt') as setup_file:
-            parsed = ast.parse(setup_file.read())
-            for index, node in enumerate(parsed.body[:]):
-                if (
-                    not isinstance(node, ast.Expr) or
-                    not isinstance(node.value, ast.Call)
-                    #not isinstance(node.value, ast.Call) or
-                    #node.value.func.id != 'setup'
-                ):
-                    continue
-                parsed.body[index:index] = parsed_mock_setup.body
-                break
-
-        fixed = ast.fix_missing_locations(parsed)
-        codeobj = compile(fixed, file_path, 'exec')
-        local_vars = {}
-        global_vars = {'__setup_calls__': []}
-        cwd = os.getcwd()
-        os.chdir(os.path.dirname(file_path))
         try:
-            exec(codeobj, global_vars, local_vars)
-        except Exception:
-            # move on
-            logging.warn("Unable to parse python dependencies %s", file_path)
-            os.chdir(cwd)
+            setup = distutils.core.run_setup(file_path, stop_after="config")
+        except:
             continue
-        os.chdir(cwd)
-        reqs = global_vars['__setup_calls__'][0][1]['install_requires']
-        for r in reqs:
-            prod = r
+        req = setup.install_requires 
+        for prod in req:
             prod = prod.replace("==", " ")
             prod = prod.replace(">=", " ")
             prod = prod.replace("<=", " ")
@@ -687,7 +656,6 @@ def discover_python(args, localpath):
             prod = prod + " source:" + file_path
             if prod not in plist:
                 plist.append(prod)
-    """
 
     files = lib_utils.find_files(localpath, 'pyproject.toml')
     for file_path in files:
@@ -718,6 +686,22 @@ def discover_python(args, localpath):
                 if prod not in plist:
                     plist.append(prod)
 
+        if 'build-system' in tdict:
+            for b in tdict['build-system']:
+                if b == 'requires':
+                    for prod in tdict['build-system']['requires']:
+                        prod = prod.replace("==", " ")
+                        prod = prod.replace(">=", " ")
+                        prod = prod.replace("<=", " ")
+                        prod = prod.replace("~=", " ")
+                        prod = prod.replace(">", " ")
+                        prod = prod.replace("<", " ")
+                        prod = prod.replace(",", "")
+                        prod = prod + " source:" + file_path
+                        print("Builddep: "+prod)
+                        if prod not in plist:
+                            plist.append(prod)
+
         if 'project' in tdict and 'dependencies' in tdict['project']: 
             for d in tdict['project']['dependencies']:
                 prod = d 
@@ -730,6 +714,7 @@ def discover_python(args, localpath):
                 prod = prod + " source:" + file_path
                 if prod not in plist:
                     plist.append(prod)
+
     return plist, None
 
 def LOWORD(dword):
@@ -786,7 +771,7 @@ def discover_jar(args, localpath):
                 #print "Error: No manifest found"
                 pass
         except zipfile.BadZipfile:
-            logging.warn("Unable to inspect file: %s", os.path.basename(file_path))
+            logging.warning("Unable to inspect file: %s", os.path.basename(file_path))
 
         if prod == '' or ver == '':
             jfile = os.path.basename(file_path)
@@ -879,7 +864,7 @@ def get_asset_id(args):
     asset_id = asset_id.replace(':','-')
     return asset_id
 
-def discover_inventory(args, localpath):
+def discover_inventory(args, localpath, base_path):
     asset_name = None
     if args.assetname == None or args.assetname.strip() == "":
         asset_name = get_last_component(args.repo)
@@ -923,8 +908,35 @@ def discover_inventory(args, localpath):
     asset_data['tags'] = asset_tags
     if len(tech2prod_dict) > 0:
         asset_data['compliance_metadata'] = {"source_metadata": {"technology_products":tech2prod_dict, "shallow_technology_products":shallow_tech2prod_dict}}
-   
     lib_utils.update_tool_run_record()
+
+    if args.secrets_scan:
+        logging.info("Discovering secrets/sensitive information. This may take some time.")
+        secret_records = lib_code_secrets.scan_for_secrets(args, localpath, base_path)
+        asset_data['secrets'] = secret_records
+        if len(secret_records) > 0:
+            asset_tags.append('Secret')
+    lib_utils.update_tool_run_record()
+
+    code_issues = []
+    if args.sast:
+        logging.info("Performing static analysis. This may take some time.")
+        sast_records = sast.run_sast(args, localpath, base_path)
+        code_issues.extend(sast_records)
+        if len(sast_records) > 0:
+            asset_tags.append('SAST')
+    lib_utils.update_tool_run_record()
+
+    if args.iac_checks:
+        logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
+        iac_records = iac.run_iac_checks(args, localpath, base_path)
+        code_issues.extend(iac_records)
+        if len(iac_records) > 0:
+            asset_tags.append('IaC')
+    lib_utils.update_tool_run_record()
+
+    if len(code_issues) > 0:
+        asset_data['sast'] = code_issues
     return [ asset_data ]
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
@@ -944,13 +956,17 @@ def get_inventory_helper(args):
         base_path = path
         new_repo = None
         logging.info("Cloning repo locally...")
+        out = ""
         try:
             if args.branch and args.branch != '':
                 cmdarr = [GIT_PATH, 'clone', '--branch', args.branch, args.repo, path+'/.']
             else:
                 cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
-            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-        except:
+            #out = subprocess.check_output(cmdarr, stderr=dev_null_device)
+            out = subprocess.check_output(cmdarr)
+        except Exception as e:
+            logging.error(out)
+            logging.error(str(e))
             logging.error(traceback.format_exc())
             logging.error('Error cloning repo locally')
             shutil.rmtree(path, onerror = on_rm_error)
@@ -964,28 +980,7 @@ def get_inventory_helper(args):
         logging.error('Not a valid repo')
         return None
 
-    assets = discover_inventory(args, path)
-    if args.secrets_scan:
-        logging.info("Discovering secrets/sensitive information. This may take some time.")
-        secret_records = lib_code_secrets.scan_for_secrets(args, path, base_path)
-        assets[0]['secrets'] = secret_records
-    lib_utils.update_tool_run_record()
-
-    code_issues = []
-    if args.sast:
-        logging.info("Performing static analysis. This may take some time.")
-        sast_records = sast.run_sast(args, path, base_path)
-        code_issues.extend(sast_records)
-    lib_utils.update_tool_run_record()
-
-    if args.iac_checks:
-        logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
-        iac_records = iac.run_iac_checks(args, path, base_path)
-        code_issues.extend(iac_records)
-    lib_utils.update_tool_run_record()
-
-    if len(code_issues) > 0:
-        assets[0]['sast'] = code_issues
+    assets = discover_inventory(args, path, base_path)
 
     if args.repo.startswith('http'):
         shutil.rmtree(path, onerror = on_rm_error)

@@ -136,28 +136,42 @@ def process_plugins(asset_dict, host, args, root_folder):
     if args.mode not in ['host', 'docker', 'gcr', 'acr', 'ecr', 'k8s']:
         return
 
-    plugin_dir = plugin_registry.get_plugin_dir()
-    if host['remote'] == True:
-        # copy plugins folder on remote host
-        client = utils.get_ssh_client(host)
-        cmd = 'mktemp -d'
-        remote_plugin_dir, exit_code = utils.run_remote_ssh_command_helper(client, cmd, args)
-        remote_plugin_dir = remote_plugin_dir.strip()
-        utils.scp_put_file(client, plugin_dir, remote_plugin_dir)
-        cmd = 'chmod +x ' + remote_plugin_dir + '/*'
-        utils.run_remote_ssh_command_helper(client, cmd, args)
-        plugin_dir = remote_plugin_dir + os.sep + 'plugins'
-        client.close()
-        
-    if args.check_vuln is not None:
-        run_plugin(args, asset_dict, host, args.check_vuln, plugin_dir, root_folder)
-    elif args.check_all_vulns:
-        run_plugins(args, asset_dict, host, plugin_dir, root_folder)
+    assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
+    try:
+        plugin_dir = plugin_registry.get_plugin_dir()
+        if host['remote'] == True:
+            # copy plugins folder on remote host
+            client = utils.get_ssh_client(host)
+            cmd = 'mktemp -d'
+            remote_plugin_dir, exit_code = utils.run_remote_ssh_command_helper(client, cmd, args)
+            remote_plugin_dir = remote_plugin_dir.strip()
+            utils.scp_put_file(client, plugin_dir, remote_plugin_dir)
+            cmd = 'chmod +x ' + remote_plugin_dir + '/*'
+            utils.run_remote_ssh_command_helper(client, cmd, args)
+            plugin_dir = remote_plugin_dir + os.sep + 'plugins'
+            client.close()
 
-    if host['remote'] == True:
-        # remove plugin dir from remote host
-        client = utils.get_ssh_client(host)
-        cmd = 'rm -rf ' + remote_plugin_dir
-        utils.run_remote_ssh_command_helper(client, cmd, args)
-        client.close()
+        if args.check_vuln is not None:
+            run_plugin(args, asset_dict, host, args.check_vuln, plugin_dir, root_folder)
+        elif args.check_all_vulns:
+            run_plugins(args, asset_dict, host, plugin_dir, root_folder)
 
+        if host['remote'] == True:
+            # remove plugin dir from remote host
+            client = utils.get_ssh_client(host)
+            cmd = 'rm -rf ' + remote_plugin_dir
+            utils.run_remote_ssh_command_helper(client, cmd, args)
+            client.close()
+    except paramiko.ssh_exception.AuthenticationException as e:
+        logging.info("Authentication failed for asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+    except paramiko.ssh_exception.SSHException as e:
+        logging.info("SSHException while connecting to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+    except socket.error as e:
+        logging.info("Socket error while connection to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+    except:
+        logging.info("Unknown error running remote discovery for asset [%s], host [%s]: [%s]", assetid, host['hostname'], sys.exc_info()[0])
+    finally:
+        return

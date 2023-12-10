@@ -64,8 +64,12 @@ def hide_secrets(lines):
         for cp in common_pwds:
             matched = cp.search(line_content)
             if matched:
-                string = matched.group()[1:-1] # remove the qoutes
-                line_content = line_content.replace(string, "*" * len(string))
+                string = matched.group() # string contains delimiters at the start and end
+                replace_str = string[0]
+                for i in range(1,len(string)-1):
+                    replace_str += string[i]
+                replace_str += string[len(string)-1]
+                line_content = line_content.replace(string, replace_str)
         ret_lines.append(line_content)
     return "\n".join(ret_lines)
 
@@ -127,7 +131,15 @@ def create_secret_record(filename, lines, line_no, record_type, line_content, se
         else:
             secret_record['column_end'] = -1
         if to_mask:
-            line_content = line_content.replace(secret, "*" * secret_length)
+            if record_type == 'COMMON_PASSWORD':
+                # Note for "COMMON_PASSWORD" we have delimiters at the start and end of secret due to regex and these should be preserved
+                replace_str = secret[0]
+                for i in range(1,len(secret)-1):
+                    replace_str += '*'
+                replace_str += secret[len(secret)-1]
+                line_content = line_content.replace(secret, replace_str)
+            else:
+                line_content = line_content.replace(secret, "*" * secret_length)
         secret_record['line_content'] = line_content
         secret_record['before_content'] = hide_secrets(before_content) if to_mask else before_content
         secret_record['after_content'] = hide_secrets(after_content) if to_mask else after_content
@@ -162,7 +174,7 @@ def check_common_passwords(this_file, lines, line, line_no, secret_records, args
     for cp in common_pwds:
         matched = cp.search(line)
         if matched:
-            secret = matched.group()[1:-1] # remove the qoutes
+            secret = matched.group() # secret contains delimiters at start and end
             secret_records.append(create_secret_record(this_file, lines, line_no, "COMMON_PASSWORD", line, secret, args))
             break
 
@@ -271,7 +283,7 @@ def scan_for_secrets(args, local_path, base_path):
         for cp in common_passwords_list:
             cp = cp.strip()
             if len(cp) > 0: # Safety check
-                common_pwds.append(re.compile("[^a-zA-Z0-9]"+cp+"[^a-zA-Z0-9]"))
+                common_pwds.append(re.compile("[='\";,@]"+cp+"['\";,&\n]"))
 
     secret_records = []
     for this_file in final_files:

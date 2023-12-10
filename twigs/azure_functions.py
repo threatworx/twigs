@@ -91,25 +91,7 @@ def get_inventory(args):
                         logging.debug("Error getting function package contents")
                         continue 
                     logging.info("Discovering code dependencies for vulnerability scan.")
-                    assets = repo.discover_inventory(args, path)
-                    if args.secrets_scan:
-                        logging.info("Discovering secrets/sensitive information. This may take some time.")
-                        secret_records = lib_code_secrets.scan_for_secrets(args, path, basepath)
-                        assets[0]['secrets'] = secret_records
-
-                    code_issues = []
-                    if args.sast:
-                        logging.info("Performing static analysis. This may take some time.")
-                        sast_records = sast.run_sast(args, path, basepath)
-                        code_issues.extend(sast_records)
-
-                    if args.iac_checks:
-                        logging.info("Identifying infrastructure as code (IaC) issues. This may take some time.")
-                        iac_records = iac.run_iac_checks(args, path, basepath)
-                        code_issues.extend(iac_records)
-
-                    if len(code_issues) > 0:
-                        assets[0]['sast'] = code_issues
+                    assets = repo.discover_inventory(args, path, basepath)
                     assets[0]['type'] = 'Azure Function'
                     assets[0]['tags'].extend(['Azure', 'Azure Function', 'Serverless'])
                     ret_assets.extend(assets)

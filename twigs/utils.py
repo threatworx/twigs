@@ -217,7 +217,7 @@ def get_asset_type(os):
     elif "debian" in os:
         return "Debian"
     elif "amazon linux" in os:
-        return "Amazon Linux"
+        return "Amazon Linux AMI"
     elif "oracle linux" in os:
         return "Oracle Linux"
     elif "freebsd" in os:
@@ -345,12 +345,12 @@ def requests_get(url):
             resp = requests.get(url, verify=get_requests_verify())
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
-            logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
+            logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
             if rc >= 10:
-                logging.warn("Max retries exceeded....giving up...")
+                logging.warning("Max retries exceeded....giving up...")
                 return None
             else:
-                logging.warn("Sleeping for [%s] seconds...", st)
+                logging.warning("Sleeping for [%s] seconds...", st)
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
@@ -363,6 +363,26 @@ def requests_post(url, json):
     while True:
         try:
             resp =  requests.post(url, json=json, verify=get_requests_verify())
+            resp_status_code = resp.status_code
+        except requests.exceptions.RequestException as e:
+            logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
+            if rc >= 10:
+                logging.warning("Max retries exceeded....giving up...")
+                return None
+            else:
+                logging.warning("Sleeping for [%s] seconds...", st)
+                time.sleep(st)
+                rc = rc + 1
+                st = st * 2
+                continue
+        return resp
+
+def requests_post_files(url, files):
+    rc = 0
+    st = 1
+    while True:
+        try:
+            resp =  requests.post(url, files=files, verify=get_requests_verify())
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
@@ -385,12 +405,12 @@ def requests_put(url, json):
             resp = requests.put(url, json=json, verify=get_requests_verify())
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
-            logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
+            logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
             if rc >= 10:
-                logging.warn("Max retries exceeded....giving up...")
+                logging.warning("Max retries exceeded....giving up...")
                 return None
             else:
-                logging.warn("Sleeping for [%s] seconds...", st)
+                logging.warning("Sleeping for [%s] seconds...", st)
                 time.sleep(st)
                 rc = rc + 1
                 st = st * 2
@@ -408,11 +428,15 @@ def get_asset(asset_id, args):
         return None
 
 def tw_open(in_file, in_encoding, in_mode='rt'):
-    if sys.version_info[0] < 3:
-        f = open(in_file, mode=in_mode)
-    else:
-        f = open(in_file, mode=in_mode, encoding=in_encoding)
-    return f
+    try:
+        if sys.version_info[0] < 3:
+            f = open(in_file, mode=in_mode)
+        else:
+            f = open(in_file, mode=in_mode, encoding=in_encoding)
+        return f
+    except Exception as e:
+        logging.warning("Unable to open file ["+in_file+"]")
+        return None
 
 def set_run_args(args):
     global run_args
@@ -486,4 +510,9 @@ def tail(fn, encoding, lines=20):
             block_number -= 1
         all_read_text = ''.join(reversed(blocks))
         return '\n'.join(all_read_text.splitlines()[-total_lines_wanted:])
+
+def get_latest_version():
+    response = requests.get('https://pypi.org/pypi/twigs/json')
+    latest_version = response.json()['info']['version']
+    return latest_version
 

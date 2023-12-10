@@ -82,6 +82,7 @@ except (ImportError,ValueError):
     from twigs import gcp_cis
     from twigs import k8s_cis
     from twigs import gcloud_functions
+    from twigs import vmware
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
@@ -89,6 +90,8 @@ except (ImportError,ValueError):
 def export_assets_to_sbom_file(assets, timestamp, args):
     json_file = args.sbom
     logging.info("Exporting assets to SBOM JSON file [%s]", json_file)
+    add_attack_surface_label(args, assets)
+    add_asset_tags(assets, ["SBOM"])
     sbom_json = { }
     sbom_json['meta'] = { }
     sbom_json['meta']['generated_by'] = args.handle
@@ -200,6 +203,103 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Failed to start license compliance assessment")
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
+
+def get_host_as_label(in_label, asset):
+    if asset['type'] == "Google Container-Optimized OS":
+        return in_label + "::Google COS"
+    elif asset['type'] == 'Other':
+        return in_label + "::Unclassified"
+    else:
+        return in_label + "::" + asset['type']
+
+def get_container_as_label(in_label, asset):
+    if asset['type'] == "Container App":
+        return in_label + "::App"
+    else:
+        return in_label + "::Image::" + asset['type']
+
+def get_code_as_label(in_label, asset):
+    if asset.get('tags') is None:
+        asset_tags_set = set()
+    else:
+        asset_tags_set = set(asset['tags'])
+    supported_types_set = set(repo.SUPPORTED_TYPES)
+    supported_types_set = supported_types_set.union({'Secret','SAST', 'IaC'})
+    intersection_set = supported_types_set & asset_tags_set
+    if len(intersection_set) == 0:
+        return in_label + "::Empty"
+    elif len(intersection_set) == 1:
+        return in_label + "::" + list(intersection_set)[0]
+    else:
+        return in_label + "::Multiple"
+
+def add_attack_surface_label(args, assets):
+    for asset in assets:
+        as_label = None
+        if args.mode == 'ssl_audit':
+            pass
+        elif args.mode == 'aws':
+            as_label = get_host_as_label("Cloud::AWS::EC2", asset)
+        elif args.mode == 'azure':
+            as_label = get_host_as_label("Cloud::Azure::VM", asset)
+        elif args.mode == 'o365':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'acr':
+            as_label = get_container_as_label("Cloud::Azure::ACR", asset)
+        elif args.mode == 'ecr':
+            as_label = get_container_as_label("Cloud::AWS::ECR", asset)
+        elif args.mode == 'gcp':
+            as_label = get_host_as_label("Cloud::GCP::Compute", asset)
+        elif args.mode == 'gcr':
+            as_label = get_container_as_label("Cloud::GCP::GCR", asset)
+        elif args.mode == 'servicenow':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'repo':
+            as_label = get_code_as_label("Code", asset)
+        elif args.mode == "ghe":
+            as_label = get_code_as_label("Code", asset)
+        elif args.mode == 'host':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'vmware':
+            if asset['type'] == 'VMware vCenter':
+                as_label = "Corporate::VMware::vCenter"
+            elif asset['type'] == 'VMware ESXi':
+                as_label = "Corporate::VMware::ESXi"
+        elif args.mode == 'nmap':
+            as_label = get_host_as_label("Corporate::Server", asset)
+        elif args.mode == 'docker':
+            as_label = get_container_as_label("Container::Docker", asset)
+        elif args.mode == 'k8s':
+            as_label = get_container_as_label("Container::Kubernetes", asset)
+        elif args.mode == 'sbom':
+            # Skip for TW SBOM, other sboms populate TP along with Code
+            if args.standard != "threatworx" and args.org is not None and len(args.org) > 0:
+                tp_name = args.org
+                as_label = "Third Party::%s::Code" % tp_name
+                as_label = get_code_as_label(as_label, asset)
+        elif args.mode == 'dast':
+            pass
+        elif args.mode == 'docker_cis':
+            as_label = "Container::Docker::Misconfig"
+        elif args.mode == 'aws_cis':
+            as_label = "Cloud::AWS::Account"
+        elif args.mode == 'aws_audit':
+            as_label = "Cloud::AWS::Account"
+        elif args.mode == 'azure_cis':
+            as_label = "Cloud::Azure::Tenant"
+        elif args.mode == 'gcp_cis':
+            as_label = "Cloud::GCP::Org"
+        elif args.mode == 'k8s_cis':
+            as_label = "Container::Kubernetes::Misconfig"
+        elif args.mode == 'gke_cis':
+            as_label = "Cloud::GCP::GKE::Misconfig"
+        elif args.mode == 'azure_functions':
+            as_label = get_code_as_label("Cloud::Azure::Serverless", asset)
+        elif args.mode == 'gcloud_functions':
+            as_label = get_code_as_label("Cloud::GCP::Serverless", asset)
+
+        if as_label is not None:
+            asset['attack_surface_label'] = as_label
 
 def remove_standard_tags(assets):
     for asset in assets:
@@ -356,7 +456,8 @@ def main(args=None):
         if sys.platform != 'win32':
             parser.add_argument('--schedule', help='Run this twigs command at specified schedule (crontab format)')
         parser.add_argument('--encoding', help='Specify the encoding. Default is "latin-1"', default='latin-1')
-        parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS)
+        parser.add_argument('--insecure', action='store_true', help=argparse.SUPPRESS) # deprecated
+        parser.add_argument('--nosslverify', action='store_true', help=argparse.SUPPRESS)
         # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
 
@@ -651,8 +752,9 @@ def main(args=None):
 
         # Arguments required for Host discovery on Linux
         parser_linux = subparsers.add_parser ("host", help = "Discover linux host assets")
-        parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
-        parser_linux.add_argument('--host_list', help='Same as the option: remote_hosts_csv. A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
+        #parser_linux.add_argument('--remote_hosts_csv', help='CSV file containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.', help=argparse.SUPPRESS)
+        parser_linux.add_argument('--remote_hosts_csv', help=argparse.SUPPRESS)
+        parser_linux.add_argument('--host_list', help='A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
         parser_linux.add_argument('--secure', action='store_true', help='Use this option to encrypt clear text passwords in the host list file')
         parser_linux.add_argument('--password', help='A password used to encrypt / decrypt login information from the host list file')
         parser_linux.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
@@ -669,14 +771,11 @@ def main(args=None):
         parser_vmware.add_argument('--password', help='Password for the vCenter user. Note this can be set as "VCENTER_PASSWD" environment variable')
 
         # Arguments required for nmap discovery
-        parser_nmap = subparsers.add_parser ("nmap", help = "Discover assets using nmap")
+        parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
+        parser_nmap.add_argument('--timing', help='Timing Template value (range 0 to 5) as per nmap documentation. Defaults to 5 if not specified. Refer https://nmap.org/book/performance-timing-templates.html', choices=['0', '1', '2', '3', '4', '5'], default = '5', required = False)
+        parser_nmap.add_argument('--credential_check', action='store_true', help='Check if certain services are using default or common credentials')
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
-
-        # Arguments required for nmap discovery
-        parser_wp = subparsers.add_parser ("wordpress", help = "Discover wordpress website plugins and themes using nmap")
-        parser_wp.add_argument('--host', help='A hostname or IP address', required=True)
-        parser_wp.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
 
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")
@@ -690,6 +789,8 @@ def main(args=None):
         parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=True)
         parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
         parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_sbom.add_argument('--org', help='Associate discovered asset with specified organization')
+        parser_sbom.add_argument('--comment', help='Specify user comment for SBOM')
 
         # Arguments required for ServiceNow discovery
         parser_snow = subparsers.add_parser ("servicenow", help = "Ingest inventory from ServiceNow CMDB")
@@ -791,7 +892,7 @@ def main(args=None):
         logging.getLogger('').addHandler(console)
 
         # In insecure mode, we want to set verify=False for requests
-        if args.insecure:
+        if args.insecure or args.nosslverify:
             utils.set_requests_verify(False)
 
         logging.info('Started new run')
@@ -897,14 +998,16 @@ def main(args=None):
             assets = vmware.get_inventory(args)
         elif args.mode == 'nmap':
             assets = fingerprint.get_inventory(args)
-        elif args.mode == 'wordpress':
-            assets = fingerprint.get_wordpress(args)
         elif args.mode == 'docker':
             assets = docker.get_inventory(args)
         elif args.mode == 'k8s':
             assets = kubernetes.get_inventory(args)
         elif args.mode == 'sbom':
-            assets = sbom.get_inventory(args)
+            ret_code = sbom.upload_sbom(args)
+            if ret_code:
+                utils.tw_exit(0)
+            else:
+                utils.tw_exit(1)
         elif args.mode == 'dast':
             assets = dast.get_inventory(args)
         elif args.mode == 'docker_cis':
@@ -938,6 +1041,8 @@ def main(args=None):
                 if args.asset_criticality is not None:
                     add_asset_criticiality_tag(assets, args.asset_criticality)
                 """
+
+                add_attack_surface_label(args, assets)
 
                 if args.no_auto_tags:
                     remove_standard_tags(assets)
@@ -1014,6 +1119,13 @@ def main(args=None):
             utils.update_tool_run_record('SUCCESS')
 
         logging.info('Run completed')
+
+        # check for upgrade
+        latest_version = utils.get_latest_version()
+        if __version__ != latest_version:
+            logging.warning('You are using twigs version '+__version__+'; however version '+latest_version+' is available.')
+            logging.warning('You should consider upgrading via the "pip install twigs --upgrade" command.')
+
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
             sys.exit(int(exit_code))

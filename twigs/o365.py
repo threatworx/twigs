@@ -25,6 +25,11 @@ def get_machines(args, token):
     logging.debug("Retrieved "+str(len(allmachines))+" machine details")
     assets = []
     for machine in allmachines:
+        if 'osProcessor' in machine and machine['osProcessor'] == None:
+            mstr = json.dumps(machine, indent=4)
+            logging.error(mstr)
+            logging.error("osProcessor attribute not found. Ignoring")
+            continue
         asset = {}
         asset['owner'] = args.handle
         asset['id'] = machine['id']
