@@ -774,7 +774,6 @@ def main(args=None):
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
         parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
         parser_nmap.add_argument('--timing', help='Timing Template value (range 0 to 5) as per nmap documentation. Defaults to 5 if not specified. Refer https://nmap.org/book/performance-timing-templates.html', choices=['0', '1', '2', '3', '4', '5'], default = '5', required = False)
-        parser_nmap.add_argument('--credential_check', action='store_true', help='Check if certain services are using default or common credentials')
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
         # Arguments required for SBOM-based discovery

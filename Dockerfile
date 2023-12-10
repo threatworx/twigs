@@ -10,4 +10,4 @@ COPY build_docker.sh /tmp
 COPY motd /tmp
 #COPY entrypoint.sh /tmp
 RUN /bin/bash /tmp/build_docker.sh
-ENTRYPOINT /bin/bash
+ENTRYPOINT ["/usr/local/bin/twigs"]
