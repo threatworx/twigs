@@ -10,6 +10,9 @@ apt-get -y update
 apt-get -y upgrade
 apt-get -y install dialog apt-utils
 
+#install nmap
+apt-get -y install nmap
+
 # Setup gcloud sdk
 apt-get -y install curl
 echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
