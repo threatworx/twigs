@@ -55,6 +55,7 @@ try:
     from . import azure_functions
     from . import gcp_cis
     from . import k8s_cis
+    from . import oci_cis
     from . import gcloud_functions
     from . import vmware 
     from . import policy as policy_lib
@@ -81,6 +82,7 @@ except (ImportError,ValueError):
     from twigs import azure_functions
     from twigs import gcp_cis
     from twigs import k8s_cis
+    from twigs import oci_cis
     from twigs import gcloud_functions
     from twigs import vmware
     from twigs import utils
@@ -289,6 +291,8 @@ def add_attack_surface_label(args, assets):
             as_label = "Cloud::Azure::Tenant"
         elif args.mode == 'gcp_cis':
             as_label = "Cloud::GCP::Org"
+        elif args.mode == 'oci_cis':
+            as_label = "Cloud::OCI::Tenant"
         elif args.mode == 'k8s_cis':
             as_label = "Container::Kubernetes::Misconfig"
         elif args.mode == 'gke_cis':
@@ -837,7 +841,6 @@ def main(args=None):
         parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_az_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
-
         # Arguments required for GCP CIS benchmarks
         parser_gcp_cis = subparsers.add_parser("gcp_cis", help = "Run Google Cloud Platform CIS benchmarks")
         parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
@@ -845,6 +848,12 @@ def main(args=None):
         parser_gcp_cis.add_argument('--projects', help='A comma separated list of GCP project IDs to run the checks against')
         parser_gcp_cis.add_argument('--expanded', action='store_true', help='Create separate issue for each violation')
         parser_gcp_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for GCP CIS benchmark tests')
+
+        # Arguments required for Oracle Cloud Infrastructure (OCI) CIS benchmarks
+        parser_oci_cis = subparsers.add_parser("oci_cis", help = "Run Oracle Cloud Infrastructure CIS benchmarks")
+        parser_oci_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_oci_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_oci_cis.add_argument('--no_obp', action='store_true', help='Do not run Oracle Best Practice checks')
 
         # Arguments required for docker CIS benchmarks 
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
@@ -1019,6 +1028,8 @@ def main(args=None):
             assets = azure_cis.get_inventory(args)
         elif args.mode == 'gcp_cis':
             assets = gcp_cis.get_inventory(args)
+        elif args.mode == 'oci_cis':
+            assets = oci_cis.get_inventory(args)
         elif args.mode == 'k8s_cis':
             assets = k8s_cis.get_inventory(args, 'k8s')
         elif args.mode == 'gke_cis':

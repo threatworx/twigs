@@ -12,7 +12,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'paramiko==2.6.0', 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi==7.0.3', 'scp==0.13.3', 'pyyaml>5.1', 'psutil', 'ipaddress']
+requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'paramiko==2.6.0', 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi==7.0.3', 'scp==0.13.3', 'pyyaml>5.1', 'psutil', 'ipaddress', 'oci', 'pytz']
 if sys.platform != 'win32':
     requirements.append('python-crontab==2.5.1')
 
@@ -43,7 +43,7 @@ setup(
     include_package_data=True,
     keywords='twigs',
     name='twigs',
-    packages=find_packages(include=['twigs', 'twigs.dast_plugins', 'twigs.azure_cis_tool', 'twigs.gcp_cis_tool']),
+    packages=find_packages(include=['twigs', 'twigs.dast_plugins', 'twigs.azure_cis_tool', 'twigs.gcp_cis_tool', 'twigs.oci_cis_tool']),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
