@@ -594,8 +594,13 @@ optional arguments:
                         Timing Template value (range 0 to 5) as per nmap
                         documentation. Defaults to 5 if not specified. Refer
                         https://nmap.org/book/performance-timing-templates.html
-  --credential_check    Check if certain services are using default or common
-                        credentials
+  --discovery_scan_type DISCOVERY_SCAN_TYPE
+                        Specify the scan type to be used during host
+                        discovery. Refer https://nmap.org/book/man-host-
+                        discovery.html
+  --discovery_port_list DISCOVERY_PORT_LIST
+                        Specify the ports to be used in host discovery scan.
+                        Not applicable for (N,E,P,M) discovery scan types
   --no_ssh_audit  Skip ssh audit
 
 Mode: sbom

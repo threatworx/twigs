@@ -50,15 +50,22 @@ def get_inventory(args):
         args.hosts = get_private_ip_cidrs()
     else:
         args.hosts = args.hosts.split()
+    nmap_cmd = NMAP + ' -oX - -A --script http-wordpress-enum,mysql-info -T' + args.timing
+    if args.discovery_scan_type is not None:
+        nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
+        if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
+            nmap_cmd = nmap_cmd + args.discovery_port_list
     assets = []
     for host in args.hosts:
         logging.info("Fingerprinting "+host)
-        cmdarr = [NMAP + ' -oX - -A --script http-wordpress-enum,mysql-info -T' + args.timing + ' ' + host]
+        cmdarr = [nmap_cmd + ' ' + host]
+        logging.debug("Running nmap cmd [%s]", cmdarr[0])
         try:
             out = subprocess.check_output(cmdarr, shell=True)
             out = out.decode(args.encoding)
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as cpe:
             logging.error("Error running nmap command")
+            logging.debug("nmap command [%s] failed with exit code [%s]", cmdarr[0], cpe.returncode)
             return None 
 
         dom = parseString(out)
