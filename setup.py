@@ -12,7 +12,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'paramiko==2.6.0', 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi==7.0.3', 'scp==0.13.3', 'pyyaml>5.1', 'psutil', 'ipaddress', 'oci', 'pytz']
+requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'paramiko==2.6.0', 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi==7.0.3', 'scp==0.13.3', 'pyyaml>5.1', 'psutil', 'ipaddress', 'oci==2.117.0', 'pytz']
 if sys.platform != 'win32':
     requirements.append('python-crontab==2.5.1')
 
@@ -48,7 +48,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatworx/twigs',
-    version='1.1.57',
+    version='1.1.58',
     zip_safe=False,
     entry_points={
         'console_scripts': [
