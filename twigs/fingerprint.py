@@ -142,6 +142,9 @@ def get_inventory(args):
                         prodstr = wpout.split('Version:')[1].split('#')[0].strip()
                         if prodstr not in products:
                             products.append(prodstr)
+            if ostype == "Other" and len(products) == 0:
+                # skip any discovered assets which have asset type as "Other" and no products
+                continue
             asset_data = {}
             asset_data['id'] = addr 
             asset_data['name'] = hostname 
