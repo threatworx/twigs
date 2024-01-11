@@ -776,7 +776,7 @@ def main(args=None):
 
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
-        parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
+        parser_nmap.add_argument('--hosts', help='Hostname, IP address or CIDR range. Multiple values should be comma separated')
         parser_nmap.add_argument('--timing', help='Timing Template value (range 0 to 5) as per nmap documentation. Defaults to 5 if not specified. Refer https://nmap.org/book/performance-timing-templates.html', choices=['0', '1', '2', '3', '4', '5'], default = '5', required = False)
         parser_nmap.add_argument('--discovery_scan_type', help='Specify the scan type to be used during host discovery. Refer https://nmap.org/book/man-host-discovery.html', choices=['N', 'S', 'A', 'U', 'Y', 'O', 'E', 'P', 'M'], required = False)
         parser_nmap.add_argument('--discovery_port_list', help='Specify the ports to be used in host discovery scan. Not applicable for (N,E,P,M) discovery scan types', required = False)

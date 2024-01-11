@@ -49,7 +49,7 @@ def get_inventory(args):
     if args.hosts == None:
         args.hosts = get_private_ip_cidrs()
     else:
-        args.hosts = args.hosts.split()
+        args.hosts = args.hosts.split(',')
     nmap_cmd = NMAP + ' -oX - -A --script http-wordpress-enum,mysql-info -T' + args.timing
     if args.discovery_scan_type is not None:
         nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
@@ -80,6 +80,15 @@ def get_inventory(args):
                 hostname = hostname.getAttribute('name')
                 if hostname == 'linux':
                     hostname = addr
+
+            # SSH Port in use?
+            ssh_port_is_open = False
+            ports = h.getElementsByTagName("port")
+            for port in ports:
+                if port.getAttribute('portid') == "22":
+                    port_state = port.getElementsByTagName("state")[0]
+                    if port_state is not None and port_state.getAttribute('state') == "open":
+                        ssh_port_is_open = True
 
             # check for cpes
             cpes = h.getElementsByTagName("cpe")
@@ -153,7 +162,7 @@ def get_inventory(args):
             asset_data['products'] = products 
             asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
             asset_data['tags'] = asset_tags
-            if args.no_ssh_audit == False:
+            if args.no_ssh_audit == False and ssh_port_is_open:
                 ssh_issues = linux.run_ssh_audit(args, addr, addr)
                 if len(ssh_issues) != 0:
                     asset_data['tags'].append('SSH Audit')
