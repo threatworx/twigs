@@ -41,6 +41,47 @@ def get_private_ip_cidrs():
                             private_cidrs.append(str(ipaddress.IPv4Network(ip_address).with_prefixlen))
     return private_cidrs
 
+def get_os_type(host, products):
+    os_family = None
+    host_os_classes = host.getElementsByTagName("osclass")
+    if host_os_classes is not None:
+        accuracy = -1
+        for host_os_class in host_os_classes:
+            host_acc = host_os_class.getAttribute("accuracy")
+            if host_acc is None:
+                continue
+            host_acc = int(host_acc)
+            if host_acc > accuracy:
+                os_family = host_os_class.getAttribute("osfamily")
+                accuracy = host_acc
+
+    if os_family is not None:
+        logging.debug("Found os_type [%s] from <osclass>", os_family)
+        return os_family
+
+    conf = -1
+    services = host.getElementsByTagName("service")
+    for service in services:
+        ostype = service.getAttribute("ostype")
+        if ostype is not None:
+            if int(service.getAttribute("conf")) > conf:
+                os_family = ostype
+                conf = int(service.getAttribute("conf"))
+
+    if os_family is not None:
+        logging.debug("Found os_type [%s] from <service>", os_family)
+        return os_family
+
+    if 'microsoft windows' in products:
+        logging.debug("Found os_type [Windows] from products")
+        return 'Windows'
+    for product in products:
+        if 'linux linux kernel' in product:
+            logging.debug("Found os_type [Linux] from products")
+            return 'Linux'
+    logging.debug("Unable to determine os_type...assuming [Other]")
+    return 'Other'
+
 def get_inventory(args):
     if not nmap_exists():
         logging.error('nmap CLI not found')
@@ -104,12 +145,7 @@ def get_inventory(args):
                 if prodstr not in products:
                     products.append(prodstr)
 
-            if 'linux linux kernel' in products:
-                ostype = 'Linux'
-            elif 'microsoft windows' in products:
-                ostype = 'Windows'
-            else:
-                ostype = 'Other'
+            ostype = get_os_type(h, products)
 
             # check for services
             services = h.getElementsByTagName("service")
