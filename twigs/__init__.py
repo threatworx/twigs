@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Top-level package for twigs.""" 
+"""Top-level package for twigs. """ 
 
 __author__ = """Paresh Borkar"""
 __email__ = 'opensource@threatwatch.io'
