@@ -31,8 +31,8 @@ jobs:
       - name: verify package using twine
         run: twine check ${GITHUB_WORKSPACE}/dist/*.whl
 
-#      - name: upload to pypi
-#        run: twine upload -u "__token__" -p "${{ secrets.PYPI_TOKEN }}" ${GITHUB_WORKSPACE}/dist/*
+      - name: upload to pypi
+        run: twine upload -u "__token__" -p "${{ secrets.PYPI_TOKEN }}" ${GITHUB_WORKSPACE}/dist/*
         
       - name: Log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
