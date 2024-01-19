@@ -7,7 +7,10 @@ on:
     branches: [ "master" ]
     paths:
       - 'twigs/__init__.py'
-
+env:
+  TEST_TAG: threatworx/twigs:test
+  LATEST_TAG: threatworx/twigs:latest
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,11 +39,24 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
+          
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: ${{ env.TEST_TAG }}
+          
+      - name: Basic test
+        run: |
+          docker run --rm ${{ env.TEST_TAG }} -h
+          
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: threatworx/twigs:${{ env.TAG_NAME }}, threatworx/twigs:latest
+#          tags: threatworx/twigs:${{ env.TAG_NAME }}, threatworx/twigs:latest
+          tags: ${{ env.LATEST_TAG }}
