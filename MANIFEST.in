@@ -4,6 +4,7 @@ include HISTORY.rst
 include LICENSE
 include README.rst
 include twigs/gd-ca-bundle.crt
+include twigs/gcp_cis_tool/recommendations.json
 
 recursive-include tests *
 recursive-exclude * __pycache__
