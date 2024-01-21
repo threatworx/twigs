@@ -110,6 +110,8 @@ def push_asset_to_TW(asset, args):
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
     if args.email_report:
         auth_data = auth_data + "&esr=true" # email secrets report (esr)
+    if args.org is not None and len(args.org) > 0:
+        asset['org'] = args.org # Add Org info in the asset
     asset_id = asset['id']
 
     resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
@@ -203,6 +205,19 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.info("Started license compliance assessment")
             else:
                 logging.error("Failed to start license compliance assessment")
+                if resp is not None:
+                    logging.error("Response details: %s", resp.content.decode(args.encoding))
+
+        if args.mode in ["host", "acr", "gcr", "ecr", "docker", "k8s"]:
+            # Start EOL assessment
+            scan_payload = { }
+            scan_payload['assets'] = asset_id_list
+            scan_payload['eol_scan'] = True
+            resp = utils.requests_post(scan_api_url, json=scan_payload)
+            if resp is not None and resp.status_code == 200:
+                logging.info("Started EOL assessment")
+            else:
+                logging.error("Failed to start EOL assessment")
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
 
@@ -439,6 +454,7 @@ def main(args=None):
         parser.add_argument('--handle', help='The ThreatWorx registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWorx API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWorx instance. Note this can be set as "TW_INSTANCE" environment variable')
+        parser.add_argument('--org', help='Associate discovered asset(s) with specified organization')
         parser.add_argument('--run_id', help='Specify a distinct identifier for this twigs discovery run')
         # Hidden argument to track the record identifier for a run
         parser.add_argument('--run_record_id', help=argparse.SUPPRESS)
@@ -794,7 +810,6 @@ def main(args=None):
         parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=True)
         parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
         parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_sbom.add_argument('--org', help='Associate discovered asset with specified organization')
         parser_sbom.add_argument('--comment', help='Specify user comment for SBOM')
 
         # Arguments required for ServiceNow discovery
