@@ -58,6 +58,7 @@ try:
     from . import oci_cis
     from . import gcloud_functions
     from . import vmware 
+    from . import website 
     from . import policy as policy_lib
     from .__init__ import __version__
 except (ImportError,ValueError):
@@ -85,6 +86,7 @@ except (ImportError,ValueError):
     from twigs import oci_cis
     from twigs import gcloud_functions
     from twigs import vmware
+    from twigs import website
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
@@ -253,9 +255,7 @@ def get_code_as_label(in_label, asset):
 def add_attack_surface_label(args, assets):
     for asset in assets:
         as_label = None
-        if args.mode == 'ssl_audit':
-            pass
-        elif args.mode == 'aws':
+        if args.mode == 'aws':
             as_label = get_host_as_label("Cloud::AWS::EC2", asset)
         elif args.mode == 'azure':
             as_label = get_host_as_label("Cloud::Azure::VM", asset)
@@ -353,19 +353,6 @@ def add_asset_timestamp(assets, timestamp):
 def add_asset_criticality_tag(assets, asset_criticality):
     asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
     add_asset_tags(assets, [asset_criticality_tag])
-
-def sub_pkg_get_inventory(args):
-    dist = "twigs_" + args.mode
-    try:
-        pkg_resources.get_distribution(dist)
-    except pkg_resources.DistributionNotFound:
-        logging.error("Error required package [%s] is not installed", dist)
-        logging.error("Please install using command [sudo pip install %s]", dist)
-        utils.tw_exit(1)
-    module = importlib.import_module('%s.%s' % (dist,dist))
-    get_inventory_func = getattr(module, "get_inventory")
-    assets = get_inventory_func(args)
-    return assets
 
 def authenticate_user(tw_user, tw_pwd, tw_instance):
     payload = { }
@@ -829,13 +816,12 @@ def main(args=None):
         parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
 
         # Arguments required for ssl audit 
-        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs")
-        parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
-        parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
-        parser_ssl_audit.add_argument('--info', help='Report LOW / INFO level issues', action='store_true')
-        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
-        parser_ssl_audit.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
-
+        parser_website = subparsers.add_parser ("webapp", help = "Check web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and basic DAST using zaproxy")
+        parser_website.add_argument('--url', help='URL', required=True)
+        parser_website.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
+        parser_website.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
+        parser_website.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
+ 
         # Arguments required for AWS CIS benchmarks
         parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
         parser_aws_cis.add_argument('--aws_access_key', help='AWS access key', required=True)
@@ -993,10 +979,7 @@ def main(args=None):
             utils.tw_exit(1)
 
         assets = []
-        sub_pkg_list = ['ssl_audit']
-        if args.mode in sub_pkg_list:
-            assets = sub_pkg_get_inventory(args)
-        elif args.mode == 'aws':
+        if args.mode == 'aws':
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)
@@ -1055,8 +1038,8 @@ def main(args=None):
             assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcloud_functions':
             assets = gcloud_functions.get_inventory(args)
-        elif args.mode == 'ssl_audit':
-            assets = ssl_audit.get_inventory(args)
+        elif args.mode == 'webapp':
+            assets = website.get_inventory(args)
 
         exit_code = None
         if args.mode != 'host' or args.secure == False:
