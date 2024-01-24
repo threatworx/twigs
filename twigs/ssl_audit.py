@@ -37,7 +37,7 @@ def run_ssl_audit(url, assetid):
     except subprocess.CalledProcessError as e:
         logging.error("Error running ssl audit: %s" % str(e))
         logging.error(traceback.format_exc())
-        return None 
+        return findings 
 
     jf = open(audit_out, 'r')
     out = jf.read()

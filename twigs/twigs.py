@@ -807,16 +807,16 @@ def main(args=None):
         parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
         # Arguments required for web-app discovery and testing
-        parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
-        parser_webapp.add_argument('--url', help='Web application URL', required=True)
-        parser_webapp.add_argument('--plugin', choices=['arachni', 'skipfish'], help='DAST plugin to be used. Default is arachni. Requires the plugin to be installed separately.', default='arachni')
-        parser_webapp.add_argument('--pluginpath', help='Path where the DAST plugin is installed to be used. Default is /usr/bin.', default='/usr/bin')
-        parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
-        parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
-        parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
+        #parser_webapp = subparsers.add_parser ("dast", help="Discover and test web application using a DAST plugin") 
+        #parser_webapp.add_argument('--url', help='Web application URL', required=True)
+        #parser_webapp.add_argument('--plugin', choices=['arachni', 'skipfish'], help='DAST plugin to be used. Default is arachni. Requires the plugin to be installed separately.', default='arachni')
+        #parser_webapp.add_argument('--pluginpath', help='Path where the DAST plugin is installed to be used. Default is /usr/bin.', default='/usr/bin')
+        #parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
+        #parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
+        #parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
 
         # Arguments required for ssl audit 
-        parser_website = subparsers.add_parser ("webapp", help = "Check web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and basic DAST using zaproxy")
+        parser_website = subparsers.add_parser ("webapp", help = "Discover and test web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and basic DAST using zaproxy")
         parser_website.add_argument('--url', help='URL', required=True)
         parser_website.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
         parser_website.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
