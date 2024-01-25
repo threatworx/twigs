@@ -7,6 +7,8 @@ import psutil
 import ipaddress
 import socket
 import json
+import re
+import requests
 from xml.dom.minidom import parse, parseString
 import csv
 from . import linux
@@ -81,6 +83,32 @@ def get_os_type(host, products):
             return 'Linux'
     logging.debug("Unable to determine os_type...assuming [Other]")
     return 'Other'
+
+def get_tomcat_version(host, products):
+    # check if apache tomcat is already found using nmap
+    tcver = None
+    tomcat_found = False
+    for p in products:
+        if 'apache tomcat' in p or 'tomcat' in p:
+            tomcat_found = True
+            break
+    if not tomcat_found:
+        # make a request to dummy error page
+        resp = None
+        try:
+            resp = requests.get('http://'+host+'/threatworx-dummy-get-fail', verify=False)
+        except requests.exceptions.RequestException as e:
+            pass
+        if resp == None:
+            try:
+                resp = requests.get('https://'+host+'/threatworx-dummy-get-fail', verify=False)
+            except requests.exceptions.RequestException as e:
+                pass
+        if resp != None:
+            vlist = re.findall('Apache Tomcat\/[a-zA-Z\.0-9-]+', resp.content)
+            if vlist != None and len(vlist) > 0:
+                tcver = vlist[0].replace('/',' ').lower()
+        return tcver
 
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
@@ -179,7 +207,7 @@ def nmap_scan(args, host):
         asset_data['name'] = hostname 
         asset_data['type'] = ostype
         asset_data['owner'] = args.handle
-        asset_data['products'] = products 
+        asset_data['products'] = products
         asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
         asset_data['tags'] = asset_tags
         if args.no_ssh_audit == False and ssh_port_is_open:
@@ -187,7 +215,14 @@ def nmap_scan(args, host):
             if len(ssh_issues) != 0:
                 asset_data['tags'].append('SSH Audit')
             asset_data['config_issues'] = ssh_issues
+
+        # try and fingerprint tomcat version
+        tomcat_ver = get_tomcat_version(host, products)
+        if tomcat_ver:
+            asset_data['products'].append(tomcat_ver)
+
         asset_data_list.append(asset_data)
+
     return asset_data_list
 
 def get_inventory(args):

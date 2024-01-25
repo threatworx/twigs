@@ -13,3 +13,4 @@ recursive-exclude * *.py[co]
 recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
 recursive-include twigs/plugins *.sh
 recursive-include twigs/kubernetes-cis-benchmark *
+recursive-include twigs/ssl_audit *

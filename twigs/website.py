@@ -41,8 +41,8 @@ def run_zap(args, assetid):
     findings = []
 
     logging.info("Starting web application scan for "+args.url)
-    z_path = '/tmp/zap-'+assetid+'.xml'
-    zap_cmd = "zaproxy -cmd -quickurl "+args.url+" -quickout "+z_path+" 2>/dev/null"
+    z_path = tempfile.NamedTemporaryFile()
+    zap_cmd = "zaproxy -cmd -quickurl "+args.url+" -quickout "+z_path.name+" 2>/dev/null"
     try:
         out = subprocess.check_output([zap_cmd], shell=True)
         out = out.decode(args.encoding)
@@ -51,7 +51,7 @@ def run_zap(args, assetid):
         logging.error("Please make sure zaproxy command is installed and in your $PATH")
         return findings
 
-    fp = open(z_path, mode='r')
+    fp = open(z_path.name, mode='r')
     if fp == None:
         return findings
     contents = fp.read()
@@ -60,7 +60,7 @@ def run_zap(args, assetid):
     try:
         xmldoc = minidom.parseString(contents)
     except Exception:
-        logging.error("Unable to parse %s", z_path)
+        logging.error("Unable to parse %s", z_path.name)
         logging.error(traceback.format_exc())
         return findings
     
