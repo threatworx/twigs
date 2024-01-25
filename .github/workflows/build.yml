@@ -7,9 +7,10 @@ on:
     branches: [ "master" ]
     paths:
       - 'twigs/__init__.py'
-#  schedule:
-#    - cron: "*/5 * * * *"
-
+env:
+  TEST_TAG: threatworx/twigs:test
+  LATEST_TAG: threatworx/twigs:latest
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,6 +18,10 @@ jobs:
       - name: checkout repo content
         uses: actions/checkout@v2 # checkout the repository content to github runner
 
+      - name: Get version tag
+        run: |
+          echo "TAG_NAME=$(cat twigs/__init__.py | grep version | cut -f2 -d"'" )" >> $GITHUB_ENV
+          
       - name: checkout repo content
         run: pip install twine
 
@@ -34,11 +39,22 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      
+          
+      - name: Build and export to Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: ${{ env.TEST_TAG }}
+          
+      - name: Basic test
+        run: |
+          docker run --rm ${{ env.TEST_TAG }} -h
+          
       - name: Build and push Docker image
-        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: threatworx/twigs:latest
+          tags: ${{ env.LATEST_TAG }}

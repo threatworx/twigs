@@ -1,3 +1,4 @@
+import os
 import sys
 import subprocess
 import json
@@ -14,6 +15,7 @@ _services_by_projects = None
 _encoding = None
 _expanded_issues = None
 _custom_ratings_dict = None
+_recommendations_dict = None
 
 def set_encoding(encoding):
     global _encoding
@@ -64,6 +66,12 @@ def run_gcloud_cmd(cmd):
 
 # details param is a 3 value tuple as follows (msg, list of twc_id values, resource id)
 def create_issue(twc_id, twc_title, details, rating, object_id, object_meta):
+    check_no = twc_id[len('cis-gcp-bench-check-'):]
+    global _recommendations_dict
+    if _recommendations_dict is None:
+        with open(os.path.dirname(os.path.realpath(__file__)) + "/recommendations.json", "r") as fd:
+            _recommendations_dict = json.load(fd)
+    recommendation = _recommendations_dict.get(check_no)
     issues = []
     custom_ratings_dict = get_custom_ratings()
     if custom_ratings_dict is not None:
@@ -72,21 +80,22 @@ def create_issue(twc_id, twc_title, details, rating, object_id, object_meta):
         rating = custom_rating if custom_rating is not None else rating
     if get_expanded() == True:
         for detail in details:
-            issues.append(create_issue_helper(twc_id + '_' + "_".join(detail[1]), twc_title, detail[0], rating, detail[2], ''))
+            issues.append(create_issue_helper(twc_id + '_' + "_".join(detail[1]), twc_title, detail[0], rating, detail[2], '', recommendation))
     else:
         consolidated_details = ''
         for detail in details:
             if consolidated_details != '':
-                consolidated_details = consolidated_details + "\n"
+                consolidated_details = consolidated_details + "<br/>"
             consolidated_details = consolidated_details + detail[0]
-        issues.append(create_issue_helper(twc_id, twc_title, consolidated_details, rating, object_id, object_meta))
+        issues.append(create_issue_helper(twc_id, twc_title, consolidated_details, rating, object_id, object_meta, recommendation))
     return issues
 
-def create_issue_helper(twc_id, twc_title, details, rating, object_id, object_meta):
+def create_issue_helper(twc_id, twc_title, details, rating, object_id, object_meta, recommendation):
     issue = { }
     issue['twc_id'] = twc_id
     issue['twc_title'] = twc_title
-    issue['details'] = details
+    details = "<b>Finding(s):</b><br/>" + details
+    issue['details'] = details if recommendation is None else details + '<br/><br/>' + recommendation
     issue['rating'] = rating
     issue['object_id'] = object_id
     issue['object_meta'] = object_meta

@@ -32,10 +32,14 @@ apt-get install -y python3-pip
 # Link pip
 ln -fs /usr/bin/pip3 /usr/bin/pip
 
+rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
+
 # Install twigs and related packages
 pip install twigs
+rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
 pip install twigs_host_benchmark
 pip install twigs_ssl_audit
+rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
 
 # Setup twigs update script
 printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install --upgrade twigs_host_benchmark\n/usr/bin/pip install twigs_ssl_audit --upgrade\n" > /usr/local/bin/twigs-update.sh

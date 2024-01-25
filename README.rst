@@ -54,7 +54,7 @@ pip3 install twigs
 
 
 $ twigs --help
-usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--run_id RUN_ID] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--sbom SBOM] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+usage: twigs [-h] [--version] [--handle HANDLE] [--token TOKEN] [--instance INSTANCE] [--org ORG] [--run_id RUN_ID] [--location LOCATION] [--create_empty_asset] [--tag_critical] [--tag TAG] [--owner OWNER] [--no_auto_tags] [--apply_policy APPLY_POLICY] [--sbom SBOM] [--no_scan] [--email_report] [-q | -v] [--schedule SCHEDULE] [--encoding ENCODING] {login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,oci_cis,docker_cis,k8s_cis,gke_cis,o365}
 
 ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and opensource projects
 
@@ -68,6 +68,8 @@ optional arguments:
                         be set as "TW_TOKEN" environment variable
   --instance INSTANCE   The ThreatWorx instance. Note this can be set as 
                         "TW_INSTANCE" environment variable
+  --org ORG             Associate discovered asset(s) with specified
+                        organization
   --run_id RUN_ID       Specify a distinct identifier for this twigs discovery
                         run
   --location LOCATION   Specify location information for discovered asset(s).
@@ -100,7 +102,8 @@ optional arguments:
 modes:
   Discovery modes supported
 
-{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,docker_cis,k8s_cis,gke_cis}
+{login,logout,aws,azure,gcp,ecr,acr,gcr,docker,k8s,repo,ghe,azure_functions,gcloud_functions,host,vmware,nmap,sbom,servicenow,dast,ssl_audit,aws_cis,aws_audit,azure_cis,gcp_cis,oci_cis,docker_cis,k8s_cis,gke_cis,o365}
+
     login               Login to twigs
     logout              Logout from twigs
     aws                 Discover AWS instances
@@ -126,6 +129,7 @@ modes:
     aws_audit           Run AWS audit checks including PCI, GDPR, HIPAA
     azure_cis           Run Azure CIS benchmarks
     gcp_cis             Run Google Cloud Platform CIS benchmarks
+    oci_cis             Run Oracle Cloud Infrastructure CIS benchmarks
     docker_cis          Run docker CIS benchmarks
     k8s_cis             Run Kubernetes CIS benchmarks
     gke_cis             Run GKE CIS benchmarks
@@ -397,6 +401,17 @@ optional arguments:
   --sast                Perform static code analysis on your source code
   --iac_checks          Perform security checks on IaC templates
 
+Mode: oci_cis
+$ twigs oci_cis --help
+usage: twigs oci_cis [-h] --assetid ASSETID [--assetname ASSETNAME] [--no_obp]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --assetid ASSETID     A unique ID to be assigned to the discovered asset
+  --assetname ASSETNAME
+                        A name/label to be assigned to the discovered asset
+  --no_obp              Do not run Oracle Best Practice checks
+
 Mode: docker
 $ twigs docker --help
 usage: twigs docker [-h] [--image IMAGE] [--containerid CONTAINERID] [--assetid ASSETID] [--assetname ASSETNAME] [--tmp_dir TMP_DIR] [--start_instance] [--check_vuln CHECK_VULN] [--check_all_vulns]
@@ -577,6 +592,17 @@ usage: twigs nmap [-h] --hosts HOSTS
 optional arguments:
   -h, --help     show this help message and exit
   --hosts HOSTS  A hostname, IP address or CIDR range
+  --timing TIMING
+                        Timing Template value (range 0 to 5) as per nmap
+                        documentation. Defaults to 5 if not specified. Refer
+                        https://nmap.org/book/performance-timing-templates.html
+  --discovery_scan_type DISCOVERY_SCAN_TYPE
+                        Specify the scan type to be used during host
+                        discovery. Refer https://nmap.org/book/man-host-
+                        discovery.html
+  --discovery_port_list DISCOVERY_PORT_LIST
+                        Specify the ports to be used in host discovery scan.
+                        Not applicable for (N,E,P,M) discovery scan types
   --no_ssh_audit  Skip ssh audit
 
 Mode: sbom

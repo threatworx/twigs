@@ -4,6 +4,7 @@ include HISTORY.rst
 include LICENSE
 include README.rst
 include twigs/gd-ca-bundle.crt
+include twigs/gcp_cis_tool/recommendations.json
 
 recursive-include tests *
 recursive-exclude * __pycache__
@@ -12,3 +13,4 @@ recursive-exclude * *.py[co]
 recursive-include docs *.rst conf.py Makefile make.bat *.jpg *.png *.gif
 recursive-include twigs/plugins *.sh
 recursive-include twigs/kubernetes-cis-benchmark *
+recursive-include twigs/ssl_audit *

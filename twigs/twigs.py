@@ -55,8 +55,10 @@ try:
     from . import azure_functions
     from . import gcp_cis
     from . import k8s_cis
+    from . import oci_cis
     from . import gcloud_functions
     from . import vmware 
+    from . import website 
     from . import policy as policy_lib
     from .__init__ import __version__
 except (ImportError,ValueError):
@@ -81,8 +83,10 @@ except (ImportError,ValueError):
     from twigs import azure_functions
     from twigs import gcp_cis
     from twigs import k8s_cis
+    from twigs import oci_cis
     from twigs import gcloud_functions
     from twigs import vmware
+    from twigs import website
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
@@ -108,6 +112,8 @@ def push_asset_to_TW(asset, args):
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
     if args.email_report:
         auth_data = auth_data + "&esr=true" # email secrets report (esr)
+    if args.org is not None and len(args.org) > 0:
+        asset['org'] = args.org # Add Org info in the asset
     asset_id = asset['id']
 
     resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
@@ -204,6 +210,19 @@ def run_scan(asset_id_list, pj_json, args):
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
 
+        if args.mode in ["host", "acr", "gcr", "ecr", "docker", "k8s"]:
+            # Start EOL assessment
+            scan_payload = { }
+            scan_payload['assets'] = asset_id_list
+            scan_payload['eol_scan'] = True
+            resp = utils.requests_post(scan_api_url, json=scan_payload)
+            if resp is not None and resp.status_code == 200:
+                logging.info("Started EOL assessment")
+            else:
+                logging.error("Failed to start EOL assessment")
+                if resp is not None:
+                    logging.error("Response details: %s", resp.content.decode(args.encoding))
+
 def get_host_as_label(in_label, asset):
     if asset['type'] == "Google Container-Optimized OS":
         return in_label + "::Google COS"
@@ -236,9 +255,7 @@ def get_code_as_label(in_label, asset):
 def add_attack_surface_label(args, assets):
     for asset in assets:
         as_label = None
-        if args.mode == 'ssl_audit':
-            pass
-        elif args.mode == 'aws':
+        if args.mode == 'aws':
             as_label = get_host_as_label("Cloud::AWS::EC2", asset)
         elif args.mode == 'azure':
             as_label = get_host_as_label("Cloud::Azure::VM", asset)
@@ -289,6 +306,8 @@ def add_attack_surface_label(args, assets):
             as_label = "Cloud::Azure::Tenant"
         elif args.mode == 'gcp_cis':
             as_label = "Cloud::GCP::Org"
+        elif args.mode == 'oci_cis':
+            as_label = "Cloud::OCI::Tenant"
         elif args.mode == 'k8s_cis':
             as_label = "Container::Kubernetes::Misconfig"
         elif args.mode == 'gke_cis':
@@ -334,19 +353,6 @@ def add_asset_timestamp(assets, timestamp):
 def add_asset_criticality_tag(assets, asset_criticality):
     asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
     add_asset_tags(assets, [asset_criticality_tag])
-
-def sub_pkg_get_inventory(args):
-    dist = "twigs_" + args.mode
-    try:
-        pkg_resources.get_distribution(dist)
-    except pkg_resources.DistributionNotFound:
-        logging.error("Error required package [%s] is not installed", dist)
-        logging.error("Please install using command [sudo pip install %s]", dist)
-        utils.tw_exit(1)
-    module = importlib.import_module('%s.%s' % (dist,dist))
-    get_inventory_func = getattr(module, "get_inventory")
-    assets = get_inventory_func(args)
-    return assets
 
 def authenticate_user(tw_user, tw_pwd, tw_instance):
     payload = { }
@@ -435,6 +441,7 @@ def main(args=None):
         parser.add_argument('--handle', help='The ThreatWorx registered email of the user. Note this can set as "TW_HANDLE" environment variable', required=False)
         parser.add_argument('--token', help='The ThreatWorx API token of the user. Note this can be set as "TW_TOKEN" environment variable', required=False)
         parser.add_argument('--instance', help='The ThreatWorx instance. Note this can be set as "TW_INSTANCE" environment variable')
+        parser.add_argument('--org', help='Associate discovered asset(s) with specified organization')
         parser.add_argument('--run_id', help='Specify a distinct identifier for this twigs discovery run')
         # Hidden argument to track the record identifier for a run
         parser.add_argument('--run_record_id', help=argparse.SUPPRESS)
@@ -772,8 +779,10 @@ def main(args=None):
 
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
-        parser_nmap.add_argument('--hosts', help='A hostname, IP address or CIDR range')
-        parser_nmap.add_argument('--credential_check', action='store_true', help='Check if certain services are using default or common credentials')
+        parser_nmap.add_argument('--hosts', help='Hostname, IP address or CIDR range. Multiple values should be comma separated')
+        parser_nmap.add_argument('--timing', help='Timing Template value (range 0 to 5) as per nmap documentation. Defaults to 5 if not specified. Refer https://nmap.org/book/performance-timing-templates.html', choices=['0', '1', '2', '3', '4', '5'], default = '5', required = False)
+        parser_nmap.add_argument('--discovery_scan_type', help='Specify the scan type to be used during host discovery. Refer https://nmap.org/book/man-host-discovery.html', choices=['N', 'S', 'A', 'U', 'Y', 'O', 'E', 'P', 'M'], required = False)
+        parser_nmap.add_argument('--discovery_port_list', help='Specify the ports to be used in host discovery scan. Not applicable for (N,E,P,M) discovery scan types', required = False)
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
 
         # Arguments required for SBOM-based discovery
@@ -788,7 +797,6 @@ def main(args=None):
         parser_sbom.add_argument('--format', choices=all_formats, help='Specifies format of SBOM artifact.', required=True)
         parser_sbom.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=False)
         parser_sbom.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-        parser_sbom.add_argument('--org', help='Associate discovered asset with specified organization')
         parser_sbom.add_argument('--comment', help='Specify user comment for SBOM')
 
         # Arguments required for ServiceNow discovery
@@ -799,22 +807,21 @@ def main(args=None):
         parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
         # Arguments required for web-app discovery and testing
-        parser_webapp = subparsers.add_parser ("dast", help = "Discover and test web application using a DAST plugin")
-        parser_webapp.add_argument('--url', help='Web application URL', required=True)
-        parser_webapp.add_argument('--plugin', choices=['arachni', 'skipfish'], help='DAST plugin to be used. Default is arachni. Requires the plugin to be installed separately.', default='arachni')
-        parser_webapp.add_argument('--pluginpath', help='Path where the DAST plugin is installed to be used. Default is /usr/bin.', default='/usr/bin')
-        parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
-        parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
-        parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
+        #parser_webapp = subparsers.add_parser ("dast", help="Discover and test web application using a DAST plugin") 
+        #parser_webapp.add_argument('--url', help='Web application URL', required=True)
+        #parser_webapp.add_argument('--plugin', choices=['arachni', 'skipfish'], help='DAST plugin to be used. Default is arachni. Requires the plugin to be installed separately.', default='arachni')
+        #parser_webapp.add_argument('--pluginpath', help='Path where the DAST plugin is installed to be used. Default is /usr/bin.', default='/usr/bin')
+        #parser_webapp.add_argument('--args', help='Optional extra arguments to be passed to the plugin')
+        #parser_webapp.add_argument('--assetid', help='A unique ID to be assigned to the discovered webapp asset', required=True)
+        #parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
 
         # Arguments required for ssl audit 
-        parser_ssl_audit = subparsers.add_parser ("ssl_audit", help = "Run SSL audit tests against your web URLs")
-        parser_ssl_audit.add_argument('--url', help='HTTPS URL', required=True)
-        parser_ssl_audit.add_argument('--args', help='Optional extra arguments')
-        parser_ssl_audit.add_argument('--info', help='Report LOW / INFO level issues', action='store_true')
-        parser_ssl_audit.add_argument('--assetid', help='A unique ID to be assigned to the discovered web URL asset', required=True)
-        parser_ssl_audit.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
-
+        parser_website = subparsers.add_parser ("webapp", help = "Discover and test web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and basic DAST using zaproxy")
+        parser_website.add_argument('--url', help='URL', required=True)
+        parser_website.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
+        parser_website.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
+        parser_website.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
+ 
         # Arguments required for AWS CIS benchmarks
         parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
         parser_aws_cis.add_argument('--aws_access_key', help='AWS access key', required=True)
@@ -837,7 +844,6 @@ def main(args=None):
         parser_az_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_az_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
 
-
         # Arguments required for GCP CIS benchmarks
         parser_gcp_cis = subparsers.add_parser("gcp_cis", help = "Run Google Cloud Platform CIS benchmarks")
         parser_gcp_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
@@ -845,6 +851,12 @@ def main(args=None):
         parser_gcp_cis.add_argument('--projects', help='A comma separated list of GCP project IDs to run the checks against')
         parser_gcp_cis.add_argument('--expanded', action='store_true', help='Create separate issue for each violation')
         parser_gcp_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for GCP CIS benchmark tests')
+
+        # Arguments required for Oracle Cloud Infrastructure (OCI) CIS benchmarks
+        parser_oci_cis = subparsers.add_parser("oci_cis", help = "Run Oracle Cloud Infrastructure CIS benchmarks")
+        parser_oci_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
+        parser_oci_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_oci_cis.add_argument('--no_obp', action='store_true', help='Do not run Oracle Best Practice checks')
 
         # Arguments required for docker CIS benchmarks 
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
@@ -967,10 +979,7 @@ def main(args=None):
             utils.tw_exit(1)
 
         assets = []
-        sub_pkg_list = ['ssl_audit']
-        if args.mode in sub_pkg_list:
-            assets = sub_pkg_get_inventory(args)
-        elif args.mode == 'aws':
+        if args.mode == 'aws':
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)
@@ -1019,6 +1028,8 @@ def main(args=None):
             assets = azure_cis.get_inventory(args)
         elif args.mode == 'gcp_cis':
             assets = gcp_cis.get_inventory(args)
+        elif args.mode == 'oci_cis':
+            assets = oci_cis.get_inventory(args)
         elif args.mode == 'k8s_cis':
             assets = k8s_cis.get_inventory(args, 'k8s')
         elif args.mode == 'gke_cis':
@@ -1027,8 +1038,8 @@ def main(args=None):
             assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcloud_functions':
             assets = gcloud_functions.get_inventory(args)
-        elif args.mode == 'ssl_audit':
-            assets = ssl_audit.get_inventory(args)
+        elif args.mode == 'webapp':
+            assets = website.get_inventory(args)
 
         exit_code = None
         if args.mode != 'host' or args.secure == False:
