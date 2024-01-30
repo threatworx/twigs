@@ -51,14 +51,14 @@ def get_os_type(host, products):
         accuracy = -1
         for host_os_class in host_os_classes:
             host_acc = host_os_class.getAttribute("accuracy")
-            if host_acc is None:
+            if host_acc == "":
                 continue
             host_acc = int(host_acc)
             if host_acc > accuracy:
                 os_family = host_os_class.getAttribute("osfamily")
                 accuracy = host_acc
 
-    if os_family is not None:
+    if os_family is not None and os_family != "":
         logging.debug("Found os_type [%s] from <osclass>", os_family)
         return os_family
 
@@ -66,12 +66,12 @@ def get_os_type(host, products):
     services = host.getElementsByTagName("service")
     for service in services:
         ostype = service.getAttribute("ostype")
-        if ostype is not None:
+        if ostype != "":
             if int(service.getAttribute("conf")) > conf:
                 os_family = ostype
                 conf = int(service.getAttribute("conf"))
 
-    if os_family is not None:
+    if os_family is not None and os_family != "":
         logging.debug("Found os_type [%s] from <service>", os_family)
         return os_family
 
