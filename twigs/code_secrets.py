@@ -283,7 +283,7 @@ def scan_for_secrets(args, local_path, base_path):
         for cp in common_passwords_list:
             cp = cp.strip()
             if len(cp) > 0: # Safety check
-                common_pwds.append(re.compile("[='\";,@]"+cp+"['\";,&\n]"))
+                common_pwds.append(re.compile("[='\";,@]"+cp+"(['\";,&]|$)"))
 
     secret_records = []
     for this_file in final_files:
