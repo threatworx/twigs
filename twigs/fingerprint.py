@@ -89,7 +89,6 @@ def get_os_type(host, products):
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
     cmdarr = [NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-wordpress-enum,amqp-info,mysql-info -PN -T5 '+host]
-    print(cmdarr)
     try:
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
