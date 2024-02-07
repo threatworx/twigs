@@ -8,7 +8,7 @@
 echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 apt-get -y update
 apt-get -y upgrade
-apt-get -y install dialog apt-utils
+apt-get -y install dialog apt-utils wget
 
 #install nmap
 apt-get -y install nmap
@@ -79,6 +79,19 @@ fi
 cp -f /tmp/motd /etc/motd
 chmod 600 /etc/update-motd.d/*
 
-# Cleanup /tmp
-rm -f /tmp/*
+# install dnsutils for dig etc. required by ssl audit
+apt-get install dnsutils -y
 
+# install bsdutils for hexdump required by ssl audit
+apt-get install bsdmainutils -y
+
+# install jdk
+apt-get install openjdk-11-jdk -y
+
+# install zaproxy
+wget https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz -P /tmp
+tar -xvzf /tmp/ZAP_2.14.0_Linux.tar.gz -C /usr/share
+ln -s /usr/share/ZAP_2.14.0/zap.sh /usr/bin/zaproxy
+
+# Cleanup /tmp
+rm -rf /tmp/*
