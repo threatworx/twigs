@@ -175,6 +175,13 @@ def nmap_scan(args, host):
                     prodstr = 'apache tomcat ' + wpout.split('Version:')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
+            if s.getAttribute('id') == 'mirth-connect-version':
+                wpout = s.getAttribute('output')
+                if wpout != None and wpout != '':
+                    prodstr = 'mirth connect ' + wpout.split(':')[1].strip()
+                    if prodstr not in products:
+                        products.append(prodstr)
+
             if s.getAttribute('id') == 'mysql-info':
                 wpout = s.getAttribute('output')
                 if wpout != None:
