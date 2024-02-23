@@ -2580,7 +2580,7 @@ run_hsts() {
           fi
      else
           pr_svrty_low "not offered"
-          fileout "$jsonID" "LOW" "not offered"
+          fileout "$jsonID" "LOW" "HSTS is not offered.\nHTTP Strict Transport Security (also named HSTS) is an opt-in security enhancement that is specified by a web application through the use of a special response header. Once a supported browser receives this header that browser will prevent any communications from being sent over HTTP to the specified domain and will instead send all communications over HTTPS. It also prevents HTTPS click through prompts on browsers.\nRecommendation:\nIf the site owner would like their domain to be included in the HSTS preload list maintained by Chrome (and used by Firefox and Safari), then use the header below.\nSending the preload directive from your site can have PERMANENT CONSEQUENCES and prevent users from accessing your site and any of its subdomains if you find you need to switch back to HTTP.\nStrict-Transport-Security: max-age=31536000; includeSubDomains; preload\nRef: https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html"
           set_grade_cap "A" "HSTS is not offered"
      fi
      outln
@@ -3221,7 +3221,7 @@ run_security_headers() {
 
      if ! "$have_header"; then
           prln_svrty_medium "--"
-          fileout "security_headers" "MEDIUM" "--"
+          fileout "Security headers" "MEDIUM" "Review HTTP response headers for security posture of the application. Proper HTTP response headers can restrict modern browsers from running into easily preventable vulnerabilities.\nRef: https://owasp.org/www-project-secure-headers/"
      fi
 
      tmpfile_handle ${FUNCNAME[0]}.txt
@@ -5762,7 +5762,7 @@ sub_cipherlists() {
 
      pr_bold "$3  "
      [[ "$OPTIMAL_PROTO" == -ssl2 ]] && proto="$OPTIMAL_PROTO"
-     jsonID="${jsonID}_$5"
+     jsonID="${jsonID} quality: $5"
 
      if "$using_sockets" || listciphers "$1" "$2" $proto; then
           if ! "$using_sockets" || ( "$FAST" && listciphers "$1" "$2" -tls1 ); then
@@ -5864,7 +5864,7 @@ sub_cipherlists() {
                     4)   if [[ $sclient_success -eq 0 ]]; then
                               # medium is not that bad
                               pr_svrty_low "offered"
-                              fileout "$jsonID" "LOW" "offered" "$cve" "$cwe"
+                              fileout "$jsonID" "LOW" "$3\n" "$cve" "$cwe"
                          else
                               out "not offered"
                               fileout "$jsonID" "INFO" "not offered" "$cve" "$cwe"
@@ -5872,7 +5872,7 @@ sub_cipherlists() {
                          ;;
                     3)   if [[ $sclient_success -eq 0 ]]; then
                               pr_svrty_medium "offered"
-                              fileout "$jsonID" "MEDIUM" "offered" "$cve" "$cwe"
+                              fileout "$jsonID" "MEDIUM" "$3\n" "$cve" "$cwe"
                          else
                               out "not offered"
                               fileout "$jsonID" "INFO" "not offered" "$cve" "$cwe"
@@ -5881,7 +5881,7 @@ sub_cipherlists() {
                     2)   if [[ $sclient_success -eq 0 ]]; then
                               # bad but there is worse
                               pr_svrty_high "offered (NOT ok)"
-                              fileout "$jsonID" "HIGH" "offered" "$cve" "$cwe"
+                              fileout "$jsonID" "HIGH" "$3\n" "$cve" "$cwe"
                          else
                               # need a check for -eq 1 here
                               pr_svrty_good "not offered (OK)"
@@ -5891,7 +5891,7 @@ sub_cipherlists() {
                     1)   if [[ $sclient_success -eq 0 ]]; then
                               # the ugly ones
                               pr_svrty_critical "offered (NOT ok)"
-                              fileout "$jsonID" "CRITICAL" "offered" "$cve" "$cwe"
+                              fileout "$jsonID" "CRITICAL" "$3\n" "$cve" "$cwe"
                          else
                               pr_svrty_best "not offered (OK)"
                               fileout "$jsonID" "OK" "not offered" "$cve" "$cwe"
@@ -8876,10 +8876,10 @@ certificate_info() {
           prln_svrty_medium "$trustfinding_nosni"
      fi
 
-     fileout "cert_trust${json_postfix}" "$trust_sni_finding" "${trustfinding}${trustfinding_nosni}"
+     fileout "Certificate trust${json_postfix}" "$trust_sni_finding" "A certificate name mismatch error is typically encountered when a browser is unable to establish a secure connection to a website due to a mismatch between the domain name in the certificate and the domain name in the URL that the user is trying to access.\nResolution:\nTo resolve this issue, you should check that the certificate is installed correctly on the server and that it is issued for the correct domain name. If the certificate was issued for a different domain name or a different subdomain, you will need to obtain a new certificate for the correct domain name. If the certificate is self-signed, it is not trusted by the browser and the user will receive an error message."
 
      out "$indent"; pr_bold " Chain of trust"; out "               "
-     jsonID="cert_chain_of_trust"
+     jsonID="Certificate chain of trust"
      if [[ "$issuer_O" =~ StartCom ]] || [[ "$issuer_O" =~ WoSign ]] || [[ "$issuer_CN" =~ StartCom ]] || [[ "$issuer_CN" =~ WoSign ]]; then
           # Shortcut for this special case here.
           pr_italic "WoSign/StartCom"; out " are " ; prln_svrty_critical "not trusted anymore (NOT ok)"
@@ -8999,9 +8999,9 @@ certificate_info() {
           fi
      fi
      outln " ($startdate --> $enddate)"
-     fileout "cert_expirationStatus${json_postfix}" "$expok" "$expfinding"
-     fileout "cert_notBefore${json_postfix}" "INFO" "$startdate"      # we assume that the certificate has no start time in the future
-     fileout "cert_notAfter${json_postfix}" "$expok" "$enddate"       # They are in UTC
+     fileout "Certficate expiration${json_postfix}" "$expok" "Certificate expiration status: $expfinding"
+     fileout "Certificate not valid before${json_postfix}" "INFO" "Certificate not valid before: $startdate"      # we assume that the certificate has no start time in the future
+     fileout "Certificate not valid after${json_postfix}" "$expok" "Certificate not valid after: $enddate"       # They are in UTC
 
      # Internal certificates or those from appliances often have too high validity periods.
      # We check for ~10 years and >~ 5 years
@@ -9136,11 +9136,11 @@ certificate_info() {
      fi
 
      out "$indent"; pr_bold " OCSP stapling                "
-     jsonID="OCSP_stapling"
+     jsonID="OCSP stapling"
      if grep -a "OCSP response" <<< "$ocsp_response" | grep -q "no response sent" ; then
           if [[ -n "$ocsp_uri" ]]; then
                pr_svrty_low "not offered"
-               fileout "${jsonID}${json_postfix}" "LOW" "not offered"
+               fileout "${jsonID}${json_postfix}" "LOW" "OCSP stapling is not enabled.\nOCSP stapling can be used to enhance the OCSP protocol by letting the webhosting site be more proactive in improving the client (browsing) experience. OCSP stapling allows the certificate presenter (i.e. web server) to query the OCSP responder directly and then cache the response. This securely cached response is then delivered with the TLS/SSL handshake via the Certificate Status Request extension response, ensuring that the browser gets the same response performance for the certificate status as it does for the website content.\nOCSP stapling addresses a privacy concern with OCSP because the CA no longer receives the revocation requests directly from the client (browser). OCSP stapling also addresses concerns about OCSP SSL negotiation delays by removing the need for a separate network connection to a CA’s responders.\nRef: https://www.digicert.com/kb/enabling-ocsp-stapling.htm"
           else
                out "not offered"
                fileout "${jsonID}${json_postfix}" "INFO" "not offered"
@@ -9174,7 +9174,7 @@ certificate_info() {
      must_staple "$json_postfix" "$provides_stapling" "$cert_txt"
 
      out "$indent"; pr_bold " DNS CAA RR"; out " (experimental)    "
-     jsonID="DNS_CAArecord"
+     jsonID="DNS CAA record"
      caa_node="$NODE"
      caa=""
      while ( [[ -z "$caa" ]] &&  [[ ! -z "$caa_node" ]] ); do
@@ -9202,7 +9202,7 @@ certificate_info() {
           fileout "${jsonID}${json_postfix}" "INFO" "check skipped as instructed"
      else
           pr_svrty_low "not offered"
-          fileout "${jsonID}${json_postfix}" "LOW" "--"
+          fileout "${jsonID}${json_postfix}" "LOW" "Missing DNS CAA record.\nWhen a CAA record is not found, a malicious hacker can quickly generate a Certificate Signing Request (CSR) for your domain and have the certificate signed by any domain. This is a security threat that you should not allow to happen."
      fi
      outln
 
@@ -9826,6 +9826,7 @@ run_fs() {
                     fi
                     "$WIDE" && "$SHOW_SIGALGO" && grep -q "\-\-\-\-\-BEGIN CERTIFICATE\-\-\-\-\-" $TMPFILE && \
                          sigalg[i]="$(read_sigalg_from_file "$TMPFILE")"
+		    break
                done
           done
           if "$using_sockets"; then
@@ -15640,7 +15641,7 @@ run_renego() {
      [[ $VULN_COUNT -le $VULN_THRESHLD ]] && outln && pr_headlineln " Testing for Renegotiation vulnerabilities " && outln
 
      pr_bold " Secure Renegotiation (RFC 5746)           "
-     jsonID="secure_renego"
+     jsonID="Secure renegotiation"
 
      if "$TLS13_ONLY"; then
           # https://www.openssl.org/blog/blog/2018/02/08/tlsv1.3/
@@ -15658,7 +15659,7 @@ run_renego() {
                #FIXME: didn't occur to me yet but why not also to check on "Secure Renegotiation IS supported"
                case $sec_renego in
                     0)   prln_svrty_critical "Not supported / VULNERABLE (NOT ok)"
-                         fileout "$jsonID" "CRITICAL" "VULNERABLE" "$cve" "$cwe" "$hint"
+                         fileout "$jsonID" "CRITICAL" "The SSL renegotiation flaw can affect different types of systems. It is essentially caused by a vulnerability in the client-initiated renegotiation of SSL/TLS for existing server connections.\nThe negotiation process of the SSL encryption uses significantly more resources on the server than on the client. Therefore, if the client can initiate the renegotiation process, an attacker can render the server unavailable with a Denial of Service attack.\nRecommendation:\nYou must manually disable these configuration options if your web server does not prevent client-initiated SSL renegotiation by default. The guiding principle is that only the server should be allowed to initiate a renegotiation of the SSL/TLS connection.\nIn some cases, disabling a client renegotiation attempt may not be possible. Then it is crucial to set only secure renegotiation and define the number of possible SSL handshakes.\n" "$cve" "$cwe" "$hint"
                          set_grade_warning "Secure renegotiation is not supported"
                          ;;
                     1)   prln_svrty_best "supported (OK)"
@@ -17171,7 +17172,7 @@ run_lucky13() {
      if [[ $sclient_success -eq 0 ]]; then
           out "potentially "
           pr_svrty_low "VULNERABLE"; out ", uses cipher block chaining (CBC) ciphers with TLS. Check patches"
-          fileout "$jsonID" "LOW" "potentially vulnerable, uses TLS CBC ciphers" "$cve" "$cwe" "$hint"
+          fileout "$jsonID" "LOW" "Potentially vulnerable since use of TLS CBC ciphers was detected.\nRecommendation:\nYou can prevent the LUCKY13 attack by enabling Transport Layer Security configuration in Apache and Nginx Ref: https://docs.veracode.com/r/prevent-ssl-lucky13.\n" "$cve" "$cwe" "$hint"
           # the CBC padding which led to timing differences during MAC processing has been solved in openssl (https://www.openssl.org/news/secadv/20130205.txt)
           # and other software. However we can't tell with reasonable effort from the outside. Thus we still issue a warning and label it experimental
      else
@@ -20618,7 +20619,7 @@ run_rating() {
           pr_bold " Cipher Strength"; out "  (weighted)  "; outln "0 (0)"
           pr_bold " Final Score                  "; outln "0"
           pr_bold " Overall Grade                "; prln_svrty_critical "$GRADE_CAP"
-          fileout "grade" "CRITICAL" "$GRADE_CAP"
+          fileout "grade" "CRITICAL" "SSL grade: $GRADE_CAP"
      else
           ## Category 1
           # get best score, by searching for the best protocol, until a hit occurs

@@ -79,7 +79,7 @@ def run_zap(args, assetid):
         issue['asset_id'] = assetid
         issue['object_id'] = args.url 
         issue['object_meta'] = args.url 
-        issue['type'] = 'WebApp'
+        issue['type'] = 'DAST'
         desc = item.getElementsByTagName('desc')[0].firstChild.data.strip()
         solution = item.getElementsByTagName('solution')[0].firstChild
         if solution != None:
@@ -120,21 +120,22 @@ def get_inventory(args):
 
     logging.info("Starting OS/Service detection for "+hostname)
     asset_data_list = fingerprint.nmap_scan(args, hostname)    
-    asset_data = asset_data_list[0]
+    if len(asset_data_list) != 0:
+        asset_data = asset_data_list[0]
+    else:
+        asset_data = {}
+        asset_data['config_issues'] = [] 
     asset_data['id'] = asset_id
     asset_data['name'] = args.url
     asset_data['type'] = 'Web Application'
     asset_data['owner'] = args.handle
-
-    logging.info("Running SSL audit for "+args.url)
-    ssl_audit_findings = ssl_audit.run_ssl_audit(args.url, asset_id)
-    if not args.include_info:
-        flist = []
-        for f in ssl_audit_findings:
-            if f['rating'] != '1':
-                flist.append(f)
-        ssl_audit_findings = flist
+    asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
+    asset_data['tags'] = asset_tags
 
     zap_issues = run_zap(args, asset_id)
-    asset_data['config_issues'] = asset_data['config_issues'] + zap_issues + ssl_audit_findings
+    asset_data['config_issues'] = asset_data['config_issues'] + zap_issues
+    
+    if ('products' not in asset_data or len(asset_data['products']) == 0) and len(asset_data['config_issues']) == 0:
+        logging.warning("Nothing to report for: "+args.url)
+        return None
     return [ asset_data ]

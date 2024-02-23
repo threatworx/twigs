@@ -12,6 +12,7 @@ import requests
 from xml.dom.minidom import parse, parseString
 import csv
 from . import linux
+from . import ssl_audit
 
 NMAP = "/usr/bin/nmap"
 NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
@@ -45,6 +46,7 @@ def get_private_ip_cidrs():
                             private_cidrs.append(str(ipaddress.IPv4Network(ip_address).with_prefixlen))
     return private_cidrs
 
+# Note this routine will only return Windows or Linux or Other
 def get_os_type(host, products):
     os_family = None
     host_os_classes = host.getElementsByTagName("osclass")
@@ -59,7 +61,7 @@ def get_os_type(host, products):
                 os_family = host_os_class.getAttribute("osfamily")
                 accuracy = host_acc
 
-    if os_family is not None and os_family != "":
+    if os_family is not None and os_family in ['Windows', 'Linux']:
         logging.debug("Found os_type [%s] from <osclass>", os_family)
         return os_family
 
@@ -72,7 +74,7 @@ def get_os_type(host, products):
                 os_family = ostype
                 conf = int(service.getAttribute("conf"))
 
-    if os_family is not None and os_family != "":
+    if os_family is not None and os_family in ['Windows', 'Linux']:
         logging.debug("Found os_type [%s] from <service>", os_family)
         return os_family
 
@@ -86,9 +88,20 @@ def get_os_type(host, products):
     logging.debug("Unable to determine os_type...assuming [Other]")
     return 'Other'
 
+def is_port_open(port):
+    port_state = port.getElementsByTagName("state")[0]
+    if port_state is not None and port_state.getAttribute('state') == "open":
+        return True
+    return False
+
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
-    cmdarr = [NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-wordpress-enum,amqp-info,mysql-info -PN -T5 '+host]
+    nmap_cmd = NMAP + ' -oX - -A --script '+NSE_PATH+',http-generator,amqp-info,http-wordpress-enum,mysql-info -T' + args.timing
+    if args.discovery_scan_type is not None:
+        nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
+        if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
+            nmap_cmd = nmap_cmd + args.discovery_port_list
+    cmdarr = [nmap_cmd + ' ' + host]
     try:
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
@@ -109,15 +122,21 @@ def nmap_scan(args, host):
             hostname = hostname.getAttribute('name')
             if hostname == 'linux':
                 hostname = addr
-
+        
+        # Check for ports in use
         # SSH Port in use?
         ssh_port_is_open = False
+        # HTTPS ports in use
+        https_port_443_is_open = False
+        https_port_8443_is_open = False
         ports = h.getElementsByTagName("port")
         for port in ports:
-            if port.getAttribute('portid') == "22":
-                port_state = port.getElementsByTagName("state")[0]
-                if port_state is not None and port_state.getAttribute('state') == "open":
-                    ssh_port_is_open = True
+            if port.getAttribute('portid') == "22" and is_port_open(port):
+                ssh_port_is_open = True
+            elif port.getAttribute('portid') == "443" and is_port_open(port):
+                https_port_443_is_open = True
+            elif port.getAttribute('portid') == "8443" and is_port_open(port):
+                https_port_8443_is_open = True
 
         # check for cpes
         cpes = h.getElementsByTagName("cpe")
@@ -181,7 +200,12 @@ def nmap_scan(args, host):
                     prodstr = 'mirth connect ' + wpout.split(':')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-
+            if s.getAttribute('id') == 'http-generator':
+                wpout = s.getAttribute('output')
+                if wpout != None and wpout != '':
+                    prodstr = wpout.strip()
+                    if prodstr not in products:
+                        products.append(prodstr)
             if s.getAttribute('id') == 'mysql-info':
                 wpout = s.getAttribute('output')
                 if wpout != None:
@@ -195,9 +219,6 @@ def nmap_scan(args, host):
                     prodstr = 'erldp ' + wpout.split('version:')[1].split('node')[0].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-        if ostype == "Other" and len(products) == 0:
-            # skip any discovered assets which have asset type as "Other" and no products
-            continue
         asset_data = {}
         asset_data['id'] = addr 
         asset_data['name'] = hostname 
@@ -212,6 +233,34 @@ def nmap_scan(args, host):
                 asset_data['tags'].append('SSH Audit')
             asset_data['config_issues'] = ssh_issues
 
+        # run ssl audit if https ports are open
+        if https_port_443_is_open or https_port_8443_is_open:
+            if https_port_443_is_open:
+                ssl_audit_url = "https://" + host + "/"
+                logging.info("Running SSL audit for "+ssl_audit_url)
+                ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
+                if not args.include_info:
+                    flist = []
+                    for f in ssl_audit_findings:
+                        if f['rating'] != '1':
+                            flist.append(f)
+                    ssl_audit_findings = flist
+                asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+            if https_port_8443_is_open:
+                ssl_audit_url = "https://" + host + ":8443/"
+                logging.info("Running SSL audit for "+ssl_audit_url)
+                ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
+                if not args.include_info:
+                    flist = []
+                    for f in ssl_audit_findings:
+                        if f['rating'] != '1':
+                            flist.append(f)
+                    ssl_audit_findings = flist
+                asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+        if asset_data['type'] == "Other" and len(asset_data['products']) == 0 and ('config_issues' not in asset_data or len(asset_data['config_issues'])==0):
+            # skip any discovered assets which have asset type as "Other" and no products and no config_issues
+            logging.info("Fingerprinting did not yield any results")
+            continue
         asset_data_list.append(asset_data)
 
     return asset_data_list
@@ -225,12 +274,7 @@ def get_inventory(args):
         args.hosts = get_private_ip_cidrs()
     else:
         args.hosts = args.hosts.split(',')
-    nmap_cmd = NMAP + ' -oX - -A --script http-wordpress-enum,mysql-info -T' + args.timing
-    if args.discovery_scan_type is not None:
-        nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
-        if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
-            nmap_cmd = nmap_cmd + args.discovery_port_list
     assets = []
     for host in args.hosts:
-        assets = nmap_scan(args, host)
+        assets.extend(nmap_scan(args, host))
     return assets

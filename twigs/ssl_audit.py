@@ -35,9 +35,8 @@ def run_ssl_audit(url, assetid):
         subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
         dev_null_device.close()
     except subprocess.CalledProcessError as e:
-        logging.error("Error running ssl audit: %s" % str(e))
-        logging.error(traceback.format_exc())
-        return findings 
+        logging.debug("ssl audit: %s" % str(e))
+        pass
 
     jf = open(audit_out, 'r')
     out = jf.read()
@@ -55,7 +54,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = '' 
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'protocols' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['protocols']:
@@ -67,7 +66,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = '' 
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'grease' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['grease']:
@@ -79,7 +78,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = '' 
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'grease' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['grease']:
@@ -91,7 +90,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = '' 
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'ciphers' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['ciphers']:
@@ -106,7 +105,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'fs' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['fs']:
@@ -118,7 +117,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'serverPreferences' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['serverPreferences']:
@@ -130,7 +129,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'serverDefaults' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['serverDefaults']:
@@ -142,7 +141,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'headerResponse' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['headerResponse']:
@@ -154,7 +153,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'vulnerabilities' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['vulnerabilities']:
@@ -171,7 +170,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'cipherTests' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['cipherTests']:
@@ -183,7 +182,7 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
         if 'browserSimulations' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['browserSimulations']:
@@ -195,18 +194,6 @@ def run_ssl_audit(url, assetid):
                 issue['object_id'] = url 
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
-                findings.append(issue)
-        if 'rating' in odict['scanResult'][0]:
-            for p in odict['scanResult'][0]['rating']:
-                issue = {}
-                issue['twc_id'] = 'ssl-audit-'+p['id']
-                issue['twc_title'] = p['id']
-                issue['details'] = p['finding']
-                issue['rating'] = get_rating(p['severity']) 
-                issue['object_id'] = url 
-                issue['asset_id'] = assetid
-                issue['object_meta'] = ''
-                issue['type'] = 'SSL Audit' 
+                issue['type'] = 'SSL' 
                 findings.append(issue)
     return findings
