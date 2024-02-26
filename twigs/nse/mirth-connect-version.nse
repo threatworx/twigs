@@ -13,19 +13,19 @@ Attempts to retrieve version for Mirth Connect application
 --
 --@output
 -- PORT     STATE SERVICE
--- 8443/tcp open  Mirth Connect
+-- 8443/tcp open mirth connect 
 -- |_mirth-connect-version: 4.5.0
 --
 -- @xmloutput
--- c<script id="mirth-connect-version" output="&#xa;  Mirth Connect: 4.5.0">
--- <elem key="Mirth Connect">4.5.0</elem>
+-- c<script id="mirth-connect-version" output="&#xa;  mirth connect: 4.5.0">
+-- <elem key="mirth connect">4.5.0</elem>
 -- </script>
 
 author = "ThreatWorx"
 license = "Same as Nmap--See https://nmap.org/book/man-legal.html"
-categories = {"discovery,safe"}
+categories = {"default", "safe", "discovery", "version"}
 
-portrule = shortport.version_port_or_service({8443}, {"mirth-connect-s"}, "tcp")
+portrule = shortport.version_port_or_service({80,8080,443,8443}, {"mirth-connect-s"}, "tcp")
 
 action = function(host, port)
   -- Perform a GET request for /server-status
@@ -42,6 +42,6 @@ action = function(host, port)
   end
 
   result = stdnse.output_table()
-  result["Mirth Connect"] = response.body 
+  result["mirth connect"] = response.body 
   return result
 end

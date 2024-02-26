@@ -200,6 +200,12 @@ def nmap_scan(args, host):
                     prodstr = 'mirth connect ' + wpout.split(':')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
+            if s.getAttribute('id') == 'connectwise-screenconnect-version':
+                wpout = s.getAttribute('output')
+                if wpout != None and wpout != '':
+                    prodstr = 'connectwise screenconnect ' + wpout.split(':')[1].strip()
+                    if prodstr not in products:
+                        products.append(prodstr)
             if s.getAttribute('id') == 'http-generator':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
