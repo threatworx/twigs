@@ -41,10 +41,10 @@ action = function(host, port)
 
   if response.header['server'] then
     local scver = string.match(response.header['server'], "ScreenConnect/([a-zA-Z.0-9-]+)")	  
-    result = stdnse.output_table()
-    result["connectwise screenconnect"] = scver
-    return result
+    if scver then
+      result = stdnse.output_table()
+      result["connectwise screenconnect"] = scver
+      return result
+    end
   end
-
-  return
 end
