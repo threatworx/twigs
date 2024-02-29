@@ -18,7 +18,7 @@ jobs:
       - name: checkout repo content
         uses: actions/checkout@v2 # checkout the repository content to github runner
 
-      - name: Get version tag
+      - name: get version tag
         run: |
           echo "TAG_NAME=$(cat twigs/__init__.py | grep version | cut -f2 -d"'" )" >> $GITHUB_ENV
           
@@ -30,28 +30,33 @@ jobs:
 
       - name: verify package using twine
         run: twine check ${GITHUB_WORKSPACE}/dist/*.whl
-
+      
+      - name: "tag the build"
+        uses: EndBug/latest-tag@latest
+        with:
+          tag-name: ${{ env.TAG_NAME }}
+          
       - name: upload to pypi
         run: twine upload -u "__token__" -p "${{ secrets.PYPI_TOKEN }}" ${GITHUB_WORKSPACE}/dist/*
         
-      - name: Log in to Docker Hub
+      - name: log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           
-      - name: Build and export to Docker
+      - name: build and export to Docker
         uses: docker/build-push-action@v5
         with:
           context: .
           load: true
           tags: ${{ env.TEST_TAG }}
           
-      - name: Basic test
+      - name: basic test
         run: |
           docker run --rm ${{ env.TEST_TAG }} -h
           
-      - name: Build and push Docker image
+      - name: build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
