@@ -32,12 +32,13 @@ action = function(host, port)
   local path = "/api/server/version"
   local options = {header={}}
   options['header']['X-Requested-With'] = 'OpenAPI'
+  options['redirect_ok'] = false 
   local response = http.get(host,port,path,options)
   local result = '' 
 
-  if not response or not response.status or response.status ~= 200 or not response.body then
+  stdnse.debug(1, "Failed to retrieve: %s", path)
+  if not response or not response.status or response.status ~= 200 then
     stdnse.debug(1, "Failed to retrieve: %s", path)
-    stdnse.debug(1, "%s", response.body)
     return
   end
 

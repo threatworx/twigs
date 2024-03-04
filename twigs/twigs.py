@@ -784,6 +784,8 @@ def main(args=None):
         parser_nmap.add_argument('--discovery_scan_type', help='Specify the scan type to be used during host discovery. Refer https://nmap.org/book/man-host-discovery.html', choices=['N', 'S', 'A', 'U', 'Y', 'O', 'E', 'P', 'M'], required = False)
         parser_nmap.add_argument('--discovery_port_list', help='Specify the ports to be used in host discovery scan. Not applicable for (N,E,P,M) discovery scan types', required = False)
         parser_nmap.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
+        parser_nmap.add_argument('--run_dast', action='store_true', help='Run DAST checks for web applications. Note DAST tests may take time and are not recommended for use with scans on large network CIDRs. Please use the "webapp" option for running DAST and other tests on known web application URLs')
+        parser_nmap.add_argument('--url', help=argparse.SUPPRESS)
         parser_nmap.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
 
         # Arguments required for SBOM-based discovery

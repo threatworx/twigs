@@ -10,9 +10,11 @@ import json
 import re
 import requests
 from xml.dom.minidom import parse, parseString
+from distutils.version import LooseVersion 
 import csv
 from . import linux
 from . import ssl_audit
+from .dast_plugins import zap as zap_dast
 
 NMAP = "/usr/bin/nmap"
 NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
@@ -96,7 +98,7 @@ def is_port_open(port):
 
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
-    nmap_cmd = NMAP + ' -oX - -A --script '+NSE_PATH+',http-generator,amqp-info,http-wordpress-enum,mysql-info -T' + args.timing
+    nmap_cmd = NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-generator,amqp-info,http-wordpress-enum,mysql-info -T' + args.timing
     if args.discovery_scan_type is not None:
         nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
         if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
@@ -126,24 +128,36 @@ def nmap_scan(args, host):
         # Check for ports in use
         # SSH Port in use?
         ssh_port_is_open = False
-        # HTTPS ports in use
+        # HTTP(S) ports in use
+        http_port_80_is_open = False
+        http_port_8080_is_open = False
         https_port_443_is_open = False
         https_port_8443_is_open = False
         ports = h.getElementsByTagName("port")
         for port in ports:
             if port.getAttribute('portid') == "22" and is_port_open(port):
                 ssh_port_is_open = True
+            elif port.getAttribute('portid') == "80" and is_port_open(port):
+                http_port_80_is_open = True
             elif port.getAttribute('portid') == "443" and is_port_open(port):
                 https_port_443_is_open = True
+            elif port.getAttribute('portid') == "8080" and is_port_open(port):
+                http_port_8080_is_open = True
             elif port.getAttribute('portid') == "8443" and is_port_open(port):
                 https_port_8443_is_open = True
 
         # check for cpes
         cpes = h.getElementsByTagName("cpe")
+        lkver = '0.0'
         products = []
         for c in cpes:
             cstr = c.firstChild.data
             carr = cstr.split(':')
+            if carr[3] == 'linux_kernel':
+                if len(carr) >= 5:
+                    if LooseVersion(carr[4]) > LooseVersion(lkver):
+                        lkver = carr[4]
+                    continue
             prodstr = carr[2] + ' ' + carr[3] + ' '
             if len(carr) >= 5:
                 prodstr += carr[4]
@@ -151,6 +165,9 @@ def nmap_scan(args, host):
             prodstr = prodstr.replace('_',' ')
             if prodstr not in products:
                 products.append(prodstr)
+
+        if lkver != '0.0':
+            products.append('linux linux kernel '+lkver)
 
         ostype = get_os_type(h, products)
 
@@ -191,7 +208,7 @@ def nmap_scan(args, host):
             if s.getAttribute('id') == 'tomcat-version':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
-                    prodstr = 'apache tomcat ' + wpout.split('Version:')[1].strip()
+                    prodstr = 'apache tomcat ' + wpout.split(':')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
             if s.getAttribute('id') == 'mirth-connect-version':
@@ -225,6 +242,26 @@ def nmap_scan(args, host):
                     prodstr = 'erldp ' + wpout.split('version:')[1].split('node')[0].strip()
                     if prodstr not in products:
                         products.append(prodstr)
+            if s.getAttribute('id') == 'confluence-version':
+                wpout = s.getAttribute('output')
+                if wpout != None:
+                    if 'atlassian.net' in hostname:
+                        prodstr = 'atlassian confluence ' + wpout.split('version:')[1].strip()
+                    else:
+                        prodstr = 'atlassian confluence data center ' + wpout.split('version:')[1].strip()
+                    if prodstr not in products:
+                        products.append(prodstr)
+            if s.getAttribute('id') == 'jira-version':
+                wpout = s.getAttribute('output')
+                if wpout != None:
+                    if 'atlassian.net' in hostname:
+                        prodstr = 'atlassian jira ' + wpout.split('version:')[1].strip()
+                    else:
+                        prodstr = 'atlassian jira data center ' + wpout.split('version:')[1].strip()
+                    if prodstr not in products:
+                        products.append(prodstr)
+
+
         asset_data = {}
         asset_data['id'] = addr 
         asset_data['name'] = hostname 
@@ -239,7 +276,7 @@ def nmap_scan(args, host):
                 asset_data['tags'].append('SSH Audit')
             asset_data['config_issues'] = ssh_issues
 
-        # run ssl audit if https ports are open
+        # run ssl audit and web app if https ports are open
         if https_port_443_is_open or https_port_8443_is_open:
             if https_port_443_is_open:
                 ssl_audit_url = "https://" + host + "/"
@@ -252,6 +289,10 @@ def nmap_scan(args, host):
                             flist.append(f)
                     ssl_audit_findings = flist
                 asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+                if args.run_dast:
+                    args.url = "https://" + host
+                    dast_issues = zap_dast.run_zap(args, addr)
+                    asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
             if https_port_8443_is_open:
                 ssl_audit_url = "https://" + host + ":8443/"
                 logging.info("Running SSL audit for "+ssl_audit_url)
@@ -263,6 +304,21 @@ def nmap_scan(args, host):
                             flist.append(f)
                     ssl_audit_findings = flist
                 asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+                if args.run_dast:
+                    args.url = "https://" + host + ":8443"
+                    dast_issues = zap_dast.run_zap(args, addr)
+                    asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
+        # run web app if http ports are open
+        if args.run_dast and (http_port_80_is_open or http_port_8080_is_open):
+            if http_port_80_is_open:
+                args.url = "http://" + host
+                dast_issues = zap_dast.run_zap(args, addr)
+                asset_data['config_issues'] = asset_data['config_issues'] + dast_issues if 'config_issues' in asset_data else dast_findings
+            if http_port_8080_is_open:
+                args.url = "http://" + host + ":8080"
+                dast_issues = zap_dast.run_zap(args, addr)
+                asset_data['config_issues'] = asset_data['config_issues'] + dast_issues if 'config_issues' in asset_data else dast_findings
+
         if asset_data['type'] == "Other" and len(asset_data['products']) == 0 and ('config_issues' not in asset_data or len(asset_data['config_issues'])==0):
             # skip any discovered assets which have asset type as "Other" and no products and no config_issues
             logging.info("Fingerprinting did not yield any results")
