@@ -109,10 +109,7 @@ def run_zap(args, assetid):
         for i in instances:
             desc = desc + '\n' + get_all_text(i) + '\n'
         desc = re.sub(CLEANR, '', desc)
-        if len(desc) > 32000:
-            issue['details'] = desc[:32000] + '...<snipped>'
-        else:
-            issue['details'] = desc
+        issue['details'] = desc
         findings.append(issue)
 
     return findings
