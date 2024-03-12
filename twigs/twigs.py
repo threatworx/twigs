@@ -827,6 +827,7 @@ def main(args=None):
         parser_website.add_argument('--timing', help='Timing Template value (range 0 to 5) as per nmap documentation. Defaults to 5 if not specified. Refer https://nmap.org/book/performance-timing-templates.html', choices=['0', '1', '2', '3', '4', '5'], default = '5', required = False)
         parser_website.add_argument('--discovery_scan_type', help='Specify the scan type to be used during host discovery. Refer https://nmap.org/book/man-host-discovery.html', choices=['N', 'S', 'A', 'U', 'Y', 'O', 'E', 'P', 'M'], required = False)
         parser_website.add_argument('--discovery_port_list', help='Specify the ports to be used in host discovery scan. Not applicable for (N,E,P,M) discovery scan types', required = False)
+        parser_website.add_argument('--run_dast', action='store_true', help=argparse.SUPPRESS)
  
         # Arguments required for AWS CIS benchmarks
         parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
