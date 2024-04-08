@@ -189,10 +189,10 @@ def nmap_scan(args, host):
             if prodstr not in products:
                 products.append(prodstr)
 
-        if lkver != '0.0':
-            products.append('linux linux kernel '+lkver)
-
         ostype = get_os_type(h, products)
+
+        if lkver != '0.0' and ostype != 'Windows':
+            products.append('linux linux kernel '+lkver)
 
         # check for services
         services = h.getElementsByTagName("service")
