@@ -24,6 +24,7 @@ with warnings.catch_warnings():
    from cryptography.fernet import Fernet
 from . import utils
 from . import plugin_processor
+from .host_benchmark import host_benchmark as host_benchmark
 
 def check_host_up(host):
     if not host['remote']:
@@ -366,14 +367,6 @@ def discover(args):
 
 def discover_hosts(args, hosts):
     assets = []
-    host_bm_pkg_missing = False
-    host_bm_pn = "twigs_host_benchmark"
-    try:
-        pkg_resources.get_distribution(host_bm_pn)
-    except pkg_resources.DistributionNotFound:
-        logging.warning("[twigs_host_benchmark] package is not installed. Unable to run host benchmark assessment")
-        logging.warning("Please install using command [sudo (pip|pip3) install twigs_host_benchmark]")
-        host_bm_pkg_missing = True
     for host in hosts:
         asset = discover_host(args, host)
         if asset is not None:
@@ -388,11 +381,9 @@ def discover_hosts(args, hosts):
                 if len(ssh_config_issues) != 0:
                     asset['tags'].append('SSH Audit')
 
-            if args.no_host_benchmark == False and host_bm_pkg_missing == False:
+            if args.no_host_benchmark == False:
                 # Run host benchmark
-                host_bm_module = importlib.import_module("%s.%s" % (host_bm_pn, host_bm_pn))
-                run_host_benchmark = getattr(host_bm_module, "run_host_benchmark")
-                host_bm_issues = run_host_benchmark(host, asset['id'], args)
+                host_bm_issues = host_benchmark.run_host_benchmark(host, asset['id'], args)
                 if len(host_bm_issues) > 0:
                     asset['tags'].append('Host Benchmark')
                     if asset.get('config_issues') is None:
