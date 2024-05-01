@@ -48,9 +48,9 @@ def get_private_ip_cidrs():
                             private_cidrs.append(str(ipaddress.IPv4Network(ip_address).with_prefixlen))
     return private_cidrs
 
-# Note this routine will only return Windows or Linux or Other
-def get_os_type(host, products):
-    os_family = None
+# get the most accurate os_class object from host xml
+def get_best_os_class(host):
+    best_os_class = None
     host_os_classes = host.getElementsByTagName("osclass")
     if host_os_classes is not None:
         accuracy = -1
@@ -59,34 +59,65 @@ def get_os_type(host, products):
             if host_acc == "":
                 continue
             host_acc = int(host_acc)
-            if host_acc > accuracy:
-                os_family = host_os_class.getAttribute("osfamily")
+            if host_acc >= accuracy:
+                best_os_class = host_os_class
                 accuracy = host_acc
+    return best_os_class
 
-    if os_family is not None and os_family in ['Windows', 'Linux']:
-        logging.debug("Found os_type [%s] from <osclass>", os_family)
-        return os_family
+# get the os name from smb-os-discovery scrip output if present
+def get_smb_os(host):
+    smb_os_name = None
+    scripts = host.getElementsByTagName("script")
+    for s in scripts:
+        if s.getAttribute('id') == 'smb-os-discovery':
+            elems = s.getElementsByTagName('elem')
+            for elem in elems:
+               if elem.getAttribute('key') == 'os':
+                  smb_os_name = " ".join(t.nodeValue for t in elem.childNodes if t.nodeType == t.TEXT_NODE)
+                  break
+    return smb_os_name
 
+# get the most confident os type from services section
+def get_os_from_services(host):
     conf = -1
+    os_type = None
     services = host.getElementsByTagName("service")
     for service in services:
         ostype = service.getAttribute("ostype")
         if ostype != "":
             if int(service.getAttribute("conf")) > conf:
-                os_family = ostype
+                os_type = ostype
                 conf = int(service.getAttribute("conf"))
+    return os_type
 
-    if os_family is not None and os_family in ['Windows', 'Linux']:
-        logging.debug("Found os_type [%s] from <service>", os_family)
-        return os_family
-
-    if 'microsoft windows' in products:
-        logging.debug("Found os_type [Windows] from products")
+def get_os_type(host, products):
+    # check the smb output to see if this is a windows host
+    if get_smb_os(host):
+        logging.debug("Found os_type [Windows] from SMB")
         return 'Windows'
+
+    # check the os class
+    os_class = get_best_os_class(host)
+    if os_class:
+        os_type = os_class.getAttribute("osfamily")
+        logging.debug("Found os_type [%s] from os class", os_type)
+        return os_type
+
+    # check os type from services
+    service_os = get_os_from_services(host)
+    if service_os:
+        logging.debug("Found os_type [%s] from services", service_os)
+        return service_os
+
+    # guess os type from products
     for product in products:
+        if 'microsoft windows' in product:
+            logging.debug("Found os_type [Windows] from products")
+            return 'Windows', os_name
         if 'linux linux kernel' in product:
             logging.debug("Found os_type [Linux] from products")
-            return 'Linux'
+            return 'Linux', os_name
+
     logging.debug("Unable to determine os_type...assuming [Other]")
     return 'Other'
 
@@ -119,7 +150,7 @@ def create_open_ports_issues(ports_in_use_dict, asset_id):
 
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
-    nmap_cmd = NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-generator,amqp-info,mongodb-info,http-wordpress-enum,mysql-info -T' + args.timing
+    nmap_cmd = NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-generator,amqp-info,mongodb-info,http-wordpress-enum,mysql-info,smb-os-discovery -T' + args.timing
     if args.discovery_scan_type is not None:
         nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
         if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
@@ -171,16 +202,13 @@ def nmap_scan(args, host):
 
         # check for cpes
         cpes = h.getElementsByTagName("cpe")
-        lkver = '0.0'
         products = []
         for c in cpes:
+            # ignore cpes that are part of osclass section
+            if c.parentNode.tagName == "osclass":
+                continue
             cstr = c.firstChild.data
             carr = cstr.split(':')
-            if carr[3] == 'linux_kernel':
-                if len(carr) >= 5:
-                    if LooseVersion(carr[4]) > LooseVersion(lkver):
-                        lkver = carr[4]
-                    continue
             prodstr = carr[2] + ' ' + carr[3] + ' '
             if len(carr) >= 5:
                 prodstr += carr[4]
@@ -190,9 +218,6 @@ def nmap_scan(args, host):
                 products.append(prodstr)
 
         ostype = get_os_type(h, products)
-
-        if lkver != '0.0' and ostype != 'Windows':
-            products.append('linux linux kernel '+lkver)
 
         # check for services
         services = h.getElementsByTagName("service")
@@ -228,46 +253,45 @@ def nmap_scan(args, host):
                         prodstr = 'wordpress plugin '+wp
                         if prodstr not in products:
                             products.append(prodstr)
-            if s.getAttribute('id') == 'tomcat-version':
+            elif s.getAttribute('id') == 'tomcat-version':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
                     prodstr = 'apache tomcat ' + wpout.split(':')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-            if s.getAttribute('id') == 'mirth-connect-version':
+            elif s.getAttribute('id') == 'mirth-connect-version':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
                     prodstr = 'mirth connect ' + wpout.split(':')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-            if s.getAttribute('id') == 'connectwise-screenconnect-version':
+            elif s.getAttribute('id') == 'connectwise-screenconnect-version':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
                     prodstr = 'connectwise screenconnect ' + wpout.split(':')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-            if s.getAttribute('id') == 'http-generator':
+            elif s.getAttribute('id') == 'http-generator':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
                     prodstr = wpout.strip()
                     if prodstr not in products:
                         products.append(prodstr)
-            if s.getAttribute('id') == 'mysql-info':
+            elif s.getAttribute('id') == 'mysql-info':
                 elems = s.getElementsByTagName('elem')
                 for e in elems:
                     key = e.getAttribute('key')
                     if key and key == 'Version':
-                        print(key)
                         prodstr = 'mongodb '+e.firstChild.data
                         if prodstr not in products:
                             products.append(prodstr)
-            if s.getAttribute('id') == 'erldp-info':
+            elif s.getAttribute('id') == 'erldp-info':
                 wpout = s.getAttribute('output')
                 if wpout != None:
                     prodstr = 'erldp ' + wpout.split('version:')[1].split('node')[0].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-            if s.getAttribute('id') == 'confluence-version':
+            elif s.getAttribute('id') == 'confluence-version':
                 wpout = s.getAttribute('output')
                 if wpout != None:
                     if 'atlassian.net' in hostname:
@@ -276,7 +300,7 @@ def nmap_scan(args, host):
                         prodstr = 'atlassian confluence data center ' + wpout.split('version:')[1].strip()
                     if prodstr not in products:
                         products.append(prodstr)
-            if s.getAttribute('id') == 'jira-version':
+            elif s.getAttribute('id') == 'jira-version':
                 wpout = s.getAttribute('output')
                 if wpout != None:
                     if 'atlassian.net' in hostname:
@@ -286,6 +310,66 @@ def nmap_scan(args, host):
                     if prodstr not in products:
                         products.append(prodstr)
 
+        os_name_tag = None
+        smb_os_name = get_smb_os(h)
+        # get the product name associated with the best os class
+        best_os_class = get_best_os_class(h) 
+        if best_os_class:
+            if ostype == "Linux":
+                cpe = best_os_class.getElementsByTagName("cpe")[0]
+                cstr = cpe.firstChild.data
+                carr = cstr.split(':')
+                prodstr = carr[2] + ' ' + carr[3] + ' '
+                if len(carr) >= 5:
+                    prodstr += carr[4]
+                prodstr = prodstr.strip()
+                prodstr = prodstr.replace('_',' ')
+                if "." not in prodstr:
+                    # At times version is incomplete i.e. like a single digit like "linux linux kernel 4" and this does not lend itself nicely for matching. Hence add the ".0" to complete it.
+                    prodstr = prodstr + ".0"
+                if prodstr not in products:
+                    products.append(prodstr)
+            elif ostype == "Windows":
+                if smb_os_name:
+                    products.append(smb_os_name)
+                    os_name_tag = smb_os_name
+                else:
+                    os_name = best_os_class.parentNode.getAttribute("name")
+                    # At times there can be multiple os_names like "Microsoft Windows 7, Windows Server 2012, or Windows 8.1 Update 1", then take the first one
+                    if "," in os_name and " or " in os_name:
+                        comma_position = os_name.find(",")
+                        or_position = os_name.find(" or ")
+                        if comma_position < or_position:
+                            os_name = os_name.split(',')[0]
+                        else:
+                            os_name = os_name.split(" or ")[0]
+                    elif "," in os_name:
+                        os_name = os_name.split(",")[0]
+                    elif " or " in os_name:
+                        os_name = os_name.split(' or ')[0]
+                    products.append(os_name)
+                    os_name_tag = os_name
+
+
+        # clean up the list of products
+        clean_products = []
+        for p in products:
+            # remove bare references to windows and linux kernels without versions
+            if p.lower() == 'microsoft windows' or p.lower() == 'linux linux kernel':
+                continue
+            if ostype == "Windows":
+                # if smb os name is present then remove all references to other microsoft windows
+                if smb_os_name and p.lower().startswith('microsoft windows'):
+                    continue
+                # remove references to linux kernel in windows asset 
+                if p.lower().startswith('linux linux kernel'):
+                    continue
+            if ostype == "Linux":
+                # remove references to linux kernel in windows asset 
+                if p.lower().startswith('microsoft windows'):
+                    continue
+            clean_products.append(p)
+        products = clean_products
 
         asset_data = {}
         asset_data['id'] = addr 
@@ -294,6 +378,8 @@ def nmap_scan(args, host):
         asset_data['owner'] = args.handle
         asset_data['products'] = products
         asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
+        if os_name_tag:
+            asset_tags.append("OS_RELEASE:" + os_name_tag)
         asset_data['tags'] = asset_tags
         if len(ports_in_use_dict) > 0:
             asset_data['config_issues'] = create_open_ports_issues(ports_in_use_dict, addr)
