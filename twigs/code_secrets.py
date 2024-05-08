@@ -14,6 +14,29 @@ regex_rules = { }
 common_pwds = [ ]
 textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
 is_binary_string = lambda in_bytes: bool(in_bytes.translate(None, textchars))
+# Mapping of file extensions to their comment syntax
+comment_syntax = {
+    '.py': ('#', "'''", '"""'),  # Python
+    '.js': ('//', '/*', '*/'),  # JavaScript
+    '.c': ('//', '/*', '*/'),  # C
+    '.cpp': ('//', '/*', '*/'),  # C++
+    '.java': ('//', '/*', '*/'),  # Java
+    '.rb': ('#', '=begin', '=end'),  # Ruby
+    '.php': ('//', '#', '/*', '*/'),  # PHP
+    '.go': ('//', '/*', '*/'),  # Go
+    '.rs': ('//', '/*', '*/'),  # Rust
+    '.swift': ('//', '/*', '*/'),  # Swift
+    '.sh': ('#',),  # Bash
+    '.pl': ('#', '=cut'),  # Perl
+    '.lua': ('--', '--[[', ']]'),  # Lua
+    '.sql': ('--', '/*', '*/'),  # SQL
+    '.r': ('#',),  # R
+    '.hs': ('--', '{-', '-}'),  # Haskell
+    '.erl': ('%',),  # Erlang
+    '.exs': ('#',),  # Elixir
+    '.kt': ('//', '/*', '*/'),  # Kotlin
+    '.scala': ('//', '/*', '*/'),  # Scala
+}
 
 def shannon_entropy(data, iterator):
     if not data:
@@ -186,6 +209,25 @@ def check_regex_rules(this_file, lines, line, line_no, secret_records, args):
             secret_records.append(create_secret_record(this_file, lines, line_no, "REGEX:"+key, line, secret, args))
             break
 
+def get_comment_syntax(this_file):
+    for syntax in comment_syntax:
+        if this_file.endswith(syntax):
+            return syntax
+    return None
+
+def has_comment(args, this_file, line, csyntax, multi_line_comment=False):
+    line = line.strip()
+    if not csyntax:
+        return False, False
+
+    if line.startswith(comment_syntax[csyntax][0]):
+        return True, False
+    elif len(comment_syntax[csyntax]) > 1 and line.startswith(comment_syntax[csyntax][1]):
+        return True, True
+    elif multi_line_comment and len(comment_syntax[csyntax]) > 1 and line.endswith(comment_syntax[csyntax][2]):
+        return True, False
+    return False, False
+
 def scan_file_for_secrets(args, base_path, this_file, regex_rules):
     secret_records = []
     with open(this_file, 'r') as fd:
@@ -198,7 +240,13 @@ def scan_file_for_secrets(args, base_path, this_file, regex_rules):
         lines = lines.split('\n')
         line_no = 0
         stripped_file_path = this_file[len(base_path)+1:]
+        csyntax = get_comment_syntax(this_file)
+        mlc = False
         for line in lines:
+            if args.ignore_comments:
+                is_comment, mlc = has_comment(args, this_file, line, csyntax, mlc)
+                if is_comment:
+                    continue
             if args.enable_entropy:
                 check_entropy(stripped_file_path, lines, line, line_no, secret_records, args)
             check_regex_rules(stripped_file_path, lines, line, line_no, secret_records, args)
@@ -283,7 +331,7 @@ def scan_for_secrets(args, local_path, base_path):
         for cp in common_passwords_list:
             cp = cp.strip()
             if len(cp) > 0: # Safety check
-                common_pwds.append(re.compile("[='\";,@]"+cp+"(['\";,&]|$)"))
+                common_pwds.append(re.compile("[='\";,@]"+re.escape(cp)+"(['\";,&]|$)"))
 
     secret_records = []
     for this_file in final_files:
