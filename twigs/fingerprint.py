@@ -151,18 +151,23 @@ def create_open_ports_issues(ports_in_use_dict, asset_id):
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
     nmap_cmd = NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-generator,amqp-info,mongodb-info,http-wordpress-enum,mysql-info,smb-os-discovery -T' + args.timing
+    if args.verbosity >= 3:
+        logging.debug('Enabled nmap debug logging...')
+        nmap_cmd = nmap_cmd + ' -vvv -d --packet-trace --reason'
     if args.discovery_scan_type is not None:
         nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
         if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
             nmap_cmd = nmap_cmd + args.discovery_port_list
     cmdarr = [nmap_cmd + ' ' + host]
     try:
+        logging.debug("NMAP command: " + cmdarr[0])
         out = subprocess.check_output(cmdarr, shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
         logging.error("Error running nmap command")
         return None
 
+    logging.debug("NMAP output:\n" + out)
     dom = parseString(out)
     asset_data_list = []
     hosts = dom.getElementsByTagName("host")
