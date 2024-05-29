@@ -84,8 +84,9 @@ def run_host_benchmark(host, asset_id, args):
         cmdarr = ['mktemp -d']
         remote_temp_dir = utils.run_cmd_on_host(args, host, cmdarr)
 
+        remote_temp_dir = remote_temp_dir.strip()
         # SCP tar contents to remote box
-        utils.scp_put_file(host, local_temp_dir + os.sep + 'lynis', remote_temp_dir)
+        utils.scp_put_file(host, local_temp_dir + os.sep + 'lynis-3.1.1', remote_temp_dir)
         extract_tar_path = remote_temp_dir
 
     # Run host benchmark tool
