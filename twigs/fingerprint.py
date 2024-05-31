@@ -150,6 +150,10 @@ def create_open_ports_issues(ports_in_use_dict, asset_id):
 
 def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
+    if os.geteuid() == 0:
+        logging.info("Running nmap as root user")
+    else:
+        logging.info("Running nmap as non-root user")
     nmap_cmd = NMAP + ' -oX - -p'+NMAP_PORTS+' -A --script '+NSE_PATH+',http-generator,amqp-info,mongodb-info,http-wordpress-enum,mysql-info,smb-os-discovery -T' + args.timing
     if args.verbosity >= 3:
         logging.debug('Enabled nmap debug logging...')

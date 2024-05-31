@@ -273,7 +273,11 @@ def add_attack_surface_label(args, assets):
             as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'repo':
             as_label = get_code_as_label("Code", asset)
-        elif args.mode == "ghe":
+        elif args.mode == "github":
+            as_label = get_code_as_label("Code", asset)
+        elif args.mode == "gitlab":
+            as_label = get_code_as_label("Code", asset)
+        elif args.mode == "bitbucket":
             as_label = get_code_as_label("Code", asset)
         elif args.mode == 'host':
             as_label = get_host_as_label("Corporate::Server", asset)
@@ -509,7 +513,6 @@ def main(args=None):
         parser_ecr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
         parser_ecr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
         parser_ecr.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_ecr.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_ecr.add_argument('--branch', help=argparse.SUPPRESS)
         parser_ecr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
         parser_ecr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
@@ -541,7 +544,6 @@ def main(args=None):
         parser_acr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
         parser_acr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
         parser_acr.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_acr.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_acr.add_argument('--branch', help=argparse.SUPPRESS)
         parser_acr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
         parser_acr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
@@ -573,7 +575,6 @@ def main(args=None):
         parser_gcr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
         parser_gcr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_gcr.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--branch', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
         parser_gcr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
@@ -604,7 +605,6 @@ def main(args=None):
         parser_docker.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', default='/tmp')
         parser_docker.add_argument('--start_instance', action='store_true', help='If image inventory fails, try starting a container instance to inventory contents. Use with caution', required=False)
         parser_docker.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_docker.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_docker.add_argument('--branch', help=argparse.SUPPRESS)
         parser_docker.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
         parser_docker.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
@@ -637,7 +637,6 @@ def main(args=None):
         parser_k8s.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
         parser_k8s.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
         parser_k8s.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_k8s.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_k8s.add_argument('--branch', help=argparse.SUPPRESS)
         parser_k8s.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
         parser_k8s.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
@@ -663,7 +662,6 @@ def main(args=None):
         parser_repo = subparsers.add_parser ("repo", help = "Discover source code repository as asset")
         group = parser_repo.add_mutually_exclusive_group(required=True)
         group.add_argument('--repo', help='Local path or git repo url for project')
-        group.add_argument('--gh_user', help='Discover all repositories for specified GitHub User.')
         parser_repo.add_argument('--branch', help='Optional branch of remote git repo')
         parser_repo.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
         parser_repo.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shallow')
@@ -688,10 +686,11 @@ def main(args=None):
         parser_repo.add_argument('--ignore_comments', action='store_true', help='Ignore lines in source code containing comments for secrets scan')
 
         # Arguments required for GitHub Enterprise discovery
-        parser_ghe = subparsers.add_parser ("ghe", help = "Discover GitHub Enterprise repositories as assets")
-        parser_ghe.add_argument('--gh_org', help='Discover all repositories for specified GitHub Enterprise Organization.', required=True)
+        parser_ghe = subparsers.add_parser ("github", help = "Discover GitHub Enterprise repositories as assets")
+        parser_ghe.add_argument('--gh_identity', help='A valid GitHub Enterprise organization name or user name', required=True)
+        parser_ghe.add_argument('--gh_access_token', help='A valid GitHub Enterprise token. Must have repo read permissions', required=True)
+        parser_ghe.add_argument('--gh_api_url', help='Optional URL of your Github Enterprise API if self-hosted. Defaults to https://api.github.com', default='https://api.github.com')
         parser_ghe.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_ghe.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_ghe.add_argument('--branch', help=argparse.SUPPRESS)
         parser_ghe.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
         parser_ghe.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shallow')
@@ -714,10 +713,64 @@ def main(args=None):
         parser_ghe.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
         parser_ghe.add_argument('--ignore_comments', action='store_true', help='Ignore lines in source code containing comments for secrets scan')
 
+        # Arguments required for GitLab Enterprise discovery
+        parser_gle = subparsers.add_parser ("gitlab", help = "Discover GitLab Enterprise repositories as assets")
+        parser_gle.add_argument('--gl_access_token', help='A valid GitLab Enterprise token. Must have correct permissions to read repositories and metadata', required=True)
+        parser_gle.add_argument('--gl_host', help='Optional FQDN of your GitLab Enterprise server if self-hosted. Defaults to gitlab.com', default='gitlab.com')
+        parser_gle.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_gle.add_argument('--branch', help=argparse.SUPPRESS)
+        parser_gle.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
+        parser_gle.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shallow')
+        parser_gle.add_argument('--include_unused_dependencies', action='store_true', help='Include unused dependencies in the repository asset (applies to certain types of open source components only, may introduce false positives if used)')
+        parser_gle.add_argument('--assetid', help=argparse.SUPPRESS)
+        parser_gle.add_argument('--assetname', help=argparse.SUPPRESS)
+        # Switches related to secrets scan for repo
+        parser_gle.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+        parser_gle.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
+        parser_gle.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+        parser_gle.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+        parser_gle.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
+        parser_gle.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+        parser_gle.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+        parser_gle.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+        parser_gle.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+        parser_gle.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWorx.')
+        parser_gle.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWorx.')
+        parser_gle.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
+        parser_gle.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
+        parser_gle.add_argument('--ignore_comments', action='store_true', help='Ignore lines in source code containing comments for secrets scan')
+
+        # Arguments required for Bitbucket discovery
+        parser_bb = subparsers.add_parser ("bitbucket", help = "Discover Bitbucket repositories as assets")
+        parser_bb.add_argument('--bb_user', help='A valid Bitbucket user name to be used for authentication', required=True)
+        parser_bb.add_argument('--bb_app_password', help='A valid Bitbucket app password. Must have correct permissions to read repositories and metadata', required=True)
+        parser_bb.add_argument('--bb_repo_url', help='Bitbucket API repo URL for your workspace. Usually looks like "https://api.bitbucket.org/2.0/repositories/<myworkspace>" with your workspace name', required=True)
+        parser_bb.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_bb.add_argument('--branch', help=argparse.SUPPRESS)
+        parser_bb.add_argument('--type', choices=repo.SUPPORTED_TYPES, help='Type of open source component to scan for. Defaults to all supported types if not specified', required=False)
+        parser_bb.add_argument('--level', help='Possible values {shallow, deep}. Shallow restricts discovery to 1st level dependencies only. Deep discovers dependencies at all levels. Defaults to shallow discovery if not specified', choices=['shallow','deep'], required=False, default='shallow')
+        parser_bb.add_argument('--include_unused_dependencies', action='store_true', help='Include unused dependencies in the repository asset (applies to certain types of open source components only, may introduce false positives if used)')
+        parser_bb.add_argument('--assetid', help=argparse.SUPPRESS)
+        parser_bb.add_argument('--assetname', help=argparse.SUPPRESS)
+        # Switches related to secrets scan for repo
+        parser_bb.add_argument('--secrets_scan', action='store_true', help='Perform a scan to look for secrets in the code')
+        parser_bb.add_argument('--enable_entropy', action='store_true', help='Identify entropy based secrets')
+        parser_bb.add_argument('--regex_rules_file', help='Path to JSON file specifying regex rules')
+        parser_bb.add_argument('--check_common_passwords', action='store_true', help='Look for top common passwords.')
+        parser_bb.add_argument('--common_passwords_file', help='Specify your own common passwords file. One password per line in file')
+        parser_bb.add_argument('--include_patterns', help='Specify patterns which indicate files to be included in the secrets scan. Separate multiple patterns with comma.')
+        parser_bb.add_argument('--include_patterns_file', help='Specify file containing include patterns which indicate files to be included in the secrets scan. One pattern per line in file.')
+        parser_bb.add_argument('--exclude_patterns', help='Specify patterns which indicate files to be excluded in the secrets scan. Separate multiple patterns with comma.')
+        parser_bb.add_argument('--exclude_patterns_file', help='Specify file containing exclude patterns which indicate files to be excluded in the secrets scan. One pattern per line in file.')
+        parser_bb.add_argument('--mask_secret', action='store_true', help='Mask identified secret before storing for reference in ThreatWorx.')
+        parser_bb.add_argument('--no_code', action='store_true', help='Disable storing code for reference in ThreatWorx.')
+        parser_bb.add_argument('--sast', action='store_true', help='Perform static code analysis on your source code')
+        parser_bb.add_argument('--iac_checks', action='store_true', help='Perform security checks on IaC templates')
+        parser_bb.add_argument('--ignore_comments', action='store_true', help='Ignore lines in source code containing comments for secrets scan')
+
         # Arguments required for Azure Functions 
         parser_az_functions = subparsers.add_parser("azure_functions", help = "Discover and scan Azure Functions soure code")
         parser_az_functions.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_az_functions.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--branch', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--type', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
@@ -744,7 +797,6 @@ def main(args=None):
         parser_gcloud_functions = subparsers.add_parser("gcloud_functions", help = "Discover and scan Google Cloud Functions soure code")
         parser_gcloud_functions.add_argument('--projects', help='A comma separated list of GCP project IDs', required=True)
         parser_gcloud_functions.add_argument('--repo', help=argparse.SUPPRESS)
-        parser_gcloud_functions.add_argument('--gh_user', help=argparse.SUPPRESS)
         parser_gcloud_functions.add_argument('--branch', help=argparse.SUPPRESS)
         parser_gcloud_functions.add_argument('--type', help=argparse.SUPPRESS)
         parser_gcloud_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
@@ -1013,8 +1065,11 @@ def main(args=None):
             assets = servicenow.get_inventory(args)
         elif args.mode == 'repo':
             assets = repo.get_inventory(args)
-        elif args.mode == "ghe":
-            args.gh_user = args.gh_org
+        elif args.mode == "github":
+            assets = repo.get_inventory(args)
+        elif args.mode == "gitlab":
+            assets = repo.get_inventory(args)
+        elif args.mode == "bitbucket":
             assets = repo.get_inventory(args)
         elif args.mode == 'host':
             assets = linux.get_inventory(args)

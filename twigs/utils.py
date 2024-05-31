@@ -107,23 +107,38 @@ def run_script_on_host(args, host, script_path, script_args):
             exit_code = excpt.returncode
     return pkgout, exit_code
 
-def scp_get_file(ssh_client, from_path, to_path):
-    try:
-        scp_client = SCPClient(ssh_client.get_transport())
-        scp_client.get(from_path, to_path)
-        return True
-    except:
-        logging.info("Unknown error copying file [%s] from remote host", from_path)
-        return False
+def scp_put_file(host, from_path, to_path):
+    _scp_file_helper(host, from_path, to_path, True)
 
-def scp_put_file(ssh_client, from_path, to_path):
+def scp_get_file(host, from_path, to_path):
+    _scp_file_helper(host, from_path, to_path, False)
+
+def _scp_file_helper(host, from_path, to_path, put_flag=True):
+    assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
+    ret = False
     try:
+        ssh_client = get_ssh_client(host)
         scp_client = SCPClient(ssh_client.get_transport())
-        scp_client.put(from_path, recursive=True, remote_path=to_path)
-        return True
+        if put_flag == True: # put file to remote machine
+            scp_client.put(from_path, recursive=True, remote_path=to_path)
+        else:
+            scp_client.get(from_path, to_path)
+        scp_client.close()
+        ssh_client.close()
+        ret = True
+    except paramiko.ssh_exception.AuthenticationException as e:
+        logging.info("Authentication failed for asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+    except paramiko.ssh_exception.SSHException as e:
+        logging.info("SSHException while connecting to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
+    except socket.error as e:
+        logging.info("Socket error while connection to asset [%s], host [%s]", assetid, host['hostname'])
+        logging.info("Exception: %s", e)
     except:
-        logging.info("Unknown error copying file [%s] to remote host", from_path)
-        return False
+        logging.info("Unknown error running remote discovery for asset [%s], host [%s]: [%s]", assetid, host['hostname'], sys.exc_info()[0])
+    finally:
+        return ret
 
 # NOTE script_path is path of script file on remote host
 def run_remote_ssh_script(args, host, script_path, script_args):

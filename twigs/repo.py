@@ -11,6 +11,7 @@ import pefile
 import glob
 import traceback
 import requirements
+import requests
 import re
 import zipfile
 from xml.dom import minidom
@@ -992,39 +993,57 @@ def get_inventory_helper(args):
     return assets
 
 def get_inventory(args):
-    if args.gh_user:
-        owner = args.gh_user
-        dev_null_device = open(os.devnull, "w")
-        # check if 'gh' command is available
-        try:
-            cmdarr = ['which', 'gh']
-            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-        except subprocess.CalledProcessError as e:
-            logging.error("[gh] command not found")
-            return None
-        # check if user is logged in 'gh'
-        try:
-            cmdarr = ['gh', 'auth', 'status']
-            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-        except subprocess.CalledProcessError as e:
-            logging.error("Please login using [gh auth login] command to list repositories")
-            logging.debug("[gh auth status] command returned exit code [%s]", e.returncode)
-            return None
+    if hasattr(args, 'gh_access_token'):
         # list repo for org/user
-        try:
-            cmdarr = ['gh', 'repo', 'list', owner, '--json', 'name,url', '--limit', '65535']
-            out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-        except subprocess.CalledProcessError as e:
-            logging.error("Unable to list repos for [%s]", owner)
-            logging.debug("[gh repo list %s --json name,url] command returned %s", owner, e.output)
-            logging.debug("[gh repo list %s --json name,url] command returned exit code [%s]", owner, e.returncode)
-            return None
-        repos = json.loads(out.strip())
+        repo_api_url = "%s/orgs/%s/repos" % (args.gh_api_url, args.gh_identity)
+        headers = { "Accept": "application/vnd.github+json", "Authorization" : "Bearer "+args.gh_access_token}
+        response = requests.get(repo_api_url, headers=headers, verify=False)
+        if response is None or response.status_code != 200:
+            logging.warning("Could not list repositories for Github Enterprise org [%s]", args.gh_identity)
+            repo_api_url = "%s/users/%s/repos" % (args.gh_api_url, args.gh_identity)
+            response = requests.get(repo_api_url, headers=headers, verify=False)
+            if response is None or response.status_code != 200:
+                logging.error("Could not list repositories for Github Enterprise user [%s]", args.gh_identity)
+                logging.debug(response.text)
+                return None
+        repos = json.loads(response.content.strip())
         assets = []
         for repo in repos:
-            logging.info("Discovering repo [%s] as an asset", repo['name'])
-            args.repo = repo['url']
-            logging.info("Repo URL: %s", args.repo)
+            logging.info("Discovering repo [%s] as an asset", repo['html_url'])
+            args.repo = repo['html_url'].replace("//","//"+args.gh_access_token+"@")
+            logging.debug("Repo URL: %s", args.repo)
+            temp_assets = get_inventory_helper(args)
+            assets.extend(temp_assets)
+        return assets
+    elif hasattr(args, 'gl_access_token'):
+        repo_api_url = "https://%s/api/v4/projects?membership=1" % (args.gl_host)
+        headers = { "PRIVATE-TOKEN" : args.gl_access_token}
+        response = requests.get(repo_api_url, headers=headers, verify=False)
+        if response is None or response.status_code != 200:
+            logging.error("Could not list repositories for GitLab Enterprise using the given access token")
+            logging.debug(response.text)
+            return None
+        repos = json.loads(response.content.strip())
+        assets = []
+        for repo in repos:
+            logging.info("Discovering repo [%s] as an asset", repo['http_url_to_repo'])
+            args.repo = repo['http_url_to_repo'].replace("//","//gitlab-ci-token:"+args.gl_access_token+"@")
+            logging.debug("Repo URL: %s", args.repo)
+            temp_assets = get_inventory_helper(args)
+            assets.extend(temp_assets)
+        return assets
+    elif hasattr(args, 'bb_app_password'):
+        response = requests.get(args.bb_repo_url, auth=(args.bb_user, args.bb_app_password), verify=False)
+        if response is None or response.status_code != 200:
+            logging.error("Could not list repositories for Bitbucket using the given credentials")
+            logging.debug(response.text)
+            return None
+        repos = json.loads(response.content.strip())
+        assets = []
+        for repo in repos['values']:
+            logging.info("Discovering repo [%s] as an asset", repo['links']['html']['href'])
+            args.repo = repo['links']['html']['href'].replace("//","//"+args.bb_user+":"+args.bb_app_password+"@")
+            logging.debug("Repo URL: %s", args.repo)
             temp_assets = get_inventory_helper(args)
             assets.extend(temp_assets)
         return assets
