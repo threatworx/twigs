@@ -90,7 +90,7 @@ def run_host_benchmark(host, asset_id, args):
         extract_tar_path = remote_temp_dir
 
     # Run host benchmark tool
-    cmdarr = ['cd ' + extract_tar_path + os.sep + 'lynis-3.1.1 && ./lynis audit system --quiet --logfile ../tw_lynis.log --report-file ../tw_lynis_report.dat && cd -']
+    cmdarr = ['cd ' + extract_tar_path + os.sep + 'lynis-3.1.1 && chmod 640 include/* && ./lynis audit system --quiet --logfile ../tw_lynis.log --report-file ../tw_lynis_report.dat && cd -']
     utils.run_cmd_on_host(args, host, cmdarr)
 
     if host['remote'] == True:
