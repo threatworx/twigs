@@ -567,8 +567,10 @@ def main(args=None):
 
         # Arguments required for Google Cloud Registry container discovery 
         parser_gcr = subparsers.add_parser ("gcr", help = "Discover Google Cloud Registry images")
-        parser_gcr.add_argument('--repository', help='The GCR image respository url which needs to be inspected.')
-        parser_gcr.add_argument('--image', help='The fully qualified image name (with tag / digest) which needs to be inspected. If tag / digest is not given, latest will be determined and used.')
+        group = parser_gcr.add_mutually_exclusive_group(required=True)
+        group.add_argument('--location', help='The location (region / multi-region) of the repository.')
+        group.add_argument('--repository', help='The GCR container/artifact registry URL which needs to be inspected.')
+        group.add_argument('--image', help='The fully qualified image name (with tag / digest) which needs to be inspected. If tag / digest is not given, latest will be determined and used.')
         parser_gcr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
         parser_gcr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
         parser_gcr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
