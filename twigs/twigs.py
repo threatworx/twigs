@@ -45,6 +45,7 @@ try:
     from . import ecr
     from . import gcp
     from . import gcr
+    from . import oci
     from . import servicenow
     from . import sbom
     from . import fingerprint
@@ -73,6 +74,7 @@ except (ImportError,ValueError):
     from twigs import ecr
     from twigs import gcp
     from twigs import gcr
+    from twigs import oci
     from twigs import servicenow
     from twigs import sbom
     from twigs import fingerprint
@@ -210,7 +212,7 @@ def run_scan(asset_id_list, pj_json, args):
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
 
-        if args.mode in ["host", "acr", "gcr", "ecr", "docker", "k8s"]:
+        if args.mode in ["host", "aws", "azure", "gcp", "oci", "acr", "gcr", "ecr", "docker", "k8s"]:
             # Start EOL assessment
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
@@ -259,14 +261,16 @@ def add_attack_surface_label(args, assets):
             as_label = get_host_as_label("Cloud::AWS::EC2", asset)
         elif args.mode == 'azure':
             as_label = get_host_as_label("Cloud::Azure::VM", asset)
+        elif args.mode == 'gcp':
+            as_label = get_host_as_label("Cloud::GCP::Compute", asset)
+        elif args.mode == 'oci':
+            as_label = get_host_as_label("Cloud::OCI::Compute", asset)
         elif args.mode == 'o365':
             as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'acr':
             as_label = get_container_as_label("Cloud::Azure::ACR", asset)
         elif args.mode == 'ecr':
             as_label = get_container_as_label("Cloud::AWS::ECR", asset)
-        elif args.mode == 'gcp':
-            as_label = get_host_as_label("Cloud::GCP::Compute", asset)
         elif args.mode == 'gcr':
             as_label = get_container_as_label("Cloud::GCP::GCR", asset)
         elif args.mode == 'servicenow':
@@ -500,6 +504,10 @@ def main(args=None):
         # Arguments required for Google Cloud Platform discovery
         parser_gcp = subparsers.add_parser ("gcp", help = "Discover Google Cloud Platform instances")
         parser_gcp.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording GCP specific information (like Project ID, etc.) as asset tags', required=False)
+
+        # Arguments required for Oracle Cloud discovery
+        parser_oci = subparsers.add_parser ("oci", help = "Discover Oracle Cloud Compute instances")
+        parser_oci.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording OCI specific information (like Compartment name, etc.) as asset tags', required=False)
 
         # Arguments required for AWS Container Registry discovery 
         parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry images")
@@ -1053,14 +1061,16 @@ def main(args=None):
             assets = aws.get_inventory(args)
         elif args.mode == 'azure':
             assets = azure.get_inventory(args)
+        elif args.mode == 'gcp':
+            assets = gcp.get_inventory(args)
+        elif args.mode == 'oci':
+            assets = oci.get_inventory(args)
         elif args.mode == 'o365':
             assets = o365.get_inventory(args)
         elif args.mode == 'acr':
             assets = acr.get_inventory(args)
         elif args.mode == 'ecr':
             assets = ecr.get_inventory(args)
-        elif args.mode == 'gcp':
-            assets = gcp.get_inventory(args)
         elif args.mode == 'gcr':
             assets = gcr.get_inventory(args)
         elif args.mode == 'servicenow':

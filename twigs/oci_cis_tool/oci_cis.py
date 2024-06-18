@@ -82,6 +82,8 @@ def process_oci_obp_reports(report_dir):
         return config_issues
 
 def log_errors(report_dir):
+    if not os.path.isfile(report_dir + os.path.sep + "error_report.csv"):
+        return
     with open(report_dir + os.path.sep + "error_report.csv", "r") as fd:
         report_csv = csv.DictReader(fd)
         rows = list(report_csv)
