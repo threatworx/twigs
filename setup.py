@@ -24,13 +24,12 @@ setup(
     author="Paresh Borkar",
     author_email='opensource@threatwatch.io',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
+        'Intended Audience :: Information Technology',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Natural Language :: English',
-        "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
@@ -48,7 +47,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatworx/twigs',
-    version='1.1.75',
+    version='1.2.0',
     zip_safe=False,
     entry_points={
         'console_scripts': [

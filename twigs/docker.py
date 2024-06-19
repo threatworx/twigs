@@ -301,7 +301,7 @@ def discover_rh_from_container_image(container_fs):
         pkg_resources.get_distribution('rpm')
     except pkg_resources.DistributionNotFound as err:
         logging.warning("%s", err)
-        logging.warning("python-rpm module not found. Please install [python2-rpm] or [python3-rpm] from your distro package manager")
+        logging.warning("python-rpm module not found. Please install [python3-rpm] from your distro package manager")
         return []
     try:
         rpm_module = importlib.import_module('rpm')
@@ -310,7 +310,7 @@ def discover_rh_from_container_image(container_fs):
         return []
 
     if hasattr(rpm_module, 'addMacro') == False:
-            logging.warning('Please install [python2-rpm] or [python3-rpm] from your distro package manager')
+            logging.warning('Please install [python3-rpm] from your distro package manager')
             return []
     plist = []
     rpm_addMacro = getattr(rpm_module, 'addMacro')
