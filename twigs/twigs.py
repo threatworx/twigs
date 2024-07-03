@@ -46,6 +46,7 @@ try:
     from . import gcp
     from . import gcr
     from . import oci
+    from . import ocr
     from . import servicenow
     from . import sbom
     from . import fingerprint
@@ -75,6 +76,7 @@ except (ImportError,ValueError):
     from twigs import gcp
     from twigs import gcr
     from twigs import oci
+    from twigs import ocr
     from twigs import servicenow
     from twigs import sbom
     from twigs import fingerprint
@@ -212,7 +214,7 @@ def run_scan(asset_id_list, pj_json, args):
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
 
-        if args.mode in ["host", "aws", "azure", "gcp", "oci", "acr", "gcr", "ecr", "docker", "k8s"]:
+        if args.mode in ["host", "aws", "azure", "gcp", "oci", "acr", "gcr", "ecr", "ocr", "docker", "k8s"]:
             # Start EOL assessment
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
@@ -273,6 +275,8 @@ def add_attack_surface_label(args, assets):
             as_label = get_container_as_label("Cloud::AWS::ECR", asset)
         elif args.mode == 'gcr':
             as_label = get_container_as_label("Cloud::GCP::GCR", asset)
+        elif args.mode == 'ocr':
+            as_label = get_container_as_label("Cloud::OCI::OCR", asset)
         elif args.mode == 'servicenow':
             as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'repo':
@@ -493,12 +497,7 @@ def main(args=None):
         
         # Arguments required for Azure discovery
         parser_azure = subparsers.add_parser ("azure", help = "Discover Azure instances")
-        parser_azure.add_argument('--azure_tenant_id', help='Azure Tenant ID', required=True)
-        parser_azure.add_argument('--azure_application_id', help='Azure Application ID', required=True)
-        parser_azure.add_argument('--azure_application_key', help='Azure Application Key', required=True)
-        parser_azure.add_argument('--azure_subscription', help='Azure Subscription. If not specified, then available values will be displayed', required=False)
-        parser_azure.add_argument('--azure_resource_group', help='Azure Resource Group. If not specified, then available values will be displayed', required=False)
-        parser_azure.add_argument('--azure_workspace', help='Azure Workspace ID. If not specified, then available values will be displayed', required=False)
+        parser_azure.add_argument('--azure_workspace', help='Azure Log Analytics Workspace ID', required=False)
         parser_azure.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording Azure specific information (like Azure Tenant ID, etc.) as asset tags', required=False)
 
         # Arguments required for Google Cloud Platform discovery
@@ -508,6 +507,8 @@ def main(args=None):
         # Arguments required for Oracle Cloud discovery
         parser_oci = subparsers.add_parser ("oci", help = "Discover Oracle Cloud Compute instances")
         parser_oci.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording OCI specific information (like Compartment name, etc.) as asset tags', required=False)
+        parser_oci.add_argument('--config_file', help="Specify the OCI configuration file. Default value is '~/.oci/config'", required=False, default='~/.oci/config')
+        parser_oci.add_argument('--config_profile', help="Specify the profile in OCI configuration file. Default profile is 'DEFAULT'", required=False, default='DEFAULT')
 
         # Arguments required for AWS Container Registry discovery 
         parser_ecr = subparsers.add_parser ("ecr", help = "Discover AWS Container Registry images")
@@ -605,6 +606,39 @@ def main(args=None):
         parser_gcr.add_argument('--ignore_comments', action='store_true', help=argparse.SUPPRESS)
         parser_gcr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_gcr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
+
+        # Arguments required for Oracle Container Registry discovery 
+        parser_ocr = subparsers.add_parser ("ocr", help = "Discover Oracle Container Registry images")
+        parser_ocr.add_argument('--region', help='The region identifier of the container registry.', required=True)
+        parser_ocr.add_argument('--repository', help='The repository name which needs to be inspected.')
+        parser_ocr.add_argument('--tmp_dir', help='Temporary directory. Defaults to /tmp', required=False)
+        parser_ocr.add_argument('--config_file', help="Specify the OCI configuration file. Default value is '~/.oci/config'", required=False, default='~/.oci/config')
+        parser_ocr.add_argument('--config_profile', help="Specify the profile in OCI configuration file. Default profile is 'DEFAULT'", required=False, default='DEFAULT')
+        parser_ocr.add_argument('--containerid', help=argparse.SUPPRESS, required=False)
+        parser_ocr.add_argument('--assetid', help=argparse.SUPPRESS, required=False)
+        parser_ocr.add_argument('--assetname', help=argparse.SUPPRESS, required=False)
+        parser_ocr.add_argument('--start_instance', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--repo', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--branch', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--type', choices=repo.SUPPORTED_TYPES, help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--level', help=argparse.SUPPRESS, choices=['shallow','deep'], default='shallow')
+        parser_ocr.add_argument('--include_unused_dependencies', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--secrets_scan', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--enable_entropy', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--regex_rules_file', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--check_common_passwords', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--common_passwords_file', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--include_patterns', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--include_patterns_file', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--exclude_patterns', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--exclude_patterns_file', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--mask_secret', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--no_code', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--sast', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--iac_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--ignore_comments', action='store_true', help=argparse.SUPPRESS)
+        parser_ocr.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
+        parser_ocr.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
         # Arguments required for docker discovery 
         parser_docker = subparsers.add_parser ("docker", help = "Discover docker instances")
@@ -935,6 +969,8 @@ def main(args=None):
         parser_oci_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
         parser_oci_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
         parser_oci_cis.add_argument('--no_obp', action='store_true', help='Do not run Oracle Best Practice checks')
+        parser_oci_cis.add_argument('--config_file', help="Specify the OCI configuration file. Default value is '~/.oci/config'", required=False, default='~/.oci/config')
+        parser_oci_cis.add_argument('--config_profile', help="Specify the profile in OCI configuration file. Default profile is 'DEFAULT'", required=False, default='DEFAULT')
 
         # Arguments required for docker CIS benchmarks 
         parser_docker_cis = subparsers.add_parser ("docker_cis", help = "Run docker CIS benchmarks")
@@ -1073,6 +1109,8 @@ def main(args=None):
             assets = ecr.get_inventory(args)
         elif args.mode == 'gcr':
             assets = gcr.get_inventory(args)
+        elif args.mode == 'ocr':
+            assets = ocr.get_inventory(args)
         elif args.mode == 'servicenow':
             assets = servicenow.get_inventory(args)
         elif args.mode == 'repo':

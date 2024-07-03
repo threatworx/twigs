@@ -133,7 +133,7 @@ def run_plugins(args, asset_dict, host, plugin_dir, root_folder):
     logging.info("Done running all enabled plugins")
 
 def process_plugins(asset_dict, host, args, root_folder):
-    if args.mode not in ['host', 'docker', 'gcr', 'acr', 'ecr', 'k8s']:
+    if args.mode not in ['host', 'docker', 'gcr', 'acr', 'ecr', 'ocr', 'k8s']:
         return
 
     assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']

@@ -18,12 +18,11 @@ def get_inventory(args):
     assets = []
     oci_utils.set_encoding(args.encoding)
 
-    compartment_name_dict = oci_utils.get_compartment_name_dict()
-    compartments = oci_utils.get_compartments()
+    compartment_name_dict = oci_utils.get_compartment_name_dict(args)
+    compartments = oci_utils.get_compartments(args)
     for compartment in compartments:
-        #import pdb; pdb.set_trace()
         logging.info("Processing compartment [%s]", compartment_name_dict[compartment])
-        instances_json = oci_utils.run_oci_cmd("os-management-hub managed-instance list --compartment-id '%s' --all" % compartment)
+        instances_json = oci_utils.run_oci_cmd("os-management-hub managed-instance list --compartment-id '%s' --all" % compartment, args)
         instances_json = instances_json['data']['items']
         logging.info("Found [%s] compute instances in inventory", len(instances_json))
         for instance in instances_json:
@@ -39,7 +38,7 @@ def get_inventory(args):
             asset_dict['tags'] = asset_tags
             products = []
             if asset_dict['type'] == "Oracle Linux":
-                packages_json = oci_utils.run_oci_cmd("os-management-hub managed-instance list-installed-packages --managed-instance-id '%s' --all" % instance['id'])
+                packages_json = oci_utils.run_oci_cmd("os-management-hub managed-instance list-installed-packages --managed-instance-id '%s' --all" % instance['id'], args)
                 packages_json = packages_json['data']['items']
                 for package in packages_json:
                     pname = "%s %s.%s" % (package['name'], package['version'], package['architecture'].lower())
@@ -47,7 +46,7 @@ def get_inventory(args):
             if asset_dict['type'] == "Windows":
                 # OCI OS Mgmt Hub does not provide installed products for Windows OS
 
-                updates_json = oci_utils.run_oci_cmd("os-management-hub managed-instance list-installed-windows-updates --managed-instance-id '%s' --all" % instance['id'])
+                updates_json = oci_utils.run_oci_cmd("os-management-hub managed-instance list-installed-windows-updates --managed-instance-id '%s' --all" % instance['id'], args)
                 updates_json = updates_json['data']['items']
                 patches = []
                 for update in updates_json:

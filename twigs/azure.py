@@ -1,70 +1,85 @@
 import sys
 import json
 import os
+import subprocess
 import requests
 import re
 import logging
 
 from . import utils
 
+g_encoding = None
+g_required_extensions = ["account", "log-analytics"]
+gTenantId = None
 gAllVMs = None
 
-def get_all_vms(params):
+def set_encoding(encoding):
+    global g_encoding
+    g_encoding = encoding
+
+def get_encoding():
+    global g_encoding
+    return g_encoding
+
+def run_az_cmd(cmd):
+    cmd = 'az ' + cmd + ' --output json --only-show-errors'
+    try:
+        logging.debug("Running cmd [%s]", cmd)
+        cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
+        cmd_output = cmd_output.decode(get_encoding())
+        ret_json = json.loads(cmd_output)
+    except subprocess.CalledProcessError:
+        logging.error("Error running az command [%s]", cmd)
+        utils.tw_exit(1)
+    except ValueError:
+        logging.error("Error parsing JSON output for az command [%s]: %s", cmd, cmd_output)
+        utils.tw_exit(1)
+    return ret_json
+
+def check_required_az_extensions():
+    global g_required_extensions
+    installed_extensions = []
+    missing_extensions = []
+    installed_extensions_json = run_az_cmd('extension list')
+    for ie in installed_extensions_json:
+        installed_extensions.append(ie['name'])
+    for req_ext in g_required_extensions:
+        if req_ext not in installed_extensions:
+            missing_extensions.append(req_ext)
+    if len(missing_extensions) > 0:
+        logging.error("Please install following Azure CLI extensions for discovery: %s", str(missing_extensions))
+        logging.error("Use [az extension add --name <extension_name>] command to install missing extensions")
+        utils.tw_exit(1)
+
+def get_tenant_id():
+    global gTenantId
+    if gTenantId is not None:
+        return gTenantId
+    rjson = run_az_cmd('account tenant list')
+    gTenantId = rjson[0]['tenantId']
+    return gTenantId
+
+def get_all_vms():
     global gAllVMs
     if gAllVMs is not None:
         return gAllVMs
     gAllVMs = { }
-    access_token = params['access_token']
-    allsubs = get_all_subscriptions(access_token)
+    allsubs = get_all_subscriptions()
     for sub in allsubs:
-        resourcegroups = get_all_resourcegroups_for_subscription(sub, access_token)
+        resourcegroups = get_all_resourcegroups_for_subscription(sub)
         for res_group in resourcegroups:
-            vms = get_vms(access_token, sub, res_group)
+            vms = get_vms(sub, res_group)
             gAllVMs.update(vms)
     return gAllVMs
 
-# Prints details about subscriptions, resource groups and workspaces
-def print_details(token):
-    allsubs = get_all_subscriptions(token)
-    print( "")
-    print("Missing details for subscription/resource group/workspace....")
-    print("Available subscriptions with resource group and workspace details as below:")
-    for sub in allsubs:
-        print("Subscription: %s" % sub)
-        resourcegroups = get_all_resourcegroups_for_subscription(sub, token)
-        for res_group in resourcegroups:
-            print(" ** Resource group: %s" % res_group)
-        workspaces = get_all_workspaces_for_subscription(sub, token)
-        for workspace in workspaces:
-            print(" ** Workspace: %s" % workspace)
-    print("")
-    print("Please re-run twigs with appropriate values for subscription, resource group and workspace.")
-    print("")
-    utils.tw_exit(0)
-
 # Main entry point
 def get_inventory(args):
-    params =  {}
-    params['handle'] = args.handle
-    params['tenant_id'] = args.azure_tenant_id
-    params['app_id'] = args.azure_application_id
-    params['app_key'] = args.azure_application_key
-    params['subscription'] = args.azure_subscription
-    params['resource_group'] = args.azure_resource_group
-    params['workspace'] = args.azure_workspace
-    params['enable_tracking_tags'] = args.enable_tracking_tags
-    token = get_access_token(params, "https://management.azure.com/")
-    if token is None:
-        return
-    params['access_token'] = token
-    get_all_vms(params)
-    if args.azure_subscription is None or args.azure_resource_group is None or args.azure_workspace is None:
-        print_details(token)
-        return
-    assets = retrieve_inventory(args, params)
+    set_encoding(args.encoding)
+    check_required_az_extensions()
+    assets = retrieve_inventory(args)
     return assets
 
-def parse_inventory(email,data,params):
+def parse_inventory(args,data):
     logging.info("Processing inventory retrieved from Azure...")
     hosts = []
     assets = []
@@ -72,16 +87,16 @@ def parse_inventory(email,data,params):
     not_running_vms = {}
     temp_assets = set()
     all_assets = { }
-    for i in range(len(data)):
-        all_assets[data[i][5]] = data[i][6]
-        if data[i][4] == 'WindowsServices': #ConfigDataType
-            #logging.warning("Logging WindowsServices data below:\n%s", json.dumps(data[i], indent=2))
-            temp_assets.add(data[i][5])
+    for item in data:
+        all_assets[item['Computer']] = item['VMUUID']
+        if item['ConfigDataType'] == 'WindowsServices': #ConfigDataType
+            #logging.warning("Logging WindowsServices data below:\n%s", json.dumps(item, indent=2))
+            temp_assets.add(item['Computer'])
             continue
-        #logging.debug("Parsing inventory from data below:\n%s", json.dumps(data[i], indent=2))
-        host = data[i][5]
-        vmuuid = data[i][6]
-        publisher = data[i][2]
+        #logging.debug("Parsing inventory from data below:\n%s", json.dumps(item, indent=2))
+        host = item['Computer']
+        vmuuid = item['VMUUID']
+        publisher = item['Publisher']
 
         # If VM is known to be not running, then skip it
         if not_running_vms.get(vmuuid) == 1:
@@ -92,25 +107,27 @@ def parse_inventory(email,data,params):
             patches = []
             products = []
             asset_map = {}
-            asset_map['owner'] = email
+            asset_map['owner'] = args.handle
             asset_map['host'] = host
             asset_map['id'] = vmuuid
             asset_map['name'] = host
             asset_map['tags'] = [ ]
             asset_map['patch_tracker'] = { } # To help remove duplicate patches
             asset_map['vmuuid'] = vmuuid
-            if data[i][1] == 'Update': #ApplicationType for MS patches
-                patch = parse_patch(data[i])
+            if item['SoftwareType'] == 'Update': #ApplicationType for MS patches
+                patch = parse_patch(item)
                 if patch is not None:
                     patches.append(patch)
                     asset_map['patch_tracker'][patch['id']] = patch['id']
-            if data[i][1] == 'Package' or data[i][1] == 'Application': #ApplicationType for Linux packages
-                pname = data[i][0]
-                pversion =  data[i][3]
+            if item['SoftwareType'] == 'Package' or item['SoftwareType'] == 'Application': #ApplicationType for Linux packages
+                pname = item['SoftwareName']
+                pversion =  item['CurrentVersion']
+                # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
+                pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
                 products.append(pname+' ' + pversion)
             asset_map['products'] = products
             asset_map['patches'] = patches
-            vm_running, os, os_version = get_os_details(host, vmuuid, params)
+            vm_running, os, os_version = get_os_details(host, vmuuid)
             if vm_running == False:
                 # skip vm's which are not running
                 not_running_vms[vmuuid] = 1
@@ -123,8 +140,8 @@ def parse_inventory(email,data,params):
                 asset_map['tags'].append('OS_VERSION:' + os_version)
             else:
                 asset_map['tags'].append('OS_RELEASE:%s %s' % (os, os_version))
-            if params['enable_tracking_tags'] == True:
-                asset_map['tags'].append("SOURCE:Azure:" + params['tenant_id'])
+            if args.enable_tracking_tags == True:
+                asset_map['tags'].append("SOURCE:Azure:" + get_tenant_id())
             else:
                 asset_map['tags'].append("SOURCE:Azure")
             assets.append(asset_map)
@@ -134,15 +151,17 @@ def parse_inventory(email,data,params):
                 if asset['host'] == host:
                     products = asset['products']
                     patches = asset['patches']
-                    if data[i][1] == 'Update': #ApplicationType for MS patches
-                        patch = parse_patch(data[i])
+                    if item['SoftwareType'] == 'Update': #ApplicationType for MS patches
+                        patch = parse_patch(item)
                         if patch is not None and asset['patch_tracker'].get(patch['id']) is None:
                             patches.append(patch)
                             asset['patches'] = patches
                             asset['patch_tracker'][patch['id']] = patch['id']
-                    if data[i][1] == 'Package' or data[i][1] == 'Application': #ApplicationType for Linux packages
-                        pname = data[i][0]
-                        pversion =  data[i][3]
+                    if item['SoftwareType'] == 'Package' or item['SoftwareType'] == 'Application': #ApplicationType for Linux packages
+                        pname = item['SoftwareName']
+                        pversion =  item['CurrentVersion']
+                        # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
+                        pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
                         products.append(pname+' ' + pversion)
                         asset['products'] = products
     # Remove the additional fields 'patch_tracker' (added to avoid duplicate patches) & 'vmuuid'
@@ -161,15 +180,15 @@ def parse_inventory(email,data,params):
     """
     return assets
 
-def parse_patch(data):
-    patch_id = re.findall(r'(KB[0-9]+)', data[0])
+def parse_patch(item):
+    patch_id = re.findall(r'(KB[0-9]+)', item['SoftwareName'])
     if len(patch_id) == 0:
         return None
     patch = {}
     patch['url'] = ''
     patch['id'] = patch_id[0]
     patch['product'] = ''
-    patch['description'] = data[0]
+    patch['description'] = item['SoftwareName']
     return patch
             
 def get_os_type(ostype):
@@ -189,51 +208,11 @@ def get_os_type(ostype):
     logging.debug("Mapped OS [%s] to Asset Type [%s]", ostype, asset_type)
     return asset_type
 
-def retrieve_inventory(args, params):
-    email = params['handle']
-    sub_id = params['subscription']
-    resource_group = params['resource_group']
-    workspace_id = params['workspace']
-    token = get_access_token(params, "https://api.loganalytics.io/")
-    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
-    url = 'https://api.loganalytics.io/v1/workspaces/%s/query' % workspace_id
-    json_data = {"query":"ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer, VMUUID"}
-
-    logging.info("Retrieving inventory details from Azure...") 
-
-    if args.insecure:
-        resp = requests.post(url, headers=headers, json=json_data, verify=False)
-    else:
-        resp = requests.post(url, headers=headers, json=json_data)
-    if resp.status_code == 200:
-        response = resp.json()
-        if response.get('tables'):
-            tables = response['tables']
-            return parse_inventory(email,tables[0]['rows'],params)
-    else:
-        logging.error("Error could not get asset inventory details from Azure...")
-        logging.error("Response content: %s" % resp.text)
-        utils.tw_exit(1)
-
-#Get access token using  an AAD, an app id associted with that AAD and the API key/secret for that app
-def get_access_token(params, resource):
-    aad_id = params['tenant_id']
-    aad_app_id = params['app_id']
-    app_key = params['app_key']
-    url = "https://login.microsoftonline.com/" + aad_id + "/oauth2/token"
-
-    logging.info("Getting access token for resource [%s]...", resource) 
-
-    resp = requests.post(url, data={"grant_type":"client_credentials", "client_id": aad_app_id, "client_secret": app_key, "resource":resource})
-    if resp.status_code == 200:
-        response = resp.json()
-        token = response['access_token']
-    else:
-        logging.error("Error unable to get access token for API calls")
-        logging.error("Response content: %s" % resp.text)
-        utils.tw_exit(1)
-
-    return token
+def retrieve_inventory(args):
+    email = args.handle
+    workspace_id = args.azure_workspace
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer, VMUUID'" % workspace_id)
+    return parse_inventory(args, rjson)
 
 def is_vm_running(vm_json):
     statuses = vm_json.get('statuses')
@@ -249,8 +228,8 @@ def is_vm_running(vm_json):
     return False
 
 # Try to get OS details for given VM
-def get_os_details(host, vmuuid, params):
-    all_vms = get_all_vms(params)
+def get_os_details(host, vmuuid):
+    all_vms = get_all_vms()
     vm_id = all_vms.get(vmuuid)
     if vm_id is None:
         # Handle Endian-ness issue with Azure VM UUIDs
@@ -266,93 +245,36 @@ def get_os_details(host, vmuuid, params):
         if vm_id is None:
             return False, None, None
 
-    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % params['access_token'] }
-    url = "https://management.azure.com" + vm_id + "/instanceView?api-version=2018-06-01"
-
     logging.debug("Getting OS details for host [%s] vmuuid [%s]", host, vmuuid)
-    logging.debug("Using URL [%s]", url)
-    resp = requests.get(url, headers=headers)
-    if resp.status_code == 200:
-        response = resp.json()
-        logging.debug("Got response:\n%s", json.dumps(response, indent=2))
-        if is_vm_running(response):
-            return True, response.get('osName'), response.get('osVersion')
-        else:
-            return False, None, None
+    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % vm_id)
+    rjson = rjson['instanceView']
+    if is_vm_running(rjson):
+        return True, rjson.get('osName'), rjson.get('osVersion')
     else:
-        logging.warning("Warning unable to get OS version details for VM [%s]. It might not be running..." % host)
         return False, None, None
 
 # Get details for all VMs
-def get_vms(access_token, subscription, resource_group):
+def get_vms(subscription, resource_group):
     all_vms = { }
-    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % access_token }
-    url = "https://management.azure.com/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines?api-version=2019-12-01" % (subscription, resource_group)
-    while url is not None:
-        resp = requests.get(url, headers=headers)
-        if resp.status_code == 200:
-            response = resp.json()
-            for vm in response['value']:
-                vmuuid = vm['properties']['vmId']
-                all_vms[vmuuid] = vm['id']
-            url = response.get('nextLink')
-        else:
-           url = None
+    rjson = run_az_cmd("vm list --subscription '%s' --resource-group '%s'" % (subscription, resource_group))
+    for vm in rjson:
+        all_vms[vm['vmId']] = vm['id']
     return all_vms
 
 # Get a list of subscriptions for current AAD/Tenant
-def get_all_subscriptions(token):
+def get_all_subscriptions():
     allsubs = []
-    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
-    url = "https://management.azure.com/subscriptions?api-version=2018-01-01"
-
-    resp = requests.get(url, headers=headers)
-
-    if resp.status_code == 200:
-        subs = resp.json()
-        sublist = subs['value']
-        for sub in sublist:
-            allsubs.append(sub['subscriptionId'])
-    else:
-        logging.error("API call to get all subscriptions failed")
-        logging.error("Response content: %s" % resp.text)
-        utils.tw_exit(1)
+    rjson = run_az_cmd('account subscription list')
+    for sub in rjson:
+        allsubs.append(sub['subscriptionId'])
     return allsubs
 
 #Get all resource groups for a subscription
-def get_all_resourcegroups_for_subscription(subid,token):
+def get_all_resourcegroups_for_subscription(subid):
     allresourcegroups = []
-    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
-    url = 'https://management.azure.com/subscriptions/%s/resourcegroups?api-version=2018-01-01' % subid
-    resp = requests.get(url, headers=headers)
-    if resp.status_code == 200:
-        rgroups = resp.json()
-        rlist = rgroups['value']
-        for r in rlist:
-            allresourcegroups.append(r['name'])
-    else:
-        logging.error("API call to get all resource groups failed")
-        logging.error("Response content: %s" % resp.text)
-        utils.tw_exit(1)
+    rjson = run_az_cmd("group list --subscription '%s'" % subid)
+    for rg in rjson:
+        allresourcegroups.append(rg['name'])
 
     return allresourcegroups
-
-#Get all workspaces for the subscription
-def get_all_workspaces_for_subscription(subid,token):
-    allworkspaces = []
-    headers = { "Content-Type":"application/json", "Authorization": "Bearer %s" % token }
-    url = 'https://management.azure.com/subscriptions/%s/providers/Microsoft.OperationalInsights/workspaces?api-version=2017-01-01-preview' % subid
-
-    resp = requests.get(url, headers=headers)
-    if resp.status_code == 200:
-        workspaces = resp.json()
-        wlist = workspaces['value']
-        for w in wlist:
-            allworkspaces.append(w['properties']['customerId'])
-    else:
-        logging.error("API call to get all workspaces failed")
-        logging.error("Response content: %s" % resp.text)
-        utils.tw_exit(1)
-
-    return allworkspaces
 

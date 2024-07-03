@@ -105,7 +105,7 @@ def run_tests(args):
     logging.debug(python_cmd)
     oci_cis_script = os.path.dirname(os.path.realpath(__file__)) + "/cis_reports.py"
     tmp_rpt_dir = tempfile.mkdtemp("", "tw_oci_cis_rpt_", tempfile.gettempdir() + os.path.sep) 
-    cmd = python_cmd + " " + oci_cis_script + " --report-directory " + tmp_rpt_dir + " --level 2 --print-to-screen False"
+    cmd = python_cmd + " " + oci_cis_script + " -c '" + args.config_file + "' -t '" + args.config_profile + "' --report-directory " + tmp_rpt_dir + " --level 2 --print-to-screen False"
     if not args.no_obp:
         cmd =  cmd + " --obp"
     if args.verbosity < 2:

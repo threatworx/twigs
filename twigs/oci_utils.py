@@ -7,6 +7,7 @@ import logging
 _encoding = None
 _compartments = None
 _compartment_name_dict = None
+_tenancy_namespace = None
 
 def set_encoding(encoding):
     global _encoding
@@ -25,8 +26,8 @@ def run_cmd(cmd):
         cmd_output = ""
     return cmd_output
 
-def run_oci_cmd(cmd):
-    cmd = 'oci ' + cmd
+def run_oci_cmd(cmd, args):
+    cmd = 'oci ' + cmd + " --config-file '%s' --profile '%s'" % (args.config_file, args.config_profile)
     try:
         cmd_output = run_cmd(cmd)
         ret_json = json.loads(cmd_output)
@@ -38,25 +39,32 @@ def run_oci_cmd(cmd):
         ret_json = { }
     return ret_json
 
-def get_compartments():
+def get_compartments(args):
     global _compartments
     if _compartments is not None:
         return _compartments
     _compartments = set()
-    compartments_json = run_oci_cmd('iam compartment list --include-root --all')
+    compartments_json = run_oci_cmd('iam compartment list --include-root --all', args)
     compartments_json = compartments_json['data']
     for entry in compartments_json:
         _compartments.add(entry['id'])
     return _compartments
 
-def get_compartment_name_dict():
+def get_compartment_name_dict(args):
     global _compartment_name_dict
     if _compartment_name_dict is not None:
         return _compartment_name_dict
     _compartment_name_dict = { }
-    compartments_json = run_oci_cmd('iam compartment list --include-root --all')
+    compartments_json = run_oci_cmd('iam compartment list --include-root --all', args)
     compartments_json = compartments_json['data']
     for entry in compartments_json:
         _compartment_name_dict[entry['id']] = entry['name']
     return _compartment_name_dict
+
+def get_tenancy_namespace(args):
+    global _tenancy_namespace
+    if _tenancy_namespace is not None:
+        return _tenancy_namespace
+    ret_json = run_oci_cmd('os ns get', args)
+    return ret_json['data']
 
