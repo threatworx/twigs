@@ -22,6 +22,9 @@ apt-get -y update && apt-get install -y google-cloud-sdk
 
 # Install AZ Cli
 curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+/usr/bin/az extension add --name account
+/usr/bin/az extension add --name log-analytics
+
 
 # Link python3 as default python
 ln -fs /usr/bin/python3 /usr/bin/python
