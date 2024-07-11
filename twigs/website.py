@@ -26,8 +26,13 @@ def get_inventory(args):
 
     asset_id = args.url.replace('/','').replace(':','-')
 
+    # get port number to pass to nmap_scan for selective ssl_audit for only that port
+    url_port = None
+    if v.scheme == "https":
+        url_port = '' if v.port is None else str(v.port)
+
     logging.info("Starting OS/Service detection for "+hostname)
-    asset_data_list = fingerprint.nmap_scan(args, hostname)    
+    asset_data_list = fingerprint.nmap_scan(args, hostname, url_port)
     if len(asset_data_list) != 0:
         asset_data = asset_data_list[0]
     else:
