@@ -930,6 +930,7 @@ def main(args=None):
         parser_website.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
         parser_website.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
         parser_website.add_argument('--no_ssl_audit', action='store_true', help='Skip ssl audit')
+        parser_website.add_argument('--run_nmap', action='store_true', help='Run nmap based discovery of the host')
         parser_website.add_argument('--timing', help='Timing Template value (range 0 to 5) as per nmap documentation. Defaults to 5 if not specified. Refer https://nmap.org/book/performance-timing-templates.html', choices=['0', '1', '2', '3', '4', '5'], default = '5', required = False)
         parser_website.add_argument('--discovery_scan_type', help='Specify the scan type to be used during host discovery. Refer https://nmap.org/book/man-host-discovery.html', choices=['N', 'S', 'A', 'U', 'Y', 'O', 'E', 'P', 'M'], required = False)
         parser_website.add_argument('--discovery_port_list', help='Specify the ports to be used in host discovery scan. Not applicable for (N,E,P,M) discovery scan types', required = False)

@@ -148,8 +148,7 @@ def create_open_ports_issues(ports_in_use_dict, asset_id):
         open_port_issues.append(issue)
     return open_port_issues
 
-# url_port is passed from webapp scan to only perform ssl_audit for that port
-def nmap_scan(args, host, url_port = None):
+def nmap_scan(args, host):
     logging.info("Fingerprinting "+host)
     if os.geteuid() == 0:
         logging.info("Running nmap as root user")
@@ -399,67 +398,50 @@ def nmap_scan(args, host, url_port = None):
                 asset_data['tags'].append('SSH Audit')
             asset_data['config_issues'] = asset_data['config_issues'] + ssh_issues if 'config_issues' in asset_data else ssh_issues
 
-        if url_port is None:
-            # run ssl audit and web app if https ports are open
-            if https_port_443_is_open or https_port_8443_is_open:
-                if https_port_443_is_open:
-                    if not args.no_ssl_audit:
-                        ssl_audit_url = "https://" + host + "/"
-                        logging.info("Running SSL audit for "+ssl_audit_url)
-                        ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
-                        if not args.include_info:
-                            flist = []
-                            for f in ssl_audit_findings:
-                                if f['rating'] != '1':
-                                    flist.append(f)
-                            ssl_audit_findings = flist
-                        asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
-                    if args.run_dast:
-                        args.url = "https://" + host
-                        dast_issues = zap_dast.run_zap(args, addr)
-                        asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
-                if https_port_8443_is_open:
-                    if not args.no_ssl_audit:
-                        ssl_audit_url = "https://" + host + ":8443/"
-                        logging.info("Running SSL audit for "+ssl_audit_url)
-                        ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
-                        if not args.include_info:
-                            flist = []
-                            for f in ssl_audit_findings:
-                                if f['rating'] != '1':
-                                    flist.append(f)
-                            ssl_audit_findings = flist
-                        asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
-                    if args.run_dast:
-                        args.url = "https://" + host + ":8443"
-                        dast_issues = zap_dast.run_zap(args, addr)
-                        asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
-            # run web app if http ports are open
-            if args.run_dast and (http_port_80_is_open or http_port_8080_is_open):
-                if http_port_80_is_open:
-                    args.url = "http://" + host
-                    dast_issues = zap_dast.run_zap(args, addr)
-                    asset_data['config_issues'] = asset_data['config_issues'] + dast_issues if 'config_issues' in asset_data else dast_findings
-                if http_port_8080_is_open:
-                    args.url = "http://" + host + ":8080"
-                    dast_issues = zap_dast.run_zap(args, addr)
-                    asset_data['config_issues'] = asset_data['config_issues'] + dast_issues if 'config_issues' in asset_data else dast_findings
-        else:
-            if not args.no_ssl_audit:
-                # only perform ssl_audit for url_port
-                if url_port == '':
+        # run ssl audit and web app if https ports are open
+        if https_port_443_is_open or https_port_8443_is_open:
+            if https_port_443_is_open:
+                if not args.no_ssl_audit:
                     ssl_audit_url = "https://" + host + "/"
-                else:
-                    ssl_audit_url = "https://" + host + ":" + url_port + "/"
-                logging.info("Running SSL audit for "+ssl_audit_url)
-                ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
-                if not args.include_info:
-                    flist = []
-                    for f in ssl_audit_findings:
-                        if f['rating'] != '1':
-                            flist.append(f)
-                    ssl_audit_findings = flist
-                asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+                    logging.info("Running SSL audit for "+ssl_audit_url)
+                    ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
+                    if not args.include_info:
+                        flist = []
+                        for f in ssl_audit_findings:
+                            if f['rating'] != '1':
+                                flist.append(f)
+                        ssl_audit_findings = flist
+                    asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+                if args.run_dast:
+                    args.url = "https://" + host
+                    dast_issues = zap_dast.run_zap(args, addr)
+                    asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
+            if https_port_8443_is_open:
+                if not args.no_ssl_audit:
+                    ssl_audit_url = "https://" + host + ":8443/"
+                    logging.info("Running SSL audit for "+ssl_audit_url)
+                    ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
+                    if not args.include_info:
+                        flist = []
+                        for f in ssl_audit_findings:
+                            if f['rating'] != '1':
+                                flist.append(f)
+                        ssl_audit_findings = flist
+                    asset_data['config_issues'] = asset_data['config_issues'] + ssl_audit_findings if 'config_issues' in asset_data else ssl_audit_findings
+                if args.run_dast:
+                    args.url = "https://" + host + ":8443"
+                    dast_issues = zap_dast.run_zap(args, addr)
+                    asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
+        # run web app if http ports are open
+        if args.run_dast and (http_port_80_is_open or http_port_8080_is_open):
+            if http_port_80_is_open:
+                args.url = "http://" + host
+                dast_issues = zap_dast.run_zap(args, addr)
+                asset_data['config_issues'] = asset_data['config_issues'] + dast_issues if 'config_issues' in asset_data else dast_findings
+            if http_port_8080_is_open:
+                args.url = "http://" + host + ":8080"
+                dast_issues = zap_dast.run_zap(args, addr)
+                asset_data['config_issues'] = asset_data['config_issues'] + dast_issues if 'config_issues' in asset_data else dast_findings
 
         if asset_data['type'] == "Other" and len(asset_data['products']) == 0 and ('config_issues' not in asset_data or len(asset_data['config_issues'])==0):
             # skip any discovered assets which have asset type as "Other" and no products and no config_issues
