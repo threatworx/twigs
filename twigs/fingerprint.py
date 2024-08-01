@@ -402,7 +402,7 @@ def nmap_scan(args, host):
         if https_port_443_is_open or https_port_8443_is_open:
             if https_port_443_is_open:
                 if not args.no_ssl_audit:
-                    ssl_audit_url = "https://" + host + "/"
+                    ssl_audit_url = "https://" + addr + "/"
                     logging.info("Running SSL audit for "+ssl_audit_url)
                     ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
                     if not args.include_info:
