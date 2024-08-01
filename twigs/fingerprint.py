@@ -418,7 +418,7 @@ def nmap_scan(args, host):
                     asset_data['config_issues'] = asset_data['config_issues'] + dast_issues
             if https_port_8443_is_open:
                 if not args.no_ssl_audit:
-                    ssl_audit_url = "https://" + host + ":8443/"
+                    ssl_audit_url = "https://" + addr + ":8443/"
                     logging.info("Running SSL audit for "+ssl_audit_url)
                     ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, addr)
                     if not args.include_info:
