@@ -35,14 +35,21 @@ def run_ssl_audit(url, assetid):
         subprocess.check_output(cmdarr, stderr=dev_null_device, shell=True)
         dev_null_device.close()
     except subprocess.CalledProcessError as e:
-        logging.debug("ssl audit: %s" % str(e))
-        pass
+        logging.debug("ssl audit error")
+        logging.debug(str(e))
+        return findings
 
-    jf = open(audit_out, 'r')
-    out = jf.read()
-    jf.close()
-    os.remove(audit_out)
-    odict = json.loads(out)
+    try:
+        jf = open(audit_out, 'r')
+        out = jf.read()
+        jf.close()
+        os.remove(audit_out)
+        odict = json.loads(out)
+    except Exception as e:
+        logging.debug("error processing ssl audit output")
+        logging.debug(str(e))
+        return findings
+
     if 'scanResult' in odict:
         if 'pretest' in odict['scanResult'][0]:
             for p in odict['scanResult'][0]['pretest']:

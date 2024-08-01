@@ -1092,6 +1092,7 @@ def main(args=None):
         utils.set_run_args(args)
         response = utils.create_new_tool_run_record()
         if response is not None and response.status_code != 200:
+            logging.error("Could not create run record")
             utils.tw_exit(1)
 
         assets = []
