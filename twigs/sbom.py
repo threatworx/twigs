@@ -42,6 +42,11 @@ def upload_sbom(args):
         json_data['tags'] = args.tag
     if args.comment:
         json_data['comment'] = args.comment
+    if args.apply_policy is not None:
+        # If policy is specified, then no need to run separate scan
+        json_data['run_scan'] = False
+    else:
+        json_data['run_scan'] = True
 
     sbom_upload_url = "https://" + args.instance + "/api/v2/assets/sbom/"
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
@@ -54,9 +59,10 @@ def upload_sbom(args):
     resp = utils.requests_post_files(sbom_upload_url + auth_data, files)
     if resp is not None and resp.status_code == 200:
         logging.info("Successfully uploaded SBOM artifact")
-        return True
+        resp_json = resp.json()
+        return True, resp_json.get('asset_ids')
     else:
         logging.error("Uploading SBOM artifact failed")
         logging.error(resp.text)
-        return False
+        return False, None
 

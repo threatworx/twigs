@@ -164,6 +164,18 @@ def push_assets_to_TW(assets, args):
             scan_asset_id_list.append(asset_id)
     return asset_id_list, scan_asset_id_list
 
+def check_and_run_policy_job(args, asset_ids_list):
+    pj_json = None
+    if args.apply_policy is not None:
+        policy_job_name = policy_lib.apply_policy(args.apply_policy, asset_ids_list, args)
+        while True:
+            time.sleep(60)
+            status, pj_json = policy_lib.is_policy_job_done(policy_job_name, args)
+            if status:
+                exit_code = policy_lib.process_policy_job_actions(pj_json)
+                return exit_code, pj_json
+    return None, pj_json
+
 def run_scan(asset_id_list, pj_json, args):
     if args.no_scan is not True:
         if len(asset_id_list) == 0:
@@ -1135,9 +1147,15 @@ def main(args=None):
         elif args.mode == 'k8s':
             assets = kubernetes.get_inventory(args)
         elif args.mode == 'sbom':
-            ret_code = sbom.upload_sbom(args)
-            if ret_code:
-                utils.tw_exit(0)
+            ret_code, asset_ids_list = sbom.upload_sbom(args)
+            if ret_code and asset_ids_list is not None:
+                exit_code, pj_json = check_and_run_policy_job(args, asset_ids_list)
+                if exit_code is not None:
+                    logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
+                    utils.update_tool_run_record('SUCCESS')
+                    sys.exit(int(exit_code))
+                else:
+                    utils.tw_exit(0)
             else:
                 utils.tw_exit(1)
         elif args.mode == 'dast':
@@ -1203,18 +1221,7 @@ def main(args=None):
 
                 if args.token is not None and len(args.token) > 0:
                     asset_id_list, scan_asset_id_list = push_assets_to_TW(assets, args)
-
-                pj_json = None
-                if args.apply_policy is not None:
-                    policy_job_name = policy_lib.apply_policy(args.apply_policy, asset_id_list, args)
-                    while True:
-                        time.sleep(60)
-                        status, pj_json = policy_lib.is_policy_job_done(policy_job_name, args)
-                        if status:
-                            exit_code = policy_lib.process_policy_job_actions(pj_json)
-                            break
-
-                if args.token is not None and len(args.token) > 0:
+                    exit_code, pj_json = check_and_run_policy_job(args, asset_id_list)
                     run_scan(scan_asset_id_list, pj_json, args)
             
                 if args.schedule is not None and sys.platform != 'win32':
