@@ -936,8 +936,9 @@ def main(args=None):
         #parser_webapp.add_argument('--assetname', help='Optional name/label to be assigned to the webapp asset')
 
         # Arguments required for ssl audit 
-        parser_website = subparsers.add_parser ("webapp", help = "Discover and test web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and basic DAST using zaproxy")
-        parser_website.add_argument('--url', help='URL', required=True)
+        parser_website = subparsers.add_parser ("webapp", help = "Discover and test web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and DAST using zaproxy")
+        parser_website.add_argument('--url', help='URL')
+        parser_website.add_argument('--planfile', help='ZAP automation plan file')
         parser_website.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
         parser_website.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
         parser_website.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')

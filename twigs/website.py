@@ -11,11 +11,18 @@ except (ImportError,ValueError):
     from urlparse import urlparse
 import socket
 import logging
+import yaml
 from . import fingerprint 
 from . import ssl_audit 
 from .dast_plugins import zap as zap 
 
 def get_inventory(args):
+    if args.planfile:
+        with open(args.planfile) as f:
+            plan = yaml.safe_load(f)
+            url = plan['env']['contexts'][0]['urls'][0]
+            args.url = url
+
     v = urlparse(args.url)
     if not v.scheme or not v.netloc:
         logging.error("Invalid input url "+args.url)
