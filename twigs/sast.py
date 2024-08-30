@@ -45,7 +45,7 @@ def run_sast(args, path, base_path):
         logging.warning('SAST plugin CLI - semgrep not found')
         return findings
 
-    params = ' -q --json --config=p/r2c-security-audit ' + path
+    params = ' -q --json --config=p/default ' + path
     
     cmdarr = [sast_plugin+ " " + params]
     sast_issues = None
