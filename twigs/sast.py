@@ -45,7 +45,7 @@ def run_sast(args, path, base_path):
         logging.warning('SAST plugin CLI - semgrep not found')
         return findings
 
-    params = ' -q --json --config=p/default ' + path
+    params = ' -q --json --config=r/all ' + path
     
     cmdarr = [sast_plugin+ " " + params]
     sast_issues = None
@@ -77,7 +77,10 @@ def run_sast(args, path, base_path):
         finding['owasp'] = ''
         if 'metadata' in r['extra']:
             if 'cwe' in r['extra']['metadata']:
-                finding['cwe'] = r['extra']['metadata']['cwe']
+                if isinstance(r['extra']['metadata']['cwe'], list):
+                    finding['cwe'] = r['extra']['metadata']['cwe'][0]
+                else:
+                    finding['cwe'] = r['extra']['metadata']['cwe']
             if 'owasp' in r['extra']['metadata']:
                 owasp = r['extra']['metadata']['owasp']
                 if isinstance(owasp, list):
