@@ -114,7 +114,7 @@ def parse_inventory(args,data):
             asset_map['tags'] = [ ]
             asset_map['patch_tracker'] = { } # To help remove duplicate patches
             asset_map['vmuuid'] = vmuuid
-            if item['SoftwareType'] == 'Update': #ApplicationType for MS patches
+            if item['SoftwareType'] in ['Update', 'Patch']: #ApplicationType for MS patches
                 patch = parse_patch(item)
                 if patch is not None:
                     patches.append(patch)
@@ -151,7 +151,7 @@ def parse_inventory(args,data):
                 if asset['host'] == host:
                     products = asset['products']
                     patches = asset['patches']
-                    if item['SoftwareType'] == 'Update': #ApplicationType for MS patches
+                    if item['SoftwareType'] in ['Update', 'Patch']: #ApplicationType for MS patches
                         patch = parse_patch(item)
                         if patch is not None and asset['patch_tracker'].get(patch['id']) is None:
                             patches.append(patch)
