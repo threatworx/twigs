@@ -490,6 +490,8 @@ def main(args=None):
         parser.add_argument('--nosslverify', action='store_true', help=argparse.SUPPRESS)
         # parser.add_argument('--purge_assets', action='store_true', help='Purge the asset(s) after impact refresh is complete and scan report is emailed to self')
 
+        #test to be able to run without handle, token, or instance 
+        parser.add_argument('--test' , action="store_true", help = 'Run a test scan without credentials')
 
         # Arguments required for Login
         parser_login = subparsers.add_parser("login", help = "Login to twigs")
@@ -1045,6 +1047,12 @@ def main(args=None):
 
         logged_in_user_dict = { }
 
+        if args.test:
+            args.handle = "DUMMY-HANDLE "
+            args.token = "DUMMY_TOKEN"
+            args.instance = "threatworx.io" 
+            print("IN TEST OPTION -dummy handle, dummy token, threatworx.io instance")
+
         if args.handle is None:
             logged_in_user_dict = get_logged_in_user_details()
             temp = logged_in_user_dict.get('handle')
@@ -1104,9 +1112,10 @@ def main(args=None):
 
         utils.set_run_args(args)
         response = utils.create_new_tool_run_record()
-        if response is not None and response.status_code != 200:
-            logging.error("Could not create run record")
-            utils.tw_exit(1)
+        if args.test is None:
+            if response is not None and response.status_code != 200:
+                logging.error("Could not create run record")
+                utils.tw_exit(1)
 
         assets = []
         if args.mode == 'aws':
