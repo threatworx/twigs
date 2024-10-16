@@ -923,9 +923,13 @@ def main(args=None):
 
         # Arguments required for ServiceNow discovery
         parser_snow = subparsers.add_parser ("servicenow", help = "Ingest inventory from ServiceNow CMDB")
-        parser_snow.add_argument('--snow_user', help='User name of ServiceNow account', required=True)
-        parser_snow.add_argument('--snow_user_pwd', help='User password of ServiceNow account', required=True)
         parser_snow.add_argument('--snow_instance', help='ServiceNow Instance name', required=True)
+        exclusive_group = parser_snow.add_mutually_exclusive_group(required=True)
+        exclusive_group.add_argument('--snow_client_id', help='Client ID for OAuth')
+        exclusive_group.add_argument('--snow_user', help='User name of ServiceNow account')
+        exclusive_group = parser_snow.add_mutually_exclusive_group(required=True)
+        exclusive_group.add_argument('--snow_client_secret', help='Client secret for OAuth')
+        exclusive_group.add_argument('--snow_user_pwd', help='User password of ServiceNow account')
         parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
         # Arguments required for web-app discovery and testing
@@ -1010,7 +1014,7 @@ def main(args=None):
         parser_gke_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for Kubernetes CIS benchmarks')
 
         # Arguments required for Azure discovery
-        parser_o365 = subparsers.add_parser ("o365")
+        parser_o365 = subparsers.add_parser ("o365", help = "Ingest inventory from Microsoft Office 365 / Defender")
         parser_o365.add_argument('--tenant_id', help='O365 Tenant ID', required=True)
         parser_o365.add_argument('--application_id', help='O365 Application ID', required=True)
         parser_o365.add_argument('--application_key', help='O365 Application Key', required=True)
