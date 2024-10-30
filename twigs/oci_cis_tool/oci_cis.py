@@ -7,6 +7,7 @@ import logging
 import csv
 
 from . import cis_report_data
+from .. import utils as twutils
 
 def process_oci_cis_reports(report_dir):
     with open(report_dir + os.path.sep + "cis_summary_report.csv", "r") as fd:
@@ -116,7 +117,7 @@ def run_tests(args):
         exit_code = proc.wait()
     except subprocess.CalledProcessError:
         logging.error("Error running OCI CIS bench script")
-        utils.tw_exit(1)
+        twutils.tw_exit(1)
 
     if exit_code == 0:
         config_issues = process_oci_cis_reports(tmp_rpt_dir)
@@ -128,7 +129,7 @@ def run_tests(args):
         logging.error("Error running OCI CIS benchmarks")
         logging.debug("OCI CIS benchmarks returned exit code [%s]", str(exit_code))
         shutil.rmtree(tmp_rpt_dir)
-        utils.tw_exit(1)
+        twutils.tw_exit(1)
 
     shutil.rmtree(tmp_rpt_dir)
 
