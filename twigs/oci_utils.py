@@ -29,7 +29,10 @@ def run_cmd(cmd):
 def run_oci_cmd(cmd, args):
     cmd = 'oci ' + cmd + " --config-file '%s' --profile '%s'" % (args.config_file, args.config_profile)
     try:
+        logging.debug("Running OCI command [%s]" % cmd)
         cmd_output = run_cmd(cmd)
+        logging.debug("OCI command output as below:")
+        logging.debug(cmd_output)
         ret_json = json.loads(cmd_output)
     except subprocess.CalledProcessError:
         logging.error("Error running oci command [%s]", cmd)
@@ -44,7 +47,7 @@ def get_compartments(args):
     if _compartments is not None:
         return _compartments
     _compartments = set()
-    compartments_json = run_oci_cmd('iam compartment list --include-root --all', args)
+    compartments_json = run_oci_cmd('iam compartment list --include-root --all --compartment-id-in-subtree true', args)
     compartments_json = compartments_json['data']
     for entry in compartments_json:
         _compartments.add(entry['id'])
@@ -55,7 +58,7 @@ def get_compartment_name_dict(args):
     if _compartment_name_dict is not None:
         return _compartment_name_dict
     _compartment_name_dict = { }
-    compartments_json = run_oci_cmd('iam compartment list --include-root --all', args)
+    compartments_json = run_oci_cmd('iam compartment list --include-root --all --compartment-id-in-subtree true', args)
     compartments_json = compartments_json['data']
     for entry in compartments_json:
         _compartment_name_dict[entry['id']] = entry['name']
