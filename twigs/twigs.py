@@ -906,7 +906,11 @@ def main(args=None):
         parser_nmap.add_argument('--run_dast', action='store_true', help='Run DAST checks for web applications. Note DAST tests may take time and are not recommended for use with scans on large network CIDRs. Please use the "webapp" option for running DAST and other tests on known web application URLs')
         parser_nmap.add_argument('--url', help=argparse.SUPPRESS)
         parser_nmap.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
-
+        
+        #servicetype (can pick multiple) - use nargs (http or database or both) 
+        parser_nmap.add_argument('--servicetype', nargs='+', choices=['http', 'database', 'os'], 
+                         help='Specify one or more service types (http, database,os)')
+        
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")
         parser_sbom.add_argument('--input', help='Absolute path to SBOM artifact', required=True)
