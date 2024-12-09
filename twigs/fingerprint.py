@@ -24,9 +24,9 @@ NMAP_HTTP_PORTS = ['80','443','6443','8080','8443']
 NSE_HTTP_PATH = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/http/'
 NSE_HTTP_SCRIPTS = [NSE_HTTP_PATH,'http-generator','http-wordpress-enum','http-apache-server-status','http-server-header','http-php-version']
 
-NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','9042','7199','523','445','1443'] 
+NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','9042','7199','523','445','1443','6379']
 NSE_DB_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
-NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info'] 
+NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info']
 
 NMAP_APACHE_PORTS = NMAP_HTTP_PORTS + ['2181']
 NSE_APACHE_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/apache/'
