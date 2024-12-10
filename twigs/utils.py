@@ -487,8 +487,10 @@ def update_tool_run_record(status='RUNNING', observations=None):
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
     if status != 'RUNNING':
         logging.shutdown()
+        lfn_suffix = args.run_id if args.run_id is not None else args.mode
+        logfilename = "twigs_%s.log" % lfn_suffix
         observations = { } if observations is None else observations
-        observations['log_snippet'] = tail('twigs.log', args.encoding, 100)
+        observations['log_snippet'] = tail(logfilename, args.encoding, 100)
     put_payload = { "status": status, "observations": observations }
     response = requests_put(url + auth_data, put_payload)
     return response

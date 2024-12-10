@@ -454,8 +454,6 @@ def main(args=None):
 
         if sys.platform != 'win32':
             utils.set_requests_verify(os.path.dirname(os.path.realpath(__file__)) + os.sep + 'gd-ca-bundle.crt')
-        logfilename = "twigs.log"
-        logging_level = logging.WARN
 
         parser = argparse.ArgumentParser(description='ThreatWorx Information Gathering Script (twigs) to discover assets like hosts, cloud instances, containers and source code repositories')
         subparsers = parser.add_subparsers(title="modes", description="Discovery modes and commands supported", dest="mode")
@@ -1012,6 +1010,9 @@ def main(args=None):
         if args.out is not None:
             args.sbom  = args.out
 
+        lfn_suffix = args.run_id if args.run_id is not None else args.mode
+        logfilename = "twigs_%s.log" % lfn_suffix
+
         logging_level = logging.WARNING
         if args.verbosity >= 1:
             logging_level = logging.INFO
@@ -1186,10 +1187,11 @@ def main(args=None):
             assets = website.get_inventory(args)
 
         exit_code = None
+        run_status = 'SUCCESS'
         if args.mode != 'host' or args.secure == False:
             if assets is None or len(assets) == 0:
                 logging.info("No assets found!")
-                utils.update_tool_run_record('WARNING')
+                run_status = 'WARNING'
             else:
                 """
                 if args.asset_criticality is not None:
@@ -1257,9 +1259,6 @@ def main(args=None):
                         njob = user_cron.new(command=cron_cmd, comment=cron_comment)
                         njob.setall(args.schedule)
                         logging.info("Added to crontab with comment [%s]", cron_comment)
-                utils.update_tool_run_record('SUCCESS')
-        else:
-            utils.update_tool_run_record('SUCCESS')
 
         logging.info('Run completed')
 
@@ -1271,8 +1270,10 @@ def main(args=None):
 
         if exit_code is not None:
             logging.info("Exiting with code [%s] based on policy evaluation", exit_code)
+            utils.update_tool_run_record(run_status)
             sys.exit(int(exit_code))
 
+        utils.update_tool_run_record(run_status)
     except Exception as e:
         logging.error("Something went wrong with this twigs run")
         st = traceback.format_exc()
