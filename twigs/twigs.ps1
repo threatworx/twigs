@@ -350,10 +350,20 @@ function Invoke-LocalDiscovery {
     Write-Host "OS:", $base_os
 
     $os_version = $null
+    $os_version_ubr = $null
     $os_release_id = $null
     $os_arch = $null
     $temp_str = systeminfo /fo csv | ConvertFrom-Csv | format-list -Property 'OS Version' | Out-String
     $os_version = $temp_str.ToString().Trim().Split(':')[1].Trim()
+    $os_version_ubr = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").UBR
+    if ($os_version_ubr) {
+        $os_version_tokens = $os_version.ToString().Split(' ')
+        $os_version = $os_version_tokens[0] + '.' + $os_version_ubr
+        for ($i=1; $i -lt $os_version_tokens.Length; $i++) 
+        {
+            $os_version = $os_version + ' ' + $os_version_tokens[$i]
+        }
+    }
     $temp_str = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").ReleaseId
     if ($temp_str) {
         $os_release_id = $temp_str.ToString().Trim()
@@ -564,8 +574,8 @@ else {
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQ9ZcR1e2NMWveu0yFxpttHdK
-# FvSgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhMn9zEqvL8VQo6+jcP6MFilH
+# 8NGgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -592,11 +602,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFBQPpoYResdB/XEQ
-# lHVnNF5adEOtMA0GCSqGSIb3DQEBAQUABIIBAC6wgPQcBQ+sygffaXcINB6F5qWd
-# 2X1bWEI9/tBt4eZV9Jo7ZLWyghOWEu+ZN3/gQRQQgJLVS/vNXyruLlPKiZskVGTu
-# YLqEvIajj8LZyoih4Ozxdwt/sWn7zedsKHL08ghTW7JZnfszGs50PuNnesMppfGS
-# daqZqQGc3BrnigXcm/JtSbBq3abvfrM1IzCtQyV0na5KmUEjTxL4l+AmfMH+8ZaK
-# 8gFcY60nCzr0TQ0i4r3Xe2xT2ziClscBadkyhGW56rRUYmDoYeEA/JYDj4bxxWWa
-# ifBlYvUXtrpHAZbHwpQPRsTD2r1zjF1yqY+glDh3BH0izz9WqG42PKc85Ww=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFPS7gCSRVuGJJN50
+# BJo3PeZ1yDPYMA0GCSqGSIb3DQEBAQUABIIBAGVw7KttMt6Lm49Kfx373dCtbEq9
+# CKPyOYcAnRKhO3Oerj+VbDMMBTssY9/ko7yPOrks+f+1s5u5KP5hR5iebpRz2eKz
+# 4UFm6WGX2Zm6vM2fma2J4oV21gf33bmX1QKLhVDe8nXZkWd6nIk3t5qjIOD7+CI6
+# 02JVuDqsiAybyTyNp2uwKIicY+jOiLkIEMJkIjK7tfb2/9hiPY1uNmEI8q2ImY95
+# yUQgNpxAOsHP7CmADVun4+7tjPzk6TVu7hpm58SbHinDWHTVyC1vDjiv3M5EEqgV
+# F8Z+wUEcRw/DklfKmoRqV6G7yaKlMmy//2U38gIWRDUZhbayoME7AVBApjc=
 # SIG # End signature block
