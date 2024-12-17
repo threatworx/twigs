@@ -461,7 +461,7 @@ function Invoke-LocalDiscovery {
                 if ($misconfig.Result -eq '') { $cv = 'Not available' }
                 else { $cv = $misconfig.Result }
                 $details_msg = 'Current value is [' + $cv + '] and recommended value is [' + $misconfig.Recommended + '].'
-                $misconfig_entry_json = @{asset_id='abcd';twc_id=$misconfig.ID;twc_title=$misconfig.Name;type='Host Benchmark';details=$details_msg;rating=$mc_rating;object_id='';object_meta=''}
+                $misconfig_entry_json = @{asset_id=$assetid;twc_id=$misconfig.ID;twc_title=$misconfig.Name;type='Host Benchmark';details=$details_msg;rating=$mc_rating;object_id='';object_meta=''}
                 $misconfigs_json_array.add($misconfig_entry_json)
             }
         }
@@ -533,16 +533,26 @@ function Invoke-LocalDiscovery {
             if ($email_report) {
                 $payload["mode"] = "email"
             }
-            $body = (ConvertTo-Json -Depth 100 $payload)
+            $temp_body = (ConvertTo-Json -Depth 100 $payload)
             Write-Host 'Starting impact refresh...'
-            $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $body
+            $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $temp_body
             Write-Host 'Started impact refresh.'
         }
     }
 
     if ($out) {
         $temp_body = ($body | ConvertFrom-Json)
-        ConvertTo-Json -Depth 100 @($temp_body) | Out-File $out
+        $meta = @{
+            generated_by=$handle
+            generated_on=$current_ts
+            tool_name='twigs-ps'
+            tool_version='1.0.0'
+        }
+        $final_body = @{
+            assets=@($temp_body)
+            meta=$meta
+        }
+        ConvertTo-Json -Depth 100 $final_body | Out-File $out
     }
 
     # Remove any temporary files
@@ -570,12 +580,11 @@ else {
     Invoke-LocalDiscovery
 }
 
-
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUhMn9zEqvL8VQo6+jcP6MFilH
-# 8NGgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEjHc4VdPhYHo0kS41pDqLqB2
+# m3GgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -602,11 +611,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFPS7gCSRVuGJJN50
-# BJo3PeZ1yDPYMA0GCSqGSIb3DQEBAQUABIIBAGVw7KttMt6Lm49Kfx373dCtbEq9
-# CKPyOYcAnRKhO3Oerj+VbDMMBTssY9/ko7yPOrks+f+1s5u5KP5hR5iebpRz2eKz
-# 4UFm6WGX2Zm6vM2fma2J4oV21gf33bmX1QKLhVDe8nXZkWd6nIk3t5qjIOD7+CI6
-# 02JVuDqsiAybyTyNp2uwKIicY+jOiLkIEMJkIjK7tfb2/9hiPY1uNmEI8q2ImY95
-# yUQgNpxAOsHP7CmADVun4+7tjPzk6TVu7hpm58SbHinDWHTVyC1vDjiv3M5EEqgV
-# F8Z+wUEcRw/DklfKmoRqV6G7yaKlMmy//2U38gIWRDUZhbayoME7AVBApjc=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFPKoypNSxm5CNhBD
+# kuG2A0OVuoaKMA0GCSqGSIb3DQEBAQUABIIBAAwLHqbmRt4ljcnhn4yFlCJ+6cKu
+# 3qVEK5aMp0o0gOhFZcmrSjFpPoWVT/TYz0/yo/V1EAJmLXZjV/dQ/6P9xT4eNfYb
+# oy0SlQnPeH9Z27tu5abA31Sw3G5z5tu5H3NS8DprgmV533wcPxfB8L5iuT3cKAly
+# +qtYc1MuFGKyW3K92n7KotWi3jaDF2YRfGuDt1s2obumq5aWYU5aOpmeYYbFeLe3
+# 3BixiPh7ihHmKXpSykzFBZHkq4fyfqxvnAimn/GQ+6b1lCgPgQpVd5F3rM0W3Xwt
+# PBSLFB9/vPt6+YlVfGFvMp160+zO06LaGiVGYFyXaq0nIOwdlSMxUBQGsj4=
 # SIG # End signature block
