@@ -446,9 +446,16 @@ function Invoke-LocalDiscovery {
     $misconfigs_json_array = New-Object System.Collections.Generic.List[System.Object]
     # Run host benchmark if specified
     if (-not $no_host_benchmark) {
+	    $FileLocation = 
+            if ($PSScriptRoot) { # running as .ps1 file
+                $PSScriptRoot 
+            } 
+            else {               # running as .exe
+                Split-Path (Convert-Path -LiteralPath ([Environment]::GetCommandLineArgs()[0]))
+            }
         Write-Host "Running host benchmarks. This may take some time..."
-        $hk_script = $PSScriptRoot + '\Invoke-HardeningKitty.ps1'
-        $hbm_csv_rpt = $PSScriptRoot + '\twigs_hbm.csv'
+        $hk_script = $FileLocation + '\Invoke-HardeningKitty.ps1'
+        $hbm_csv_rpt = $FileLocation + '\twigs_hbm.csv'
         if (Test-Path $hbm_csv_rpt) { Remove-Item $hbm_csv_rpt }
         . ($hk_script)
         Invoke-HardeningKitty -Mode Audit -Report -ReportFile $hbm_csv_rpt
@@ -583,8 +590,8 @@ else {
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEjHc4VdPhYHo0kS41pDqLqB2
-# m3GgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULyCN8Lv71LkFUmU6iIsaEls0
+# 1JagggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -611,11 +618,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFPKoypNSxm5CNhBD
-# kuG2A0OVuoaKMA0GCSqGSIb3DQEBAQUABIIBAAwLHqbmRt4ljcnhn4yFlCJ+6cKu
-# 3qVEK5aMp0o0gOhFZcmrSjFpPoWVT/TYz0/yo/V1EAJmLXZjV/dQ/6P9xT4eNfYb
-# oy0SlQnPeH9Z27tu5abA31Sw3G5z5tu5H3NS8DprgmV533wcPxfB8L5iuT3cKAly
-# +qtYc1MuFGKyW3K92n7KotWi3jaDF2YRfGuDt1s2obumq5aWYU5aOpmeYYbFeLe3
-# 3BixiPh7ihHmKXpSykzFBZHkq4fyfqxvnAimn/GQ+6b1lCgPgQpVd5F3rM0W3Xwt
-# PBSLFB9/vPt6+YlVfGFvMp160+zO06LaGiVGYFyXaq0nIOwdlSMxUBQGsj4=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFOGqsdPTv7a53+mW
+# SIVcpgMudTKYMA0GCSqGSIb3DQEBAQUABIIBAGlXfJ729udK/XoJuEg9Nkkglbf/
+# 3AfUkfFqqDt6WdHTIVSZFFqz+ajgWWxV9dnUSs5VPgs65TaU9usgXle9y2pWJxUI
+# y9aBLTRImaVU97MG/fMz/UPbSV3BM8csw85CxSSgOm04cS8Rcvx6XdkB4U2vXNTs
+# G8dNCiIrEtkJnle1wJ91J7dfKG3+dr8Zp1iwI/n/9A95ZmCw00cxqTfZ4CV4VijY
+# dNLszn+OhQuCBFvfeiYqdOwGth7sOYyxXwadXSt+4Imj/CU6vzcRNWQvDWDA1TLk
+# +5Mhau5Eet4z5mh4753U9PsfTM+470TfuizgRPywf9hak1MiS/EWM2pes+U=
 # SIG # End signature block
