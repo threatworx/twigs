@@ -45,7 +45,7 @@ def run_sast(args, path, base_path):
         logging.warning('SAST plugin CLI - semgrep not found')
         return findings
 
-    params = ' -q --json --config=r/all ' + path
+    params = ' -q --json --config=r/all ' + base_path
     
     cmdarr = [sast_plugin+ " " + params]
     sast_issues = None
@@ -64,7 +64,7 @@ def run_sast(args, path, base_path):
         finding = {}
         finding['issue_id'] = r['check_id']
         finding['rating'] = get_rating(r['extra']['severity'])
-        finding['filename'] = r['path'].replace(base_path,'')
+        finding['filename'] = r['path'].replace(base_path,'')[1:]
         if args.no_code:
             finding['code_snippet'] = ''
         else:

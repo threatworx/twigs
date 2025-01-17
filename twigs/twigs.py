@@ -22,6 +22,8 @@ import traceback
 import pkgutil
 import importlib
 import getpass
+import hashlib
+import shutil
 from os.path import expanduser
 import warnings
 with warnings.catch_warnings():
@@ -94,6 +96,11 @@ except (ImportError,ValueError):
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
 
+# Note this error routine assumes that the file was read-only and hence could not be deleted
+def on_rm_error( func, path, exc_info):
+    os.chmod( path, stat.S_IWRITE )
+    os.unlink( path )
+
 def export_assets_to_sbom_file(assets, timestamp, args):
     json_file = args.sbom
     logging.info("Exporting assets to SBOM JSON file [%s]", json_file)
@@ -110,6 +117,87 @@ def export_assets_to_sbom_file(assets, timestamp, args):
         json.dump(sbom_json, fd, indent=2, sort_keys=True)
     logging.info("Successfully exported assets to SBOM JSON file!")
 
+def push_sourcecode(asset, args, base_path, skip_checksum_check):
+    if hasattr(args, 'sast') == False and hasattr(args, 'iac_checks') == False:
+        return
+    if args.no_code:
+        return
+    if asset.get('sast') is None or len(asset['sast']) == 0:
+        return
+
+    sourcefilepaths = set()
+    for ci in asset['sast']:
+        sourcefilepaths.add(ci['filename'])
+    if len(sourcefilepaths) == 0:
+        return
+
+    base_api_url = "https://%s/api/v1/assets/%s/" % (args.instance, asset['id'])
+    auth_data = "?handle=%s&token=%s&format=json" % (args.handle, args.token)
+    checksum_check_api_url = base_api_url + "sourcefiles_check/"
+    upload_sourcefile_api_url = base_api_url + "sourcefiles/"
+    BATCH_SIZE = 5 # determine how many maximum files are uploaded in one request
+    sourcefilepaths = list(sourcefilepaths)
+    batches = [sourcefilepaths[i:i + BATCH_SIZE] for i in range(0, len(sourcefilepaths), BATCH_SIZE)]
+    for batch in batches:
+        files_to_send = []
+        files_in_batch = []
+        request_payload = { 'sourcefiles': { } }
+        index = 0
+        for item in batch:
+            fd = open(base_path + os.path.sep + item, 'rb')
+            fc = fd.read()
+            fd.seek(0) # reset the read pointer
+            index = index + 1
+            checksum = hashlib.sha256(fc).hexdigest()
+            request_payload['sourcefiles'][item] = checksum
+            files_in_batch.append((fd, checksum))
+
+        if not skip_checksum_check:
+            # Make request to check if file is updated
+            resp = utils.requests_post(checksum_check_api_url + auth_data, json=request_payload)
+            if resp is not None and resp.status_code == 200:
+                resp_json = resp.json()
+                for sfp in resp_json.keys():
+                    if resp_json[sfp]:
+                        # Checksum is updated, then file needs to be uploaded
+                        files_to_send.append(sfp)
+            else:
+                logging.warning("Failed to compare checksums for batch [%s]" % batch)
+                logging.debug(resp.text)
+                # fail-safe handling - upload all these files anyways
+                for item in batch:
+                    files_to_send.append(item)
+        else:
+            # new asset scenario - upload all files, no need to check checksums
+            for item in batch:
+                files_to_send.append(item)
+
+        if len(files_to_send) == 0:
+            # there are no files that need to be pushed in this batch
+            continue
+
+        # Make request to update required files
+        index = 0
+        request_files = []
+        for item in batch:
+            if item not in files_to_send:
+                index = index + 1
+                continue
+            this_file = (item, (files_in_batch[index][1], files_in_batch[index][0]))
+            request_files.append(this_file)
+            index = index + 1
+
+        resp = utils.requests_post_files(upload_sourcefile_api_url + auth_data, request_files)
+        if resp is not None and resp.status_code == 200:
+            logging.info("Successfully uploaded files in batch: %s", ", ".join(files_to_send))
+        else:
+            logging.error("Encountered error while uploading files in batch: %s", ", ".join(files_to_send))
+            logging.debug(resp.text)
+
+        for value in files_in_batch:
+            fd = value[0]
+            fd.close()
+
 def push_asset_to_TW(asset, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
@@ -118,40 +206,58 @@ def push_asset_to_TW(asset, args):
     if args.org is not None and len(args.org) > 0:
         asset['org'] = args.org # Add Org info in the asset
     asset_id = asset['id']
+    ret_asset_id = None
+    ret_scan_status = None
+    base_path = asset.pop('tw_base_path', None)
+    delete_base_path = asset.pop('tw_delete_base_path', False)
 
     resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
     if resp is None:
         logging.info("Unable to check if asset exists...skipping asset [%s]", asset_id)
-        return None, False
-    if resp.status_code != 200:
-        logging.info("Creating new asset [%s]", asset_id)
-        # Asset does not exist so create one with POST
-        resp = utils.requests_post(asset_url + auth_data, json=asset)
-        if resp is not None and resp.status_code == 200:
-            logging.info("Successfully created new asset [%s]", asset_id)
-            logging.info("Response content: %s", resp.content.decode(args.encoding))
-            return asset_id, True
-        else:
-            logging.error("Failed to create new asset [%s]", asset_id)
-            if resp is not None:
-                logging.error("Response details: %s", resp.content.decode(args.encoding))
-            return None, False
+        ret_asset_id = None
+        ret_scan_status = False
     else:
-        logging.info("Updating asset [%s]", asset_id)
-        # asset exists so update it with PUT
-        resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
-        if resp is not None and resp.status_code == 200:
-            logging.info("Successfully updated asset [%s]", asset_id)
-            logging.debug("Response content: %s", resp.content.decode(args.encoding))
-            resp_json = resp.json()
-            if 'No product updates' in resp_json['status']:
-                return asset_id, False
-            return asset_id, True
+        if resp.status_code != 200:
+            logging.info("Creating new asset [%s]", asset_id)
+            # Asset does not exist so create one with POST
+            resp = utils.requests_post(asset_url + auth_data, json=asset)
+            if resp is not None and resp.status_code == 200:
+                logging.info("Successfully created new asset [%s]", asset_id)
+                logging.info("Response content: %s", resp.content.decode(args.encoding))
+                push_sourcecode(asset, args, base_path, True)
+                ret_asset_id = asset_id
+                ret_scan_status = True
+            else:
+                logging.error("Failed to create new asset [%s]", asset_id)
+                if resp is not None:
+                    logging.error("Response details: %s", resp.content.decode(args.encoding))
+                ret_asset_id = None
+                ret_scan_status = False
         else:
-            logging.error("Failed to update existing asset [%s]", asset_id)
-            if resp is not None:
-                logging.error("Response details: %s", resp.content.decode(args.encoding))
-            return None, False
+            logging.info("Updating asset [%s]", asset_id)
+            # asset exists so update it with PUT
+            resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
+            if resp is not None and resp.status_code == 200:
+                logging.info("Successfully updated asset [%s]", asset_id)
+                logging.debug("Response content: %s", resp.content.decode(args.encoding))
+                push_sourcecode(asset, args, base_path, False)
+                resp_json = resp.json()
+                if 'No product updates' in resp_json['status']:
+                    ret_asset_id = asset_id
+                    ret_scan_status = False
+                else:
+                    ret_asset_id = asset_id
+                    ret_scan_status = True
+            else:
+                logging.error("Failed to update existing asset [%s]", asset_id)
+                if resp is not None:
+                    logging.error("Response details: %s", resp.content.decode(args.encoding))
+                ret_asset_id = asset_id
+                ret_scan_status = False
+
+    if delete_base_path:
+        shutil.rmtree(base_path, onerror = on_rm_error)
+    return ret_asset_id, ret_scan_status
 
 def push_assets_to_TW(assets, args):
     asset_id_list = []
@@ -176,7 +282,8 @@ def check_and_run_policy_job(args, asset_ids_list):
                 return exit_code, pj_json
     return None, pj_json
 
-def run_scan(asset_id_list, pj_json, args):
+def run_va_lic_eol_scan(asset_id_list, pj_json, args):
+    scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
     if args.no_scan is not True:
         if len(asset_id_list) == 0:
             logging.debug("No asset scan required")
@@ -192,7 +299,6 @@ def run_scan(asset_id_list, pj_json, args):
                     logging.info("License compliance performed as part of policy evaluation")
                     run_lic_scan = False # License scan already done, so don't do it again
 
-        scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
         if run_va_scan:
             # Start VA
             scan_payload = { }
@@ -237,6 +343,24 @@ def run_scan(asset_id_list, pj_json, args):
                 logging.error("Failed to start EOL assessment")
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
+
+def run_remediation_scan(asset_id_list, args):
+    # Start remediation scan
+    scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    scan_payload = { }
+    scan_payload['assets'] = asset_id_list
+    scan_payload['remediation_scan'] = True
+    scan_payload['issue_types'] = ["SAST", "IaC", "GCP CIS", "AWS CIS", "OCI CIS", "Azure CIS", "Host Benchmark"]
+    # Note add "Impact" only if twscan is not being run i.e. no_scan is True
+    if args.no_scan:
+        scan_payload['issue_types'].append('Impact')
+    resp = utils.requests_post(scan_api_url, json=scan_payload)
+    if resp is not None and resp.status_code == 200:
+        logging.info("Started remediation scan")
+    else:
+        logging.error("Failed to start remediation scan")
+        if resp is not None:
+            logging.error("Response details: %s", resp.content.decode(args.encoding))
 
 def get_host_as_label(in_label, asset):
     if asset['type'] == "Google Container-Optimized OS":
@@ -1226,7 +1350,8 @@ def main(args=None):
                 if args.token is not None and len(args.token) > 0:
                     asset_id_list, scan_asset_id_list = push_assets_to_TW(assets, args)
                     exit_code, pj_json = check_and_run_policy_job(args, asset_id_list)
-                    run_scan(scan_asset_id_list, pj_json, args)
+                    run_va_lic_eol_scan(scan_asset_id_list, pj_json, args)
+                    run_remediation_scan(asset_id_list, args)
             
                 if args.schedule is not None and sys.platform != 'win32':
                     from crontab import CronTab

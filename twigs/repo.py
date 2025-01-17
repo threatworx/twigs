@@ -983,11 +983,17 @@ def get_inventory_helper(args):
 
     assets = discover_inventory(args, path, base_path)
 
-    if args.repo.startswith('http'):
-        shutil.rmtree(path, onerror = on_rm_error)
+    # repo directory will be cleaned up in push_asset_to_TW(...)
+    for asset in assets:
+        asset['tw_base_path'] = base_path
+        if args.repo.startswith('http'):
+            asset['tw_delete_base_path'] = True
 
     if len(assets[0]['products']) == 0 and (assets[0].get('secrets') is None or len(assets[0]['secrets']) == 0) and (assets[0].get('sast') is None or len(assets[0]['sast']) == 0):
         logging.warning("Nothing to report")
+        if args.repo.startswith('http'):
+            # if there is no asset reported, then cleanup repo directory here itself (if cloned)
+            shutil.rmtree(base_path, onerror = on_rm_error)
         if args.create_empty_asset is None or not args.create_empty_asset:
             return [] # if there are no products nor secrets then no assets to report
     return assets
