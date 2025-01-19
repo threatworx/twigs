@@ -36,7 +36,7 @@ action = function(host, port)
   local response = http.get(host,port,path,options)
   local result = '' 
 
-  stdnse.debug(1, "Failed to retrieve: %s", path)
+  stdnse.debug(1, "out: %s", response.body)
   if not response or not response.status or response.status ~= 200 or not string.match(response.body, "^%d") then
     stdnse.debug(1, "Failed to retrieve: %s", path)
     return

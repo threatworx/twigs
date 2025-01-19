@@ -13,24 +13,19 @@ from xml.dom.minidom import parse, parseString
 from distutils.version import LooseVersion 
 import csv
 from . import linux
-from . import ssl_audit
-from .dast_plugins import zap as zap_dast
 
 import shutil
 NMAP = shutil.which("nmap")
 NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
 
-NMAP_HTTP_PORTS = ['80','443','6443','8080','8443'] 
-NSE_HTTP_PATH = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/http/'
-NSE_HTTP_SCRIPTS = [NSE_HTTP_PATH,'http-generator','http-wordpress-enum','http-apache-server-status','http-server-header','http-php-version']
+NMAP_HTTP_PORTS = ['80','443','6443','8080','8443','2181'] 
+NSE_APACHE_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/apache/'
+NSE_HTTP_PATH = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/http/'
+NSE_HTTP_SCRIPTS = ['+http-generator','+http-wordpress-enum','+http-apache-server-status','+http-server-header','http-php-version',NSE_HTTP_PATH,NSE_APACHE_PATH]
 
-NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','9042','7199','523','445','1443','6379']
+NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','9042','7199','523','445','1443','6379','1521']
 NSE_DB_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
-NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info']
-
-NMAP_APACHE_PORTS = NMAP_HTTP_PORTS + ['2181']
-NSE_APACHE_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/apache/'
-NSE_APACHE_SCRIPTS = [NSE_APACHE_PATH,'http-apache-server-status'] 
+NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info','oracle-tns-version']
 
 NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/' 
 
@@ -167,30 +162,29 @@ def create_nmap_cmd (args):
     scripts = [] 
     os = ""
     vflag = ""
-    if 'default' in args.servicetype: 
+    if 'default' in args.services: 
         vflag = " -sV "
-    if "database" in args.servicetype:
+    if "database" in args.services:
         ports += NMAP_DB_PORTS
         scripts += NSE_DB_SCRIPTS
-    if "http" in args.servicetype:
+    if "web" in args.services:
         ports += NMAP_HTTP_PORTS
         scripts += NSE_HTTP_SCRIPTS
-    if "os" in args.servicetype: 
+    if "os" in args.services: 
         vflag = " -sV "
         os = " -O "
         scripts += ['smb-os-discovery']
         ports += ['1-100'] 
-    if "vmware" in args.servicetype:
+    if "vmware" in args.services:
         scripts += ['vmware-version']
         ports += ['443'] 
-    if "apache" in args.servicetype:
-        scripts += NSE_APACHE_SCRIPTS
-        ports += NMAP_APACHE_PORTS
     cmd = NMAP + vflag + ' -Pn -oX - -T ' + args.timing + os
     if len(ports) != 0:
         cmd += ' -p' + ','.join(list(set(ports)))
+    if args.extra_ports:
+        cmd += ','+args.extra_ports
     if len(scripts) != 0:
-        cmd += ' --script '+','.join(scripts)
+        cmd += ' --script '+','.join(list(set(scripts)))
     return cmd
 
 def nmap_scan(args, host):
@@ -203,10 +197,6 @@ def nmap_scan(args, host):
     if args.verbosity >= 3:
         logging.debug('Enabled nmap debug logging...')
         nmap_cmd = nmap_cmd + ' -vvv -d --packet-trace --reason'
-    if args.discovery_scan_type is not None:
-        nmap_cmd = nmap_cmd + ' -P' + args.discovery_scan_type
-        if args.discovery_scan_type not in ['N', 'E', 'P', 'M'] and args.discovery_port_list is not None:
-            nmap_cmd = nmap_cmd + args.discovery_port_list
     cmdarr = [nmap_cmd + ' ' + host]
     try:
         logging.debug("NMAP command: " + cmdarr[0])
@@ -239,7 +229,11 @@ def nmap_scan(args, host):
                 continue
             port_no = int(port.getAttribute('portid'))
             protocol = port.getAttribute('protocol')
-            service = port.getElementsByTagName('service')[0]
+            #service = port.getElementsByTagName('service')[0]
+            service = port.getElementsByTagName('service')
+            if service == None or len(service) == 0:
+                continue
+            service = service[0]
             service_product = None
             if service is not None:
                 service_product = service.getAttribute('product')
@@ -316,7 +310,8 @@ def nmap_scan(args, host):
             elif s.getAttribute('id') == 'http-server-header':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
-                    prodstr = wpout.split(' ')[0].replace('/',' ').strip()
+                    prodstr = wpout.split('(')[0]
+                    prodstr = prodstr.replace('/',' ').strip()
                     if prodstr not in products:
                         products.append(prodstr)
             elif s.getAttribute('id') == 'http-php-version':
