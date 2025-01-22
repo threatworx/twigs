@@ -23,18 +23,19 @@
     Specifies the identifier for the asset. Optional.
 .PARAMETER assetname
     Specifies the name for the asset. Optional.
-.PARAMETER tag_critical
-    Tag the asset as critical. Optional.
 .PARAMETER tags
     Specify tags for the asset. Optional.
+.PARAMETER tag_critical
+    Tag the asset as critical. Optional. Possible values (true or false). Default is false.
 .PARAMETER no_scan
-    Do not initiate a baseline assessment. Optional.
+    Do not initiate a baseline assessment. Optional. Possible values (true or false). Default is false.
 .PARAMETER no_host_benchmark
-    Do not run host benchmark tests. Optional.
+    Do not run host benchmark tests. Optional. Possible values (true or false). Default is false.
 .PARAMETER email_report
-    After impact refresh is complete, email scan report to self. Optional.
+    After impact refresh is complete, email scan report to self. Optional. Possible values (true or false). Default is false.
 .EXAMPLE
-    .\twigs.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatworx.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical -tags 'tag1','tag2' -email_report
+    .\twigs.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatworx.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical true -tags 'tag1','tag2' -email_report true
+    .\twigs.ps1 -mode remote -remote_hosts_csv my_remote_hosts.csv -handle someuser@company.com -token XXXX -instance ACME.threatworx.io
 .NOTES
     .    
 #>
@@ -85,21 +86,25 @@ param(
     [String[]]
     $tags,
 
-    [parameter(Mandatory=$false, HelpMessage='Tag the asset as critical')]
-    [Switch]
-    $tag_critical,
+    [parameter(Mandatory=$false, HelpMessage='Tag the asset as critical. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $tag_critical='false',
     
-    [parameter(Mandatory=$false, HelpMessage='Do not initiate a baseline assessment')]
-    [Switch]
-    $no_scan,
+    [parameter(Mandatory=$false, HelpMessage='Do not initiate a baseline assessment. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $no_scan='false',
 
-    [parameter(Mandatory=$false, HelpMessage='Do not run host benchmark tests')]
-    [Switch]
-    $no_host_benchmark,
+    [parameter(Mandatory=$false, HelpMessage='Do not run host benchmark tests. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $no_host_benchmark='false',
 
-    [parameter(Mandatory=$false, HelpMessage='After impact refresh is complete email scan report to self')]
-    [Switch]
-    $email_report
+    [parameter(Mandatory=$false, HelpMessage='After impact refresh is complete email scan report to self. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $email_report='false'
 )
 
 function ql { $Args }
@@ -240,7 +245,6 @@ function Invoke-RemoteDiscovery {
     Write-Host "Reading remote hosts CSV file..."
     $remote_hosts = Import-Csv $remote_hosts_csv
     Write-Host "Starting remote Windows host discovery..."
-    $scriptpath = $PSScriptRoot + '\twigs.ps1'
     $secure_password = $null
     foreach ($remote_host in $remote_hosts) {
         $remotehost = $remote_host.hostname
@@ -262,7 +266,7 @@ function Invoke-RemoteDiscovery {
             $etext = $remote_host.userpwd.subString(11, $remote_host.userpwd.Length - 11)
             try {
                 $dtext = $etext | ConvertTo-SecureString -SecureKey $secured_password -ErrorAction Stop
-				$userPassword = $dtext
+                $userPassword = $dtext
             }
             catch {
                 Write-Host "Decryption failed, possibly due to incorrect password..."
@@ -270,9 +274,9 @@ function Invoke-RemoteDiscovery {
             }
 
         }
-		else {
-			$userPassword = $remote_host.userpwd | ConvertTo-SecureString -AsPlainText -Force
-		}
+        else {
+            $userPassword = $remote_host.userpwd | ConvertTo-SecureString -AsPlainText -Force
+        }
         $logincredentials = New-Object System.Management.Automation.PSCredential -ArgumentList $remote_host.userlogin, $userPassword
         if ($remotehost.indexof('/') -ne -1) {
             $remotehosts = ExpandCidr($remotehost)
@@ -282,8 +286,32 @@ function Invoke-RemoteDiscovery {
             $remotehosts += $remotehost
         }
         foreach ($remotehost in $remotehosts) {
+            Write-Host ''
+            Write-Host ''
             Write-Host "Running remote discovery for: ",$remotehost
-            Invoke-Command -ComputerName $remotehost -FilePath $scriptpath -ArgumentList 'local',$null,$null,$null,$handle,$token,$instance,$null,$null,$null,$null,$null,$null,$true -Credential $logincredentials
+            $remoteSession = New-PSSession -ComputerName $remotehost -Credential $logincredentials
+            if ($remoteSession -eq $null) {
+                Write-Host "Connecting to remote host failed....skipping it"
+                continue
+            }
+            $remote_folder = Invoke-Command -Session $remoteSession -ScriptBlock { $File = New-TemporaryFile; Remove-Item $File -Force; New-Item -Itemtype Directory -Path "$($ENV:Temp)\$($File.Name)"; }
+            if ($PSScriptRoot) {
+                Copy-Item $PSScriptRoot -Destination $remote_folder -ToSession $remoteSession -Recurse
+                $remote_twigs_folder = $remote_folder.ToString() + "\twigs_PS"
+                $remotescript = ".\twigs.ps1"
+            }
+            else {
+                $FileLocation = Split-Path (Convert-Path -LiteralPath ([Environment]::GetCommandLineArgs()[0]))
+                Copy-Item $FileLocation -Destination $remote_folder -ToSession $remoteSession -Recurse
+                $remote_twigs_folder = $remote_folder.ToString() + "\twigs_EXE"
+                $remotescript = ".\twigs.exe"
+            }
+            Invoke-Command -Session $remoteSession { Set-Location $using:remote_twigs_folder }
+            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report}
+            Invoke-Command -Session $remoteSession { Set-Location "..\..\" }
+            Invoke-Command -Session $remoteSession { Remove-Item $using:remote_folder -Recurse }
+            Remove-PSSession $remoteSession
+            Write-Host "Completed remote discovery for: ",$remotehost
         }
     } 
     Write-Host "Completed remote Windows host discovery."
@@ -295,7 +323,7 @@ function Invoke-LocalDiscovery {
         exit
     }
 
-    if ($no_scan -and $email_report) {
+    if ($no_scan -eq "true" -and $email_report -eq "true") {
         Write-Host "Error conflicting options [no_scan] and [email_report] are specified!"
         exit
     }
@@ -326,7 +354,7 @@ function Invoke-LocalDiscovery {
 
         $url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
         $http_method = 'Get'
-        Write-Host 'Validating credentials...'
+        Write-Host 'Validating ThreatWorx credentials...'
         try {
             $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json'
         }
@@ -341,20 +369,19 @@ function Invoke-LocalDiscovery {
                 exit
             }
         }
-        Write-Host 'Credentials validated.'
+        Write-Host 'ThreatWorx credentials validated.'
     }
     Write-Host ''
     Write-Host 'Extracting OS details...'
-    $temp_str = wmic os get Caption /format:list | Select-string -Pattern 'Caption'
-    $base_os = $temp_str.ToString().Split('=')[1].Trim()
+    $computer_info = Get-ComputerInfo
+    $base_os = $computer_info.OsName
     Write-Host "OS:", $base_os
 
     $os_version = $null
     $os_version_ubr = $null
     $os_release_id = $null
     $os_arch = $null
-    $temp_str = systeminfo /fo csv | ConvertFrom-Csv | format-list -Property 'OS Version' | Out-String
-    $os_version = $temp_str.ToString().Trim().Split(':')[1].Trim()
+    $os_version = $computer_info.OsVersion
     $os_version_ubr = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").UBR
     if ($os_version_ubr) {
         $os_version_tokens = $os_version.ToString().Split(' ')
@@ -368,21 +395,16 @@ function Invoke-LocalDiscovery {
     if ($temp_str) {
         $os_release_id = $temp_str.ToString().Trim()
     }
-    $temp_str = systeminfo /fo csv | convertFrom-Csv | format-list -Property 'System Type' | Out-String
-    $mc_arch = $temp_str.ToString().Trim().Split(':')[1].Trim()
-    $temp_str = wmic os get OSArchitecture /format:list | Select-string -Pattern 'OSArchitecture'
-    $bit_arch = $temp_str.ToString().Split('=')[1].Trim()
+    $mc_arch = $computer_info.CsSystemType
+    $bit_arch = $computer_info.OsArchitecture
     $os_arch = $bit_arch + ' ' + $mc_arch
     $os_arch = $os_arch.Trim()
 
     Write-Host ''
     Write-Host 'Extracting patch information...'
-    $patch_csv_file = 'wmic_patches.csv'
-    wmic qfe get HotFixID /format:csv > $patch_csv_file
-    Get-Content $patch_csv_file | where {$_ -ne ""} > "$patch_csv_file-temp" ; move "$patch_csv_file-temp" $patch_csv_file -Force
-    $temp_array = Import-Csv -Path $patch_csv_file
+    $hot_fixes = Get-HotFix
     $patch_json_array = New-Object System.Collections.Generic.List[System.Object]
-    foreach ($row in $temp_array) { $temp_kb_id = $row.HotFixID; $patch_entry_json = @{id=$temp_kb_id.Trim()}; $patch_json_array.add($patch_entry_json)}
+    foreach ($hot_fix in $hot_fixes) { $patch_entry_json = @{id=$hot_fix.HotFixID}; $patch_json_array.add($patch_entry_json)}
     Write-Host 'Number of patches found:', $patch_json_array.Count
     $patch_json = $patch_json_array | ConvertTo-Json
     $patch_json_str = $patch_json.ToString()
@@ -412,12 +434,8 @@ function Invoke-LocalDiscovery {
     Write-Host 'Number of products identified till now:', $product_json_array.Count
 
     Write-Host ''
-    Write-Host 'Extracting products (using wmic)...'
-    $product_csv_file = 'wmic_products.csv'
-    # Qoute the comma characters in the command below since otherwise PowerShell will endup interpreting those...
-    wmic product get name","vendor","version /format:csv > $product_csv_file
-    Get-Content $product_csv_file | where {$_ -ne ""} > "$product_csv_file-temp" ; move "$product_csv_file-temp" $product_csv_file -Force
-    $temp_array = Import-Csv -Path $product_csv_file
+    Write-Host 'Extracting products (using WMI)...'
+    $temp_array = Get-WMIObject -ClassName Win32_Product
     foreach ($row in $temp_array) { $product_details = $row.Name.Trim() + ' ' + $row.Version.Trim(); if  ($product_json_array -notcontains $product_details) { $product_json_array.Add($product_details)} }
     Write-Host 'Number of products found (using wmic):', $temp_array.Count
     Write-Host 'Total number of unique products found:', $product_json_array.Count
@@ -434,19 +452,23 @@ function Invoke-LocalDiscovery {
         $tags_json_array.Add('OS_ARCH:' + $os_arch)
     }
     $tags_json_array.Add('Windows')
-    if ($tag_critical) {
+    if ($tag_critical -eq "true") {
         $tags_json_array.Add('CRITICALITY:5')
     }
     if ($tags) {
         foreach($tag in $tags) {
-            $tags_json_array.Add($tag)
+            # Special handling for twigs.exe which does not allow multiple tags (as it is requires array of strings)
+            $temp_tags = $tag.Split(',')
+            foreach($temp_tag in $temp_tags) {
+                $tags_json_array.Add($temp_tag)
+            }
         }
     }
 
     $misconfigs_json_array = New-Object System.Collections.Generic.List[System.Object]
     # Run host benchmark if specified
-    if (-not $no_host_benchmark) {
-	    $FileLocation = 
+    if ($no_host_benchmark -eq "false") {
+        $FileLocation = 
             if ($PSScriptRoot) { # running as .ps1 file
                 $PSScriptRoot 
             } 
@@ -454,10 +476,15 @@ function Invoke-LocalDiscovery {
                 Split-Path (Convert-Path -LiteralPath ([Environment]::GetCommandLineArgs()[0]))
             }
         Write-Host "Running host benchmarks. This may take some time..."
-        $hk_script = $FileLocation + '\Invoke-HardeningKitty.ps1'
         $hbm_csv_rpt = $FileLocation + '\twigs_hbm.csv'
         if (Test-Path $hbm_csv_rpt) { Remove-Item $hbm_csv_rpt }
-        . ($hk_script)
+        # If twigs.exe is running, then no need to source HardeningKitty as it is already included
+        if ($PSScriptRoot) {
+            # If twigs.ps1 is running, then source HardeningKitty
+            $hk_script = $FileLocation + '\Invoke-HardeningKitty.ps1'
+            Unblock-File $hk_script
+            . ($hk_script)
+        }
         Invoke-HardeningKitty -Mode Audit -Report -ReportFile $hbm_csv_rpt
         $misconfigs = Import-Csv $hbm_csv_rpt
         foreach ($misconfig in $misconfigs) {
@@ -488,15 +515,15 @@ function Invoke-LocalDiscovery {
         $url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
     }
 
-	$current_ts = Get-Date -UFormat %s
-	$current_ts = $current_ts.ToString().Split('.')[0]
+    $current_ts = Get-Date -UFormat %s
+    $current_ts = $current_ts.ToString().Split('.')[0]
 
     $payload = @{
         id=$assetid
         name=$assetname
         type='Windows'
-		attack_surface_label='Corporate::Server::Windows'
-		timestamp=$current_ts
+        attack_surface_label='Corporate::Server::Windows'
+        timestamp=$current_ts
         description=''
         owner=$handle
         patches=$patch_json_array
@@ -523,13 +550,13 @@ function Invoke-LocalDiscovery {
         }
         else {
             Write-Host 'Successfully updated asset'
-            if (-not $no_scan -and $response.status -Match 'No product updates') {
+            if ($no_scan -eq "false" -and $response.status -Match 'No product updates') {
                 Write-Host 'Asset products are not updated. No need for impact refresh.'
-                $no_scan = $true
+                $no_scan = "true"
             }
         }
 
-        if (-not $no_scan) {
+        if ($no_scan -eq "false") {
             $http_method = 'Post'
             $url = $tw_scan_url + '?handle=' + $handle + '&token=' + $token + '&format=json'
             $assets_array = New-Object System.Collections.Generic.List[string]
@@ -537,7 +564,7 @@ function Invoke-LocalDiscovery {
             $payload = @{
                 assets=$assets_array
             }
-            if ($email_report) {
+            if ($email_report -eq "true") {
                 $payload["mode"] = "email"
             }
             $temp_body = (ConvertTo-Json -Depth 100 $payload)
@@ -561,12 +588,7 @@ function Invoke-LocalDiscovery {
         }
         ConvertTo-Json -Depth 100 $final_body | Out-File $out
     }
-
-    # Remove any temporary files
-    Remove-Item -force -path $patch_csv_file
-    Remove-Item -force -path $product_csv_file
 }
-
 
 if ($PSVersionTable) {
     if ($PSVersionTable.PSVersion.Major -lt 3) {
@@ -590,8 +612,8 @@ else {
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULyCN8Lv71LkFUmU6iIsaEls0
-# 1JagggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUfXFmUUT7+oNOcobKyA1T2Iq
+# rgWgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -618,11 +640,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFOGqsdPTv7a53+mW
-# SIVcpgMudTKYMA0GCSqGSIb3DQEBAQUABIIBAGlXfJ729udK/XoJuEg9Nkkglbf/
-# 3AfUkfFqqDt6WdHTIVSZFFqz+ajgWWxV9dnUSs5VPgs65TaU9usgXle9y2pWJxUI
-# y9aBLTRImaVU97MG/fMz/UPbSV3BM8csw85CxSSgOm04cS8Rcvx6XdkB4U2vXNTs
-# G8dNCiIrEtkJnle1wJ91J7dfKG3+dr8Zp1iwI/n/9A95ZmCw00cxqTfZ4CV4VijY
-# dNLszn+OhQuCBFvfeiYqdOwGth7sOYyxXwadXSt+4Imj/CU6vzcRNWQvDWDA1TLk
-# +5Mhau5Eet4z5mh4753U9PsfTM+470TfuizgRPywf9hak1MiS/EWM2pes+U=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFGaQDfl60VoS3Yl+
+# rkjHySJ9olxCMA0GCSqGSIb3DQEBAQUABIIBAFEPjm16KM5WRU8M8UjRlVBhYBm7
+# DT/YU6W28L4aVVf/bf7k3QjE19qp7+fE1qiQclinFDG8yrcAUtzNAiM9yIcLfpW+
+# fPsAPAwJ+SakPFhYEV5Od0m728x65DOK3W5w80MeYvGVON9ffCk7sQ4lw+/Q7B8u
+# mLZwWaG1dj9o+b5hRV2ffuKl4nlsbCw94BHfgOjzb6YMsAPt0ZvEzKvLfXS36fxX
+# wvq2q/t111KAUQf9K7954ZyvXo4iEfuQhv/As4U1SONfHrQfvBKdbPCj6q672d5I
+# X7+iGUTMhFhCLufukvydUBJ6Tt4ZIO8nGVF0C2Iawta3UqIlEMYGYc0BTiw=
 # SIG # End signature block
