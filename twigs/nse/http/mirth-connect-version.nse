@@ -34,15 +34,20 @@ action = function(host, port)
   options['header']['X-Requested-With'] = 'OpenAPI'
   options['redirect_ok'] = false 
   local response = http.get(host,port,path,options)
+  local httpresponse = http.get(host,port,'/')
   local result = '' 
+  local version = ''
 
-  stdnse.debug(1, "out: %s", response.body)
-  if not response or not response.status or response.status ~= 200 or not string.match(response.body, "^%d") then
-    stdnse.debug(1, "Failed to retrieve: %s", path)
-    return
+  -- stdnse.debug(1, "version api output: %s", response.body)
+  -- stdnse.debug(1, "html: %s", httpresponse.body)
+  if response and string.match(response.body, "^%d") then
+    version = response.body
   end
 
-  result = stdnse.output_table()
-  result["mirth connect"] = response.body 
-  return result
+  stdnse.debug(1, "html: %s", string.match(httpresponse.body, "Mirth Connect")) 
+  if httpresponse and string.match(httpresponse.body, "Mirth Connect") then
+    result = stdnse.output_table()
+    result["mirth connect"] = version 
+    return result
+  end
 end

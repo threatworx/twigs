@@ -310,8 +310,9 @@ def nmap_scan(args, host):
             elif s.getAttribute('id') == 'http-server-header':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
-                    prodstr = wpout.split('(')[0]
-                    prodstr = prodstr.replace('/',' ').strip()
+                    prodstr = wpout.replace('/',' ').strip()
+                    prodstr = prodstr.replace('(',' ').strip()
+                    prodstr = prodstr.replace(')',' ').strip()
                     if prodstr not in products:
                         products.append(prodstr)
             elif s.getAttribute('id') == 'http-php-version':
