@@ -37,6 +37,7 @@ try:
     from . import utils
     from . import aws
     from . import linux
+    from . import windows
     from . import repo
     from . import docker
     from . import kubernetes
@@ -67,6 +68,7 @@ try:
 except (ImportError,ValueError):
     from twigs import aws
     from twigs import linux
+    from twigs import windows
     from twigs import repo
     from twigs import docker
     from twigs import kubernetes
@@ -422,7 +424,7 @@ def add_attack_surface_label(args, assets):
             as_label = get_code_as_label("Code", asset)
         elif args.mode == "bitbucket":
             as_label = get_code_as_label("Code", asset)
-        elif args.mode == 'host':
+        elif args.mode in ['host', 'win_host']:
             as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'vmware':
             if asset['type'] == 'VMware vCenter':
@@ -1011,6 +1013,12 @@ def main(args=None):
         parser_linux.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_linux.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
 
+        # Arguments required for Host discovery on Windows
+        parser_win = subparsers.add_parser ("win_host", help = "Discover Windows host assets (requires WinRM / PS Remoting to be enabled)")
+        parser_win.add_argument('--host_list', help='A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
+        parser_win.add_argument('--secure', action='store_true', help='Use this option to encrypt clear text passwords in the host list file')
+        parser_win.add_argument('--password', help='A password used to encrypt / decrypt login information from the host list file')
+
         # Arguments required for vmware discovery
         parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMware vCenter/ESX assets")
         parser_vmware.add_argument('--host', help='A vCenter host name or IP', required=True)
@@ -1265,6 +1273,8 @@ def main(args=None):
             assets = repo.get_inventory(args)
         elif args.mode == 'host':
             assets = linux.get_inventory(args)
+        elif args.mode == 'win_host':
+            assets = windows.get_inventory(args)
         elif args.mode == 'vmware':
             assets = vmware.get_inventory(args)
         elif args.mode == 'nmap':
