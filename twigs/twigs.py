@@ -1361,7 +1361,7 @@ def main(args=None):
                     asset_id_list, scan_asset_id_list = push_assets_to_TW(assets, args)
                     exit_code, pj_json = check_and_run_policy_job(args, asset_id_list)
                     run_va_lic_eol_scan(scan_asset_id_list, pj_json, args)
-                    run_remediation_scan(asset_id_list, args)
+                    #run_remediation_scan(asset_id_list, args)
             
                 if args.schedule is not None and sys.platform != 'win32':
                     from crontab import CronTab
