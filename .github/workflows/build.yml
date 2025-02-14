@@ -23,8 +23,9 @@ jobs:
           echo "TAG_NAME=$(cat twigs/__init__.py | grep version | cut -f2 -d"'" )" >> $GITHUB_ENV
           
       - name: checkout repo content
-        run: pip install twine
-        run: pip install packaging==24.2
+        run: |
+          pip install twine
+          pip install packaging==24.2
 
       - name: build and publish twigs
         run: python ${GITHUB_WORKSPACE}/setup.py sdist bdist_wheel
