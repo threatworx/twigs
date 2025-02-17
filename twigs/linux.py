@@ -207,6 +207,117 @@ def discover_ubuntu(args, host):
     logging.info("Completed retrieval of product details")
     return plist
 
+def is_class_a(ip):
+    ip_obj = ipaddress.ip_address(ip) 
+    if ip_obj.is_private: #to account for private IP range 
+        return False 
+    first_octet = int(ip.split(".")[0])  
+    return 1 <= first_octet <= 126
+
+def extract_ip_from_traceroute_line(line):
+    """Extract the first valid IP address from a given traceroute line."""
+    parts = line.split()
+    for part in parts:
+        try:
+            ip_obj = ipaddress.ip_address(part.strip("()"))  
+            return str(ip_obj)  
+        except ValueError:
+            continue  
+    return None  
+
+
+def parse_traceroute_output(output):
+    hops = {}
+    public_hop = None
+    
+    for line in output.splitlines():
+        parts = line.strip().split()
+        if len(parts) >= 2 and parts[0].isdigit():
+            hop_number = int(parts[0])
+            hop_ip = extract_ip_from_traceroute_line(line)
+            
+            if hop_ip:
+                try:
+                    ip_obj = ipaddress.ip_address(hop_ip)
+                    is_private = ip_obj.is_private
+                    
+                    hops[hop_number] = {
+                        "ip": hop_ip,
+                        "private ip?": is_private,
+                        "class a ip?": is_class_a(hop_ip)
+                    }
+                    
+                    if not is_private and public_hop is None:
+                        public_hop = hop_number
+                except ValueError:
+                    hops[hop_number] = {"ip": hop_ip, "private ip?": "Invalid IP"}
+            else:
+                hops[hop_number] = {"ip": "N/A", "private ip?": "N/A: No IP found"}
+
+    hops["Hops to public ip"] = public_hop
+    return hops
+
+def get_ping_cmd(args,host):
+    cmdarr = [f"which ping"]
+    output = utils.run_cmd_on_host(args, host, cmdarr)
+    print(output)
+    return output 
+
+def test_connectivity(args, host, target):
+    pcmd = get_ping_cmd(args, host) 
+    cmdarr = [f"{pcmd.strip()} -c 1 {target}"]
+    print(cmdarr)
+    response = utils.run_cmd_on_host(args, host, cmdarr)
+    print(response)
+    if "0.0% packet loss" or "0% packet loss" in response:
+        print(target, "has connectivity")  
+        return True
+    else:
+        print(target, "does not have connectivity")
+        return False
+
+def get_traceroute_cmd(args, host):
+    cmdarr = [f"which traceroute"]
+    output = utils.run_cmd_on_host(args, host, cmdarr)
+    print(output)
+    return output
+
+def discover_priority(args, host, target):
+    trcmd = get_traceroute_cmd(args, host)
+    """if is_class_a(host['hostname']):
+        print("This is already a class A ip address, traceroute not necessary. Very vulnerable, high priority")
+        return"""
+    if not test_connectivity(args, host, target):
+        logging.error("Target %s is unreachable", target)
+        return 
+    logging.info("Running traceroute on host: %s for target: %s", host['hostname'], target)
+    if os.geteuid() ==0:
+        cmdarr = [f"{trcmd.strip()} -T {target}"]
+    else:
+        cmdarr = [f"{trcmd.strip()} {target}"] #add timeout to traceroute 
+
+    traceroute_output = utils.run_cmd_on_host(args, host, cmdarr)
+    print(traceroute_output)
+    if traceroute_output:
+        logging.info("Traceroute completed successfully")
+        priority_level = parse_traceroute_output(traceroute_output)
+        logging.debug("Priority level: %s", priority_level)
+        if (priority_level["Hops to public ip"] == 1) :
+            return 5
+        elif (priority_level["Hops to public ip"] == 2): 
+            return 4
+        elif(priority_level["Hops to public ip"] == 3):
+            return 3
+        elif(priority_level["Hops to public ip"] == 4):
+            return 2
+        else:
+            return 1
+    else:
+        logging.error("Failed to retrieve traceroute output from host %s", host['hostname'])
+        return None
+
+
+
 def discover(args):
     handle = args.handle
     token = args.token
@@ -295,6 +406,7 @@ def discover(args):
                 else:
                     remote_hosts.append(row)
                     remote_hosts[-1]['remote'] = True
+            
         if args.secure:
             # secure the host list
             logging.info("Securing host list file")
@@ -390,12 +502,17 @@ def discover_hosts(args, hosts):
                         asset['config_issues'] = host_bm_issues
                     else:
                         asset['config_issues'].extend(host_bm_issues)
+            if args.check_priority :
+                target = '8.8.8.8'
+                test = discover_priority(args,host,target)
+                args.asset_criticality = test
 
             assets.append(asset)
+    print(assets)
     return assets
 
 def discover_host(args, host):
-
+        
     logging.info("Checking if host [%s] is reachable", host['hostname'])
     if not check_host_up(host):
         logging.error("Host is not reachable [%s]", host['hostname'])
@@ -561,6 +678,8 @@ def run_ssh_audit(args, assetid, ip):
 
     logging.info("ssh audit completed "+ip)
     return issue_list
+
+
 
 def get_inventory(args):
     return discover(args)

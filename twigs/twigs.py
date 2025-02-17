@@ -596,7 +596,9 @@ def main(args=None):
         parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
         parser.add_argument('--owner', action='append', help='Add additional owner(s) to discovered asset(s). You can specify this option multiple times to add multiple owners. Note user discovering the asset is added as owner by default')
         parser.add_argument('--no_auto_tags', action='store_true', help='Disable auto tagging of assets with standard classification tags. Only user specified tags will be applied')
-        #parser.add_argument('--asset_criticality', choices=['1', '2', '3','4', '5'], help='Business criticality of the discovered assets on a scale of 1 (low) to 5 (high).', required=False)
+        parser.add_argument('--asset_criticality', choices=['1', '2', '3','4', '5'], help='Business criticality of the discovered assets on a scale of 1 (low) to 5 (high).', required=False)
+        
+        #find out more about asset criticality where it is getting set and what is being passed in the ouput 
         parser.add_argument('--apply_policy', help='One or more policy names as a comma-separated list', required=False)
         parser.add_argument('--sbom', help='Specify name of the SBOM file to hold the exported asset information.')
         parser.add_argument('--out', help=argparse.SUPPRESS)
@@ -1010,6 +1012,7 @@ def main(args=None):
         parser_linux.add_argument('--no_host_benchmark', action='store_true', help='Skip host benchmark audit')
         parser_linux.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_linux.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
+        parser_linux.add_argument('--check_priority', action = 'store_true', help = "Check priority level of host based on vulnerability")
 
         # Arguments required for vmware discovery
         parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMware vCenter/ESX assets")
@@ -1170,6 +1173,7 @@ def main(args=None):
             args.token = "DUMMY_TOKEN"
             args.instance = "threatworx.io" 
 
+
         if args.handle is None:
             logged_in_user_dict = get_logged_in_user_details()
             temp = logged_in_user_dict.get('handle')
@@ -1317,10 +1321,9 @@ def main(args=None):
                 logging.info("No assets found!")
                 run_status = 'WARNING'
             else:
-                """
+                
                 if args.asset_criticality is not None:
-                    add_asset_criticiality_tag(assets, args.asset_criticality)
-                """
+                    add_asset_criticality_tag(assets, args.asset_criticality)
 
                 add_attack_surface_label(args, assets)
 
