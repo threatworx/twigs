@@ -213,49 +213,50 @@ def push_asset_to_TW(asset, args):
     base_path = asset.pop('tw_base_path', None)
     delete_base_path = asset.pop('tw_delete_base_path', False)
 
-    resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
-    if resp is None:
-        logging.info("Unable to check if asset exists...skipping asset [%s]", asset_id)
-        ret_asset_id = None
-        ret_scan_status = False
-    else:
-        if resp.status_code != 200:
-            logging.info("Creating new asset [%s]", asset_id)
-            # Asset does not exist so create one with POST
-            resp = utils.requests_post(asset_url + auth_data, json=asset)
-            if resp is not None and resp.status_code == 200:
-                logging.info("Successfully created new asset [%s]", asset_id)
-                logging.info("Response content: %s", resp.content.decode(args.encoding))
-                push_sourcecode(asset, args, base_path, True)
-                ret_asset_id = asset_id
-                ret_scan_status = True
-            else:
-                logging.error("Failed to create new asset [%s]", asset_id)
-                if resp is not None:
-                    logging.error("Response details: %s", resp.content.decode(args.encoding))
-                ret_asset_id = None
-                ret_scan_status = False
+    if not args.test:
+        resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
+        if resp is None:
+            logging.info("Unable to check if asset exists...skipping asset [%s]", asset_id)
+            ret_asset_id = None
+            ret_scan_status = False
         else:
-            logging.info("Updating asset [%s]", asset_id)
-            # asset exists so update it with PUT
-            resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
-            if resp is not None and resp.status_code == 200:
-                logging.info("Successfully updated asset [%s]", asset_id)
-                logging.debug("Response content: %s", resp.content.decode(args.encoding))
-                push_sourcecode(asset, args, base_path, False)
-                resp_json = resp.json()
-                if 'No product updates' in resp_json['status']:
-                    ret_asset_id = asset_id
-                    ret_scan_status = False
-                else:
+            if resp.status_code != 200:
+                logging.info("Creating new asset [%s]", asset_id)
+                # Asset does not exist so create one with POST
+                resp = utils.requests_post(asset_url + auth_data, json=asset)
+                if resp is not None and resp.status_code == 200:
+                    logging.info("Successfully created new asset [%s]", asset_id)
+                    logging.info("Response content: %s", resp.content.decode(args.encoding))
+                    push_sourcecode(asset, args, base_path, True)
                     ret_asset_id = asset_id
                     ret_scan_status = True
+                else:
+                    logging.error("Failed to create new asset [%s]", asset_id)
+                    if resp is not None:
+                        logging.error("Response details: %s", resp.content.decode(args.encoding))
+                    ret_asset_id = None
+                    ret_scan_status = False
             else:
-                logging.error("Failed to update existing asset [%s]", asset_id)
-                if resp is not None:
-                    logging.error("Response details: %s", resp.content.decode(args.encoding))
-                ret_asset_id = asset_id
-                ret_scan_status = False
+                logging.info("Updating asset [%s]", asset_id)
+                # asset exists so update it with PUT
+                resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
+                if resp is not None and resp.status_code == 200:
+                    logging.info("Successfully updated asset [%s]", asset_id)
+                    logging.debug("Response content: %s", resp.content.decode(args.encoding))
+                    push_sourcecode(asset, args, base_path, False)
+                    resp_json = resp.json()
+                    if 'No product updates' in resp_json['status']:
+                        ret_asset_id = asset_id
+                        ret_scan_status = False
+                    else:
+                        ret_asset_id = asset_id
+                        ret_scan_status = True
+                else:
+                    logging.error("Failed to update existing asset [%s]", asset_id)
+                    if resp is not None:
+                        logging.error("Response details: %s", resp.content.decode(args.encoding))
+                    ret_asset_id = asset_id
+                    ret_scan_status = False
 
     if delete_base_path:
         shutil.rmtree(base_path, onerror = on_rm_error)
@@ -1237,7 +1238,7 @@ def main(args=None):
 
         utils.set_run_args(args)
         response = utils.create_new_tool_run_record()
-        if args.test is None:
+        if not args.test:
             if response is not None and response.status_code != 200:
                 logging.error("Could not create run record")
                 utils.tw_exit(1)
