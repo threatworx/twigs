@@ -249,6 +249,8 @@ def get_asset_type(os):
         return "Alpine Linux"
     elif "container-optimized os" in os:
         return "Google Container-Optimized OS"
+    elif "rocky linux" in os:
+        return "Rocky Linux"
     else:
         logging.error("Not a supported OS type [%s]" % os)
         return None

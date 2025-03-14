@@ -427,7 +427,7 @@ def discover_host(args, host):
     asset_name = asset_name.replace(':','-')
 
     plist = None
-    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
+    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux' or atype == 'Rocky Linux':
         plist = discover_rh(args, host)
     elif atype == 'Ubuntu' or atype == 'Debian':
         plist = discover_ubuntu(args, host)

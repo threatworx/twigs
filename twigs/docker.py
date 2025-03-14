@@ -442,7 +442,7 @@ def discover_container_from_image(args, digest):
             return casset 
 
         plist = None
-        if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
+        if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux' or atype == 'Rocky Linux':
             plist = discover_rh_from_container_image(container_fs)
         elif atype == 'Ubuntu' or atype == 'Debian':
             plist = discover_ubuntu_from_container_image(container_fs)
