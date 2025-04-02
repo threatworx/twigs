@@ -423,7 +423,6 @@ def discover_container_from_image(args, digest):
             logging.warning("Unable to analyze container filesystem")
             shutil.rmtree(temp_dir, onerror = on_rm_error)
             return None
-
         fix_symbolic_links(container_fs)
 
         oa = create_open_source_asset(args, container_fs, digest)
@@ -443,6 +442,15 @@ def discover_container_from_image(args, digest):
 
         plist = None
         if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux' or atype == 'Rocky Linux':
+            if atype == 'Rocky Linux':
+                # Presence of rpm db lock files causes an issue on Rocky Linux
+                rpm_folder = container_fs + os.path.sep + os.path.sep.join(["var","lib","rpm"])
+                rpm_folder_files = utils.find_files(rpm_folder, '')
+                rpm_lock_pattern = re.compile(r'\.*__db\.[0-9]+$')
+                for rpm_folder_file in rpm_folder_files:
+                    if rpm_lock_pattern.search(rpm_folder_file):
+                        os.remove(rpm_folder_file)
+                        logging.debug("Deleted rpm db lock file [%s]", rpm_folder_file)
             plist = discover_rh_from_container_image(container_fs)
         elif atype == 'Ubuntu' or atype == 'Debian':
             plist = discover_ubuntu_from_container_image(container_fs)
