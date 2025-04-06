@@ -200,6 +200,11 @@ def push_sourcecode(asset, args, base_path, skip_checksum_check):
             fd = value[0]
             fd.close()
 
+# Note ret_scan_status can have following possible values:
+# None - Error condition
+# False - No scan needed
+# Q - quick scan (product or patch updates)
+# F - full scan (asset OS version/release change)
 def push_asset_to_TW(asset, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
@@ -229,7 +234,7 @@ def push_asset_to_TW(asset, args):
                     logging.info("Response content: %s", resp.content.decode(args.encoding))
                     push_sourcecode(asset, args, base_path, True)
                     ret_asset_id = asset_id
-                    ret_scan_status = True
+                    ret_scan_status = 'Q' # Quick scan will result in full scan for new asset
                 else:
                     logging.error("Failed to create new asset [%s]", asset_id)
                     if resp is not None:
@@ -250,7 +255,10 @@ def push_asset_to_TW(asset, args):
                         ret_scan_status = False
                     else:
                         ret_asset_id = asset_id
-                        ret_scan_status = True
+                        if 'Full scan needed' in resp_json['status']:
+                            ret_scan_status = 'F'
+                        else:
+                            ret_scan_status = 'Q'
                 else:
                     logging.error("Failed to update existing asset [%s]", asset_id)
                     if resp is not None:
@@ -264,14 +272,17 @@ def push_asset_to_TW(asset, args):
 
 def push_assets_to_TW(assets, args):
     asset_id_list = []
-    scan_asset_id_list = []
+    quick_scan_asset_id_list = []
+    full_scan_asset_id_list = []
     for asset in assets:
         asset_id, scan = push_asset_to_TW(asset, args)
         if asset_id is not None:
             asset_id_list.append(asset_id)
-        if scan:
-            scan_asset_id_list.append(asset_id)
-    return asset_id_list, scan_asset_id_list
+        if scan == 'Q':
+            quick_scan_asset_id_list.append(asset_id)
+        elif scan == 'F':
+            full_scan_asset_id_list.append(asset_id)
+    return asset_id_list, quick_scan_asset_id_list, full_scan_asset_id_list
 
 def check_and_run_policy_job(args, asset_ids_list):
     pj_json = None
@@ -285,10 +296,10 @@ def check_and_run_policy_job(args, asset_ids_list):
                 return exit_code, pj_json
     return None, pj_json
 
-def run_va_lic_eol_scan(asset_id_list, pj_json, args):
+def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
     scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
     if args.no_scan is not True:
-        if len(asset_id_list) == 0:
+        if len(asset_id_list) == 0 and len(full_scan_asset_id_list) == 0:
             logging.debug("No asset scan required")
             return 
         run_va_scan = True
@@ -303,21 +314,39 @@ def run_va_lic_eol_scan(asset_id_list, pj_json, args):
                     run_lic_scan = False # License scan already done, so don't do it again
 
         if run_va_scan:
-            # Start VA
-            scan_payload = { }
-            scan_payload['assets'] = asset_id_list
-            # if args.purge_assets:
-            #    scan_payload['mode'] = 'email-purge'
-            if args.email_report:
-                scan_payload['mode'] = 'email'
-            resp = utils.requests_post(scan_api_url, json=scan_payload)
-            if resp is not None and resp.status_code == 200:
-                logging.info("Started impact refresh")
-            else:
-                logging.error("Failed to start impact refresh")
-                if resp is not None:
-                    logging.error("Response details: %s", resp.content.decode(args.encoding))
-        if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo" or args.mode == "sbom"):
+            if len(asset_id_list) > 0:
+                # Start  quick VA scan
+                scan_payload = { }
+                scan_payload['assets'] = asset_id_list
+                # if args.purge_assets:
+                #    scan_payload['mode'] = 'email-purge'
+                if args.email_report:
+                    scan_payload['mode'] = 'email'
+                resp = utils.requests_post(scan_api_url, json=scan_payload)
+                if resp is not None and resp.status_code == 200:
+                    logging.info("Started incremental impact refresh")
+                else:
+                    logging.error("Failed to start incremental impact refresh")
+                    if resp is not None:
+                        logging.error("Response details: %s", resp.content.decode(args.encoding))
+
+            if len(full_scan_asset_id_list) > 0:
+                # Start  full VA scan
+                scan_payload = { "scan_type": "full" }
+                scan_payload['assets'] = full_scan_asset_id_list
+                # if args.purge_assets:
+                #    scan_payload['mode'] = 'email-purge'
+                if args.email_report:
+                    scan_payload['mode'] = 'email'
+                resp = utils.requests_post(scan_api_url, json=scan_payload)
+                if resp is not None and resp.status_code == 200:
+                    logging.info("Started full impact refresh")
+                else:
+                    logging.error("Failed to start full impact refresh")
+                    if resp is not None:
+                        logging.error("Response details: %s", resp.content.decode(args.encoding))
+
+        if run_lic_scan and (args.mode == "repo" or args.mode == "file_repo" or args.mode == "sbom") and len(asset_id_list) > 0:
             # Start license compliance assessment
             scan_payload = { }
             scan_payload['assets'] = asset_id_list
@@ -334,10 +363,13 @@ def run_va_lic_eol_scan(asset_id_list, pj_json, args):
                 if resp is not None:
                     logging.error("Response details: %s", resp.content.decode(args.encoding))
 
-        if args.mode in ["host", "aws", "azure", "gcp", "oci", "acr", "gcr", "ecr", "ocr", "docker", "k8s"]:
+        combined_asset_id_list = []
+        combined_asset_id_list.extend(asset_id_list)
+        combined_asset_id_list.extend(full_scan_asset_id_list)
+        if args.mode in ["host", "aws", "azure", "gcp", "oci", "acr", "gcr", "ecr", "ocr", "docker", "k8s"] and len(combined_asset_id_list) > 0:
             # Start EOL assessment
             scan_payload = { }
-            scan_payload['assets'] = asset_id_list
+            scan_payload['assets'] = combined_asset_id_list
             scan_payload['eol_scan'] = True
             resp = utils.requests_post(scan_api_url, json=scan_payload)
             if resp is not None and resp.status_code == 200:
@@ -1359,9 +1391,9 @@ def main(args=None):
                     export_assets_to_sbom_file(assets, timestamp, args)
 
                 if args.token is not None and len(args.token) > 0:
-                    asset_id_list, scan_asset_id_list = push_assets_to_TW(assets, args)
+                    asset_id_list, quick_scan_asset_id_list, full_scan_asset_id_list = push_assets_to_TW(assets, args)
                     exit_code, pj_json = check_and_run_policy_job(args, asset_id_list)
-                    run_va_lic_eol_scan(scan_asset_id_list, pj_json, args)
+                    run_va_lic_eol_scan(quick_scan_asset_id_list, full_scan_asset_id_list, pj_json, args)
                     #run_remediation_scan(asset_id_list, args)
             
                 if args.schedule is not None and sys.platform != 'win32':
