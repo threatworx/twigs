@@ -359,7 +359,7 @@ function Invoke-LocalDiscovery {
             $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json'
         }
         catch {
-            if($_.Exception.Response.StatusCode.value__ -eq 404) { 
+            if($_.Exception.Response.StatusCode.value__ -eq 404) {
                 $asset_exists = 0
             }
             else {
@@ -536,6 +536,7 @@ function Invoke-LocalDiscovery {
     # Remove any non-ascii characters
     $body = $body -replace '[^ -~]', ''
 
+    $scan_type = $null
     if ($token -and $instance) {
         Write-Host ''
         if ($asset_exists -eq 0) {
@@ -550,9 +551,19 @@ function Invoke-LocalDiscovery {
         }
         else {
             Write-Host 'Successfully updated asset'
-            if ($no_scan -eq "false" -and $response.status -Match 'No product updates') {
-                Write-Host 'Asset products are not updated. No need for impact refresh.'
-                $no_scan = "true"
+            if ($no_scan -eq "false") {
+                if ($response.status -Match 'No product updates') {
+                    Write-Host 'Asset products are not updated. No need for impact refresh.'
+                    $no_scan = "true"
+                }
+                else {
+                    if ($response.status -Match 'Full scan needed') {
+                        $scan_type = 'F'
+                    }
+                    else {
+                        $scan_type = 'Q'
+                    }
+                }
             }
         }
 
@@ -567,8 +578,14 @@ function Invoke-LocalDiscovery {
             if ($email_report -eq "true") {
                 $payload["mode"] = "email"
             }
+            if ($scan_type -eq 'F') {
+                $payload["scan_type"] = "full"
+                Write-Host "Starting full impact refresh..."
+            }
+            else {
+                Write-Host "Starting incremental impact refresh..."
+            }
             $temp_body = (ConvertTo-Json -Depth 100 $payload)
-            Write-Host 'Starting impact refresh...'
             $response = Invoke-RestMethod -Method $http_method -Uri $url -ContentType 'application/json' -Body $temp_body
             Write-Host 'Started impact refresh.'
         }
@@ -612,8 +629,8 @@ else {
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUfXFmUUT7+oNOcobKyA1T2Iq
-# rgWgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqjp4y9Bh4nRtWQa+Oimtg8ix
+# UrmgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -640,11 +657,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFGaQDfl60VoS3Yl+
-# rkjHySJ9olxCMA0GCSqGSIb3DQEBAQUABIIBAFEPjm16KM5WRU8M8UjRlVBhYBm7
-# DT/YU6W28L4aVVf/bf7k3QjE19qp7+fE1qiQclinFDG8yrcAUtzNAiM9yIcLfpW+
-# fPsAPAwJ+SakPFhYEV5Od0m728x65DOK3W5w80MeYvGVON9ffCk7sQ4lw+/Q7B8u
-# mLZwWaG1dj9o+b5hRV2ffuKl4nlsbCw94BHfgOjzb6YMsAPt0ZvEzKvLfXS36fxX
-# wvq2q/t111KAUQf9K7954ZyvXo4iEfuQhv/As4U1SONfHrQfvBKdbPCj6q672d5I
-# X7+iGUTMhFhCLufukvydUBJ6Tt4ZIO8nGVF0C2Iawta3UqIlEMYGYc0BTiw=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFMvPCEre21mo2XEJ
+# 4g+Pq6otWPuCMA0GCSqGSIb3DQEBAQUABIIBAE2Wx5bfHqte39vkhAYOZohzc7mQ
+# kGr3r2rjFYDwjwJ+pDWB7ibZxZfQsnkRxwBkIjhjfBOVHurzB2XWQKWW4TuOmX/m
+# 2e0hQLiLnu4mvIgzVlMwp2ax7Yyc64h/1Sh11/Leuew5mSrHa/oM3jUpAyW4QLKi
+# +ZIK6+5jrO22qBZhanK7Uce4q+XYXo/cTYehI5UaCxX61Q6jsh/902ZNC8UumTC2
+# DjlzbQ9Inw68TTQ2esRNPaJi2UJckGVVbU85SsBAao9StI8ybixSECdpFXhclJNP
+# 9RaSWq53X/RmBYZmZlOEqpgC2g+3fUyzFReolEKrHhQPl1Os5LYsbFwO1D0=
 # SIG # End signature block
