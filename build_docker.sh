@@ -52,8 +52,9 @@ chmod 755 /usr/local/bin/twigs-update.sh
 # Install git
 apt-get install -y git
 
-# Install semgrep
-pip install semgrep
+# Install grep
+wget -O /usr/local/bin/opengrep https://github.com/opengrep/opengrep/releases/download/v1.1.2/opengrep_manylinux_x86 
+chmod +x /usr/local/bin/opengrep
 
 # Install checkov 
 pip install checkov 

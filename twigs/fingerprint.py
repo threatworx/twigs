@@ -30,7 +30,7 @@ NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-
 NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/' 
 
 def nmap_exists():
-    return os.path.isfile(NMAP) and os.access(NMAP, os.X_OK)
+    return NMAP and os.access(NMAP, os.X_OK)
 
 def discover(args):
     handle = args.handle

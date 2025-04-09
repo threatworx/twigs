@@ -8,8 +8,9 @@ import logging
 import json
 import tempfile
 import traceback
+import shutil
 
-sast_plugin = "/usr/local/bin/semgrep"
+sast_plugin = shutil.which("opengrep")
 
 def get_rating(severity):
     if severity == 'ERROR':
@@ -41,8 +42,8 @@ def get_description(result):
 
 def run_sast(args, path, base_path):
     findings = []
-    if not os.path.isfile(sast_plugin) or not os.access(sast_plugin, os.X_OK):
-        logging.warning('SAST plugin CLI - semgrep not found')
+    if not sast_plugin or not os.access(sast_plugin, os.X_OK):
+        logging.warning('SAST plugin CLI not found')
         return findings
 
     params = ' -q --json --config=r/all ' + base_path
