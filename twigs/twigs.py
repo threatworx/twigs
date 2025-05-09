@@ -210,6 +210,8 @@ def push_asset_to_TW(asset, args):
     auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
     if args.email_report:
         auth_data = auth_data + "&esr=true" # email secrets report (esr)
+    if asset.get('products') is not None:
+        asset['products'] = list(set(asset['products']))
     if args.org is not None and len(args.org) > 0:
         asset['org'] = args.org # Add Org info in the asset
     asset_id = asset['id']
