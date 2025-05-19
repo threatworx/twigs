@@ -33,15 +33,10 @@ def get_inventory(args):
 
     asset_id = args.url.replace('/','').replace(':','-')
 
-    # get port number to pass to nmap_scan for selective ssl_audit for only that port
-    url_port = None
-    if v.scheme == "https":
-        url_port = '' if v.port is None else str(v.port)
-
     asset_data_list = []
-    if args.run_nmap:
-        logging.info("Starting OS/Service detection for "+hostname)
-        asset_data_list = fingerprint.nmap_scan(args, hostname)
+    logging.info("Starting OS/Service detection for "+hostname)
+    args.services = ['web', 'os']
+    asset_data_list = fingerprint.nmap_scan(args, hostname)
     if len(asset_data_list) != 0:
         asset_data = asset_data_list[0]
     else:
@@ -57,14 +52,9 @@ def get_inventory(args):
     zap_issues = zap.run_zap(args, asset_id)
     asset_data['config_issues'] = asset_data['config_issues'] + zap_issues
 
-    if url_port is not None and (not args.run_nmap or url_port not in ["", "8443"]) and not args.no_ssl_audit:
-
-        if url_port == '':
-            ssl_audit_url = "https://" + hostname + "/"
-        else:
-            ssl_audit_url = "https://" + hostname + ":" + url_port + "/"
-        logging.info("Running SSL audit for "+ssl_audit_url)
-        ssl_audit_findings = ssl_audit.run_ssl_audit(ssl_audit_url, asset_id)
+    if not args.no_ssl_audit:
+        logging.info("Running SSL audit for "+args.url)
+        ssl_audit_findings = ssl_audit.run_ssl_audit(args.url, asset_id)
         if not args.include_info:
             flist = []
             for f in ssl_audit_findings:
