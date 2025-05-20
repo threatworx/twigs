@@ -197,7 +197,7 @@ def get_os_type(ostype):
         asset_type = ''
     elif 'Microsoft' in  ostype or 'Windows' in ostype:
         asset_type = 'Windows'
-    elif 'Red Hat' in ostype or 'redhat' in ostype:
+    elif 'Red Hat' in ostype or 'redhat' in ostype or 'rhel' in ostype or 'RHEL' in ostype:
         asset_type = 'Red Hat'
     elif 'Ubuntu' in ostype or 'ubuntu' in ostype:
         asset_type = 'Ubuntu'
