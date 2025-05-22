@@ -127,7 +127,7 @@ def parse_inventory(args,data):
                 products.append(pname+' ' + pversion)
             asset_map['products'] = products
             asset_map['patches'] = patches
-            vm_running, os, os_version = get_os_details(host, vmuuid)
+            vm_running, os, os_version, sub_id, tags = get_vm_details(host, vmuuid)
             if vm_running == False:
                 # skip vm's which are not running
                 not_running_vms[vmuuid] = 1
@@ -135,13 +135,16 @@ def parse_inventory(args,data):
             asset_map['type'] = get_os_type(os)
             if len(asset_map['type']) > 0:
                 asset_map['tags'].append(asset_map['type'])
+            if len(tags) > 0:
+                asset_map['tags'].extend(tags)
             if asset_map['type'] == 'Windows':
                 asset_map['tags'].append('OS_RELEASE:' + os)
                 asset_map['tags'].append('OS_VERSION:' + os_version)
             else:
                 asset_map['tags'].append('OS_RELEASE:%s %s' % (os, os_version))
             if args.enable_tracking_tags == True:
-                asset_map['tags'].append("SOURCE:Azure:" + get_tenant_id())
+                asset_map['tags'].append("SOURCE:Azure:Tenant:" + get_tenant_id())
+                asset_map['tags'].append("SOURCE:Azure:Subscription:" + sub_id)
             else:
                 asset_map['tags'].append("SOURCE:Azure")
             assets.append(asset_map)
@@ -227,8 +230,8 @@ def is_vm_running(vm_json):
                 return False
     return False
 
-# Try to get OS details for given VM
-def get_os_details(host, vmuuid):
+# Try to get OS details, subscription Id and tags for given VM
+def get_vm_details(host, vmuuid):
     all_vms = get_all_vms()
     vm_id = all_vms.get(vmuuid)
     if vm_id is None:
@@ -247,11 +250,21 @@ def get_os_details(host, vmuuid):
 
     logging.debug("Getting OS details for host [%s] vmuuid [%s]", host, vmuuid)
     rjson = run_az_cmd("vm get-instance-view --ids '%s'" % vm_id)
-    rjson = rjson['instanceView']
-    if is_vm_running(rjson):
-        return True, rjson.get('osName'), rjson.get('osVersion')
+    ijson = rjson['instanceView']
+    tags = []
+    if is_vm_running(ijson):
+        rid = rjson['id']
+        rid_tokens = rid.split('/')
+        sub_id = rid_tokens[2]
+        if rjson.get('tags') is not None:
+            vm_tags = rjson['tags']
+            for key in list(vm_tags.keys()):
+                tag_name = key
+                tag_value = vm_tags[key]
+                tags.append(tag_name + ':' + tag_value)
+        return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, tags
     else:
-        return False, None, None
+        return False, None, None, None, tags
 
 # Get details for all VMs
 def get_vms(subscription, resource_group):
