@@ -865,7 +865,11 @@ def get_asset_id(args):
     asset_id = asset_id.replace(':','-')
     return asset_id
 
-def discover_inventory(args, localpath, base_path):
+def prepare_permalink_base(repo, repo_chksum):
+    permalink_base = repo.replace('.git','') + '/blob/' + repo_chksum + '/'
+    return permalink_base
+
+def discover_inventory(args, localpath, base_path, repo_chksum=None):
     asset_name = None
     if args.assetname == None or args.assetname.strip() == "":
         asset_name = get_last_component(args.repo)
@@ -938,6 +942,8 @@ def discover_inventory(args, localpath, base_path):
 
     if len(code_issues) > 0:
         asset_data['sast'] = code_issues
+    if repo_chksum is not None:
+        asset_tags.append('PERMALINK_BASE:'+prepare_permalink_base(args.repo, repo_chksum))
     return [ asset_data ]
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
@@ -948,6 +954,7 @@ def on_rm_error( func, path, exc_info):
 # note this only handles actual repos and not orgs (i.e. all repos in an org)
 def get_inventory_helper(args):
     path = None
+    repo_chksum = None
     if args.repo.startswith('http'):
         if os.path.isfile(GIT_PATH) == False:
             logging.error("git executable does not exist at [%s]", GIT_PATH)
@@ -955,7 +962,6 @@ def get_inventory_helper(args):
         dev_null_device = open(os.devnull, "w")
         path = tempfile.mkdtemp()
         base_path = path
-        new_repo = None
         logging.info("Cloning repo locally...")
         out = ""
         try:
@@ -972,6 +978,18 @@ def get_inventory_helper(args):
             logging.error('Error cloning repo locally')
             shutil.rmtree(path, onerror = on_rm_error)
             return None
+        try:
+            cmdarr = [GIT_PATH, '-C', path+'/.', 'rev-parse', 'HEAD']
+            #out = subprocess.check_output(cmdarr, stderr=dev_null_device)
+            out = subprocess.check_output(cmdarr)
+            repo_chksum = out.decode('utf-8').strip()
+            logging.debug("Repo checksum is [%s]", repo_chksum)
+        except Exception as e:
+            logging.error(out)
+            logging.error(str(e))
+            logging.error(traceback.format_exc())
+            logging.error('Error getting repo checksum')
+            shutil.rmtree(path, onerror = on_rm_error)
     elif os.path.isdir(args.repo):
         path = args.repo
         base_path = os.path.abspath(path)
@@ -981,7 +999,7 @@ def get_inventory_helper(args):
         logging.error('Not a valid repo')
         return None
 
-    assets = discover_inventory(args, path, base_path)
+    assets = discover_inventory(args, path, base_path, repo_chksum)
 
     # repo directory will be cleaned up in push_asset_to_TW(...)
     for asset in assets:
