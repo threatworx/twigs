@@ -275,12 +275,15 @@ def open_winrm_session(host, args):
     auth_modes = ['kerberos', 'ntlm', 'credssp', 'plaintext']
     for auth_mode in auth_modes:
         try:
+            logging.debug("Attempting to authenticate using [%s]", auth_mode)
             winrm_session = winrm.Session(host['hostname'], auth=(host['userlogin'], host['userpwd']), transport=auth_mode)
         except Exception as e:
-            logging.debug("Unable to authenticate to host using [%s]", auth_mode)
+            logging.debug("Got exception. Unable to authenticate to host using [%s]", auth_mode)
+            logging.debug(e)
             continue
         asset_id = run_ps_command(args, winrm_session, "Write-Host $env:ComputerName", True)
         if asset_id is None:
+            logging.debug("Unable to authenticate to host using [%s]", auth_mode)
             continue
         else:
             logging.debug("Authenticated to host using [%s]", auth_mode)

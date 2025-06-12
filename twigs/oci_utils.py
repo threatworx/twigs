@@ -4,6 +4,8 @@ import subprocess
 import json
 import logging
 
+from . import utils
+
 _encoding = None
 _compartments = None
 _compartment_name_dict = None
@@ -17,29 +19,31 @@ def get_encoding():
     global _encoding
     return _encoding
 
-def run_cmd(cmd):
+def run_cmd(cmd, args):
     try:
-        cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
+        if args.verbosity >= 2:
+            cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=subprocess.STDOUT)
+        else:
+            cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
         cmd_output = cmd_output.decode(get_encoding())
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
         logging.error("Error running command [%s]", cmd)
-        cmd_output = ""
+        logging.debug("Command returned with exit code [%s]", e.returncode)
+        logging.debug("Command output: %s", e.output)
+        utils.tw_exit(1)
     return cmd_output
 
 def run_oci_cmd(cmd, args):
     cmd = 'oci ' + cmd + " --config-file '%s' --profile '%s'" % (args.config_file, args.config_profile)
     try:
         logging.debug("Running OCI command [%s]" % cmd)
-        cmd_output = run_cmd(cmd)
+        cmd_output = run_cmd(cmd, args)
         logging.debug("OCI command output as below:")
         logging.debug(cmd_output)
         ret_json = json.loads(cmd_output)
-    except subprocess.CalledProcessError:
-        logging.error("Error running oci command [%s]", cmd)
-        ret_json = { }
     except ValueError:
         logging.error("Error parsing JSON output for oci command [%s]: %s", cmd, cmd_output)
-        ret_json = { }
+        utils.tw_exit(1)
     return ret_json
 
 def get_compartments(args):
