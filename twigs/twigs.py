@@ -25,6 +25,7 @@ import getpass
 import hashlib
 import shutil
 from os.path import expanduser
+import copy
 import warnings
 with warnings.catch_warnings():
    warnings.simplefilter("ignore", category=Warning)
@@ -107,14 +108,15 @@ def export_assets_to_sbom_file(assets, timestamp, args):
     json_file = args.sbom
     logging.info("Exporting assets to SBOM JSON file [%s]", json_file)
     add_attack_surface_label(args, assets)
-    add_asset_tags(assets, ["SBOM"])
+    sbom_assets = copy.deepcopy(assets)
+    add_asset_tags(sbom_assets, ["SBOM"])
     sbom_json = { }
     sbom_json['meta'] = { }
     sbom_json['meta']['generated_by'] = args.handle
     sbom_json['meta']['generated_on'] = str(timestamp)
     sbom_json['meta']['tool_name'] = 'twigs'
     sbom_json['meta']['tool_version'] = __version__
-    sbom_json['assets'] = assets
+    sbom_json['assets'] = sbom_assets
     with open(json_file, "w") as fd:
         json.dump(sbom_json, fd, indent=2, sort_keys=True)
     logging.info("Successfully exported assets to SBOM JSON file!")
@@ -515,6 +517,8 @@ def remove_standard_tags(assets):
             asset['tags'] = new_tags
 
 def add_asset_tags(assets, tags):
+    if assets is None:
+        return
     for asset in assets:
         existing_tags = asset.get('tags')
         if existing_tags is None:
@@ -1303,10 +1307,13 @@ def main(args=None):
             assets = repo.get_inventory(args)
         elif args.mode == "github":
             assets = repo.get_inventory(args)
+            add_asset_tags(assets, ["REPO_TYPE:github"])
         elif args.mode == "gitlab":
             assets = repo.get_inventory(args)
+            add_asset_tags(assets, ["REPO_TYPE:gitlab"])
         elif args.mode == "bitbucket":
             assets = repo.get_inventory(args)
+            add_asset_tags(assets, ["REPO_TYPE:bitbucket"])
         elif args.mode == 'host':
             assets = linux.get_inventory(args)
         elif args.mode == 'win_host':
