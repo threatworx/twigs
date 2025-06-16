@@ -24,6 +24,7 @@ import importlib
 import getpass
 import hashlib
 import shutil
+import stat
 from os.path import expanduser
 import warnings
 with warnings.catch_warnings():
