@@ -20,6 +20,7 @@ import re
 import ast
 import textwrap
 import distutils.core
+from urllib.parse import urlparse, urlunparse
 
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
@@ -865,8 +866,22 @@ def get_asset_id(args):
     asset_id = asset_id.replace(':','-')
     return asset_id
 
-def prepare_permalink_base(repo, repo_chksum):
-    permalink_base = repo.replace('.git','') + '/blob/' + repo_chksum + '/'
+def prepare_permalink_base(args, repo_chksum):
+    repo = args.repo
+    purl = urlparse(repo)
+    hn = purl.netloc.split('@')[-1]
+    repo = urlunparse((
+        purl.scheme,
+        hn,
+        purl.path,
+        purl.params,
+        purl.query,
+        purl.fragment
+    ))
+    if args.mode == "bitbucket":
+        permalink_base = repo.replace('.git','') + '/src/' + repo_chksum + '/'
+    else:
+        permalink_base = repo.replace('.git','') + '/blob/' + repo_chksum + '/'
     return permalink_base
 
 def discover_inventory(args, localpath, base_path, repo_chksum=None):
@@ -943,7 +958,7 @@ def discover_inventory(args, localpath, base_path, repo_chksum=None):
     if len(code_issues) > 0:
         asset_data['sast'] = code_issues
     if repo_chksum is not None:
-        asset_tags.append('PERMALINK_BASE:'+prepare_permalink_base(args.repo, repo_chksum))
+        asset_tags.append('PERMALINK_BASE:'+prepare_permalink_base(args, repo_chksum))
     return [ asset_data ]
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
