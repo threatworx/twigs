@@ -515,8 +515,7 @@ function Invoke-LocalDiscovery {
         $url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
     }
 
-    $current_ts = Get-Date -UFormat %s
-    $current_ts = $current_ts.ToString().Split('.')[0]
+    $current_ts = [long](Get-Date (Get-Date).ToUniversalTime() -UFormat %s)
 
     $payload = @{
         id=$assetid
@@ -629,8 +628,8 @@ else {
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqjp4y9Bh4nRtWQa+Oimtg8ix
-# UrmgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnv9ycdFK4i3DKkqdZRzuAiyg
+# nbKgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -657,11 +656,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFMvPCEre21mo2XEJ
-# 4g+Pq6otWPuCMA0GCSqGSIb3DQEBAQUABIIBAE2Wx5bfHqte39vkhAYOZohzc7mQ
-# kGr3r2rjFYDwjwJ+pDWB7ibZxZfQsnkRxwBkIjhjfBOVHurzB2XWQKWW4TuOmX/m
-# 2e0hQLiLnu4mvIgzVlMwp2ax7Yyc64h/1Sh11/Leuew5mSrHa/oM3jUpAyW4QLKi
-# +ZIK6+5jrO22qBZhanK7Uce4q+XYXo/cTYehI5UaCxX61Q6jsh/902ZNC8UumTC2
-# DjlzbQ9Inw68TTQ2esRNPaJi2UJckGVVbU85SsBAao9StI8ybixSECdpFXhclJNP
-# 9RaSWq53X/RmBYZmZlOEqpgC2g+3fUyzFReolEKrHhQPl1Os5LYsbFwO1D0=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFIHLeqXn2UZDREcM
+# ScZNDxMdCB/eMA0GCSqGSIb3DQEBAQUABIIBAH99zBLugtfTQ5NHxekyrW861oTX
+# XUG6gyzySdPoSsJx1PrYi9hIfpqabkOw89N1PjsMl1DY7fkfckowTh8N8oUki9C/
+# /AGonrj8/rwhrn1YolTQG0Qjev69ChA5DDWZOBRliagKSvcYyhPPyvrVbDL20pyD
+# 0XY1UWc2YR5gtOteVuU3ataHVCO4l4ir0ioznddLLuzhQJJQeNOMqeDzaR4qzqLQ
+# tgILkzpiq3BP5iC1jYW5uVwTbZFjBOAOVYLqlt+CP0NV8V3HdvTf77kSKoNjhF5V
+# W4r0+TjpVSdJ9K+IXAO+Ba2mvAjmFcFAZGF+cV1IS746HwgcKzumSmMTTqY=
 # SIG # End signature block
