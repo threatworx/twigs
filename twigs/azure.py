@@ -246,7 +246,8 @@ def get_vm_details(host, vmuuid):
         alt_vmuuid = alt_vmuuid + '-%s-%s' % (tokens[3], tokens[4])
         vm_id = all_vms.get(alt_vmuuid)
         if vm_id is None:
-            return False, None, None
+            logging.debug("Unable to find VM with vmuuid [%s] for host [%s]", vmuuid, host)
+            return False, None, None, None, []
 
     logging.debug("Getting OS details for host [%s] vmuuid [%s]", host, vmuuid)
     rjson = run_az_cmd("vm get-instance-view --ids '%s'" % vm_id)

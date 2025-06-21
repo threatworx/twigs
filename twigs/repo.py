@@ -1004,7 +1004,6 @@ def get_inventory_helper(args):
             logging.error(str(e))
             logging.error(traceback.format_exc())
             logging.error('Error getting repo checksum')
-            shutil.rmtree(path, onerror = on_rm_error)
     elif os.path.isdir(args.repo):
         path = args.repo
         base_path = os.path.abspath(path)
@@ -1027,6 +1026,8 @@ def get_inventory_helper(args):
         if args.repo.startswith('http'):
             # if there is no asset reported, then cleanup repo directory here itself (if cloned)
             shutil.rmtree(base_path, onerror = on_rm_error)
+            # remove the tw_delete_base_path indicator since repo folder has been deleted
+            delete_base_path = assets[0].pop('tw_delete_base_path', False)
         if args.create_empty_asset is None or not args.create_empty_asset:
             return [] # if there are no products nor secrets then no assets to report
     return assets
