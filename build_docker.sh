@@ -67,7 +67,9 @@ pip install awscli detect-secrets
 
 # Clone prowler repo
 rm -rf /usr/share/prowler
-git clone https://github.com/toniblyx/prowler /usr/share/prowler
+apt-get install -y jq
+pip install detect-secrets==1.0.3
+git clone --depth 1 --branch 2.12.1 https://github.com/prowler-cloud/prowler.git /usr/share/prowler
 
 # Clone docker bench repo
 rm -rf /usr/share/docker-bench-security
