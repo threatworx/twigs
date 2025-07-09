@@ -92,12 +92,12 @@ apt-get install dnsutils -y
 apt-get install bsdmainutils -y
 
 # install jdk
-apt-get install openjdk-11-jdk -y
+apt-get install openjdk-17-jdk -y
 
 # install zaproxy
-wget https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz -P /tmp
-tar -xvzf /tmp/ZAP_2.14.0_Linux.tar.gz -C /usr/share
-ln -s /usr/share/ZAP_2.14.0/zap.sh /usr/bin/zaproxy
+wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16.0_Linux.tar.gz -P /tmp
+tar -xvzf /tmp/ZAP_2.16.0_Linux.tar.gz -C /usr/share
+ln -s /usr/share/ZAP_2.16.0/zap.sh /usr/bin/zaproxy
 
 # Cleanup /tmp
 rm -rf /tmp/*

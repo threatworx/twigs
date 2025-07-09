@@ -43,7 +43,7 @@ def get_inventory(args):
         asset_data = {}
         asset_data['config_issues'] = [] 
     asset_data['id'] = asset_id
-    asset_data['name'] = args.url
+    asset_data['name'] = args.url if args.assetname is None else args.assetname
     asset_data['type'] = 'Web Application'
     asset_data['owner'] = args.handle
     asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
