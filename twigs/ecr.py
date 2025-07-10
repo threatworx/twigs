@@ -3,10 +3,14 @@ import os
 import subprocess
 import logging
 import json
+import shutil
 
 from . import docker
 
-
+aws_cli_default = "/usr/local/bin/aws"
+aws_cli = shutil.which("aws")
+if aws_cli is None:
+    aws_cli = aws_cli_default
 g_encoding = None
 
 def set_encoding(encoding):
@@ -32,7 +36,10 @@ def get_repo_uri(repository, repositoryType):
                 return i['repositoryUri']
 
 def run_aws_cmd(cmd):
-    cmd = 'aws --output json ' + cmd
+    if not os.access(aws_cli, os.X_OK):
+        logging.error('AWS CLI [%s] not found. Unable to run discovery', aws_cli)
+        utils.tw_exit(1)
+    cmd = aws_cli + ' --output json ' + cmd
     try:
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
         cmd_output = cmd_output.decode(get_encoding())

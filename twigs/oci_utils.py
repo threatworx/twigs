@@ -3,6 +3,7 @@ import sys
 import subprocess
 import json
 import logging
+import shutil
 
 from . import utils
 
@@ -10,6 +11,11 @@ _encoding = None
 _compartments = None
 _compartment_name_dict = None
 _tenancy_namespace = None
+
+oci_cli_default = "/usr/local/bin/oci"
+oci_cli = shutil.which("oci")
+if oci_cli is None:
+    oci_cli = oci_cli_default
 
 def set_encoding(encoding):
     global _encoding
@@ -34,7 +40,10 @@ def run_cmd(cmd, args):
     return cmd_output
 
 def run_oci_cmd(cmd, args):
-    cmd = 'oci ' + cmd + " --config-file '%s' --profile '%s'" % (args.config_file, args.config_profile)
+    if not os.access(oci_cli, os.X_OK):
+        logging.error('OCI CLI [%s] not found. Unable to run discovery', oci_cli)
+        utils.tw_exit(1)
+    cmd = oci_cli + ' ' + cmd + " --config-file '%s' --profile '%s'" % (args.config_file, args.config_profile)
     try:
         logging.debug("Running OCI command [%s]" % cmd)
         cmd_output = run_cmd(cmd, args)

@@ -11,7 +11,10 @@ import traceback
 
 from . import iac_meta
 
-checkov_plugin = "/usr/local/bin/checkov"
+checkov_plugin_default = "/usr/local/bin/checkov"
+checkov_plugin = shutil.which("checkov")
+if checkov_plugin is None:
+    checkov_plugin = checkov_plugin_default
 
 sevmap = {"LOW": "1","MEDIUM": "3","HIGH": "4","CRITICAL": "5"}
 

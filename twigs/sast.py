@@ -10,7 +10,10 @@ import tempfile
 import traceback
 import shutil
 
+sast_plugin_default = "/usr/local/bin/opengrep"
 sast_plugin = shutil.which("opengrep")
+if sast_plugin is None:
+    sast_plugin = sast_plugin_default
 
 def get_rating(severity):
     if severity == 'ERROR':
@@ -42,7 +45,7 @@ def get_description(result):
 
 def run_sast(args, path, base_path):
     findings = []
-    if not sast_plugin or not os.access(sast_plugin, os.X_OK):
+    if not os.access(sast_plugin, os.X_OK):
         logging.warning('SAST plugin CLI not found')
         return findings
 

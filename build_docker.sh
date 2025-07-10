@@ -64,11 +64,12 @@ apt-get install -y docker.io
 
 # Install prereqs for prowler
 pip install awscli detect-secrets
+# Prowler launches AWS CLI and this could be from cron
+ln -s /usr/local/bin/aws /usr/bin/aws
 
 # Clone prowler repo
 rm -rf /usr/share/prowler
 apt-get install -y jq
-pip install detect-secrets==1.0.3
 git clone --depth 1 --branch 2.12.1 https://github.com/prowler-cloud/prowler.git /usr/share/prowler
 
 # Clone docker bench repo

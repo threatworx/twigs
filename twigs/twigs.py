@@ -1178,6 +1178,7 @@ def main(args=None):
         parser_o365.add_argument('--tenant_id', help='O365 Tenant ID', required=True)
         parser_o365.add_argument('--application_id', help='O365 Application ID', required=True)
         parser_o365.add_argument('--application_key', help='O365 Application Key', required=True)
+        parser_o365.add_argument('--all', help='Inventory all active devices. Default behavior is to inventory active high risk score devices', action='store_true')
 
         args = parser.parse_args()
         if args.out is not None:

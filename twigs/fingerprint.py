@@ -15,7 +15,10 @@ import csv
 from . import linux
 
 import shutil
+NMAP_default = "/usr/bin/nmap"
 NMAP = shutil.which("nmap")
+if NMAP is None:
+    NMAP = NMAP_default
 NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
 
 NMAP_HTTP_PORTS = ['80','443','6443','8080','8443','2181'] 

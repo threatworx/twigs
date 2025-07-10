@@ -11,7 +11,10 @@ from . import utils
 
 def get_machines(args, token):
     headers = { "Content-Type":"application/json", "Accept": "application/json", "Authorization": "Bearer %s" % token }
-    url = "https://api.securitycenter.microsoft.com/api/machines?$filter=riskScore+eq+'High'"
+    if args.all:
+        url = "https://api.securitycenter.microsoft.com/api/machines?$filter=healthStatus+eq+'Active'"
+    else:
+        url = "https://api.securitycenter.microsoft.com/api/machines?$filter=healthStatus+eq+'Active'+and+riskScore+eq+'High'"
 
     logging.info("Retrieving inventory o365") 
 
