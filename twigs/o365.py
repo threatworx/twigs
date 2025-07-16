@@ -31,6 +31,8 @@ def get_machines(args, token):
         mstr = json.dumps(machine, indent=4)
         logging.debug("Processing machine")
         logging.debug(mstr)
+        if machine['onboardingStatus'] != 'Onboarded':
+            continue
         if machine.get('osPlatform') is None or 'Windows' not in machine['osPlatform']:
             continue
         asset = {}
@@ -41,11 +43,11 @@ def get_machines(args, token):
         asset_tags = []
         asset_tags.append('Windows')
         asset_tags.append('SOURCE:O365')
+        asset_tags.append('OS_RELEASE:' + machine['osPlatform'])
         asset_tags.append('OS_RELEASE_ID:' + machine['version'])
         # Defender does not provide complete build number like '10.0.14393.3686' instead it only provides partial value like '14393'
         #asset_tags.append('OS_VERSION:' + 'Build '+str(machine['osBuild']))
-        # Defender only provides 32/64-bit information and not machine architecture
-        #asset_tags.append('OS_ARCH:' + machine['osArchitecture'] + '-based PC')
+        asset_tags.append('OS_ARCH:' + machine['osArchitecture'] + ' ' + machine['osProcessor'] + '-based PC')
         for tag in machine['machineTags']:
             asset_tags.append(tag)
         if asset['name'].startswith('lap'):
