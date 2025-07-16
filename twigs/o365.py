@@ -20,18 +20,18 @@ def get_machines(args, token):
 
     resp = requests.get(url, headers=headers)
     if resp.status_code != 200:
-        logging.error("Error could not get asset inventory details from O365")
+        logging.error("Error could not get machine inventory details from O365")
         logging.error("Response content: %s" % resp.text)
-        return
+        utils.tw_exit(1)
     response = resp.json()
     allmachines = response['value']
     logging.debug("Retrieved "+str(len(allmachines))+" machine details")
     assets = []
     for machine in allmachines:
-        if 'osProcessor' in machine and machine['osProcessor'] == None:
-            mstr = json.dumps(machine, indent=4)
-            logging.error(mstr)
-            logging.error("osProcessor attribute not found. Ignoring")
+        mstr = json.dumps(machine, indent=4)
+        logging.debug("Processing machine")
+        logging.debug(mstr)
+        if machine.get('osPlatform') is None or 'Windows' not in machine['osPlatform']:
             continue
         asset = {}
         asset['owner'] = args.handle
@@ -42,8 +42,10 @@ def get_machines(args, token):
         asset_tags.append('Windows')
         asset_tags.append('SOURCE:O365')
         asset_tags.append('OS_RELEASE_ID:' + machine['version'])
-        asset_tags.append('OS_VERSION:' + 'Build '+str(machine['osBuild']))
-        asset_tags.append('OS_ARCH:' + machine['osProcessor'] + '-based PC')
+        # Defender does not provide complete build number like '10.0.14393.3686' instead it only provides partial value like '14393'
+        #asset_tags.append('OS_VERSION:' + 'Build '+str(machine['osBuild']))
+        # Defender only provides 32/64-bit information and not machine architecture
+        #asset_tags.append('OS_ARCH:' + machine['osArchitecture'] + '-based PC')
         for tag in machine['machineTags']:
             asset_tags.append(tag)
         if asset['name'].startswith('lap'):
@@ -61,10 +63,11 @@ def get_machines(args, token):
         url = "https://api.securitycenter.microsoft.com/api/machines/"+machine['id']+"/software"
         resp = requests.get(url, headers=headers)
         if resp.status_code != 200:
-            logging.error("Error could not get asset inventory details from O365")
+            logging.error("Error could not get software inventory details from O365 for machine [%s]" % machine['id'])
             logging.error("Response content: %s" % resp.text)
-            continue
-        allproducts = resp.json()['value']
+            allproducts = []
+        else:
+            allproducts = resp.json()['value']
         for product in allproducts:
             newproduct = product['vendor'] + " " + product['name']
             newproduct = newproduct.replace('_',' ')
@@ -77,10 +80,11 @@ def get_machines(args, token):
         url = "https://api.securitycenter.microsoft.com/api/vulnerabilities/machinesVulnerabilities?$filter=machineId+eq+'"+machine['id']+"'"
         resp = requests.get(url, headers=headers)
         if resp.status_code != 200:
-            logging.error("Error could not get asset inventory details from O365")
+            logging.error("Error could not get vulnerability details from O365 for machine [%s]" % machine['id'])
             logging.error("Response content: %s" % resp.text)
-            continue
-        allvulns = resp.json()['value']
+            allvulns = []
+        else:
+            allvulns = resp.json()['value']
         for v in allvulns:
             finding = {}
             finding['type'] = 'IMPACT'
@@ -99,9 +103,8 @@ def get_machines(args, token):
             impacts.append(finding)
         if len(impacts) == 0:
             logging.debug("No vulnerabilities for "+asset['name'])
-            continue
-
-        asset['impacts'] = impacts
+        else:
+            asset['impacts'] = impacts
 
         assets.append(asset)
 
@@ -135,5 +138,6 @@ def get_inventory(args):
     if token is None:
         logging.error("Error unable to get access token for API calls")
         return
+    args.no_scan = True # we don't want to run Impact assessment for O365 assets
     return get_machines(args,token)
 
