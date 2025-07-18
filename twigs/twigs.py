@@ -65,6 +65,8 @@ try:
     from . import gcloud_functions
     from . import vmware 
     from . import website 
+    from . import meraki
+    from . import dna_center 
     from . import policy as policy_lib
     from .__init__ import __version__
 except (ImportError,ValueError):
@@ -96,6 +98,8 @@ except (ImportError,ValueError):
     from twigs import gcloud_functions
     from twigs import vmware
     from twigs import website
+    from twigs import meraki
+    from twigs import dna_center 
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs.__init__ import __version__
@@ -503,6 +507,8 @@ def add_attack_surface_label(args, assets):
             as_label = get_code_as_label("Cloud::Azure::Serverless", asset)
         elif args.mode == 'gcloud_functions':
             as_label = get_code_as_label("Cloud::GCP::Serverless", asset)
+        elif args.mode == 'meraki' or args.mode == 'dna_center':
+            as_label = get_code_as_label("Corporate::Network::Cisco", asset)
 
         if as_label is not None:
             asset['attack_surface_label'] = as_label
@@ -1173,12 +1179,23 @@ def main(args=None):
         parser_gke_cis.add_argument('--target', help='Run test against GKE master or worker nodes', choices=['master','worker'], required=True)
         parser_gke_cis.add_argument('--custom_ratings', help='Specify JSON file which provides custom ratings for Kubernetes CIS benchmarks')
 
-        # Arguments required for Azure discovery
+        # Arguments required for O365 / defender discovery
         parser_o365 = subparsers.add_parser ("o365", help = "Ingest inventory from Microsoft Office 365 / Defender")
         parser_o365.add_argument('--tenant_id', help='O365 Tenant ID', required=True)
         parser_o365.add_argument('--application_id', help='O365 Application ID', required=True)
         parser_o365.add_argument('--application_key', help='O365 Application Key', required=True)
         parser_o365.add_argument('--all', help='Inventory all active devices. Default behavior is to inventory active high risk score devices', action='store_true')
+
+        # Arguments required for Cisco Meraki discovery
+        parser_meraki = subparsers.add_parser ("meraki", help = "Discover network devices from Cisco Meraki")
+        parser_meraki.add_argument('--base_url', help='Base URL for Meraki console. Defaults to https://api.meraki.com/v1', required=False, default='https://api.meraki.com/v1')
+        parser_meraki.add_argument('--api_key', help='Meraki API Key', required=True)
+
+        # Arguments required for Cisco DNA Center / Catalyst Center discovery
+        parser_dna_center = subparsers.add_parser ("dna_center", help = "Discover network devices from Cisco DNA Center a.k.a Catalyst Center")
+        parser_dna_center.add_argument('--url', help='Base URL DNA Center', required=True)
+        parser_dna_center.add_argument('--user', help='User name for basic authentication', required=True)
+        parser_dna_center.add_argument('--password', help='Password for basic authentication', required=True)
 
         args = parser.parse_args()
         if args.out is not None:
@@ -1328,6 +1345,10 @@ def main(args=None):
             assets = docker.get_inventory(args)
         elif args.mode == 'k8s':
             assets = kubernetes.get_inventory(args)
+        elif args.mode == 'meraki':
+            assets = meraki.get_inventory(args)
+        elif args.mode == 'dna_center':
+            assets = dna_center.get_inventory(args)
         elif args.mode == 'sbom':
             ret_code, asset_ids_list = sbom.upload_sbom(args)
             if ret_code and asset_ids_list is not None:
