@@ -52,7 +52,7 @@ def get_all_devices(args, headers):
             fw_versions = {}
             if fw_info and 'products' in fw_info:
                for product in fw_info['products']:
-                   fw_versions[product] = fw_info[product]['currentVersion']['shortName']
+                   fw_versions[product] = fw_info['products'][product]['currentVersion']['shortName']
             for device in devices_by_network.get(net['id'], []):
                 product_type = device.get('productType', 'unknown')
                 fw_version = fw_versions.get(product_type, 'unknown')
