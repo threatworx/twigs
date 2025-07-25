@@ -48,7 +48,7 @@ def get_all_devices(args, headers):
             devices_by_network.setdefault(device['networkId'], []).append(device)
         for net in networks:
             logging.info(f"Network: {net['name']} ({net['id']})")
-            fw_info = get_firmware_upgrades(net['id'])
+            fw_info = get_firmware_upgrades(args, headers, net['id'])
             fw_versions = {}
             if fw_info and 'products' in fw_info:
                for product in fw_info['products']:
