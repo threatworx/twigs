@@ -68,6 +68,7 @@ def get_all_devices(args, headers):
                     prodstr = prodstr + ' ' + fw_version
                 products = [prodstr]
                 asset['products'] = products
+                assets.append(asset)
     return assets
 
 # Main entry point
