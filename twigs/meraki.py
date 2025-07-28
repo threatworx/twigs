@@ -63,9 +63,12 @@ def get_all_devices(args, headers):
                 asset['name'] = device['model']
                 asset['type'] = 'Cisco'
                 asset_tags = [product_type, net['name']]
-                prodstr = 'Cisco Meraki '+device['model']
+                model = device['model']
+                if '-' in model:
+                    model = model.split('-')[0]
+                prodstr = 'Cisco Meraki '+model
                 if fw_version != None:
-                    prodstr = prodstr + ' ' + fw_version
+                    prodstr = prodstr + ' firmware ' + fw_version
                 products = [prodstr]
                 asset['products'] = products
     return assets
