@@ -202,7 +202,7 @@ def get_os_type(ostype):
 def retrieve_inventory(args):
     email = args.handle
     workspace_id = args.azure_workspace
-    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" and TimeGenerated > ago(24h) | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project Computer, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion'" % workspace_id)
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project Computer, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion'" % workspace_id)
     return parse_inventory(args, rjson)
 
 def is_vm_running(vm_json):
