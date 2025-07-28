@@ -85,14 +85,9 @@ def parse_inventory(args,data):
     assets = []
     asset_map = {}
     not_running_vms = {}
-    temp_assets = set()
     all_assets = { }
     for item in data:
         all_assets[item['Computer']] = item['VMUUID']
-        if item['ConfigDataType'] == 'WindowsServices': #ConfigDataType
-            #logging.warning("Logging WindowsServices data below:\n%s", json.dumps(item, indent=2))
-            temp_assets.add(item['Computer'])
-            continue
         #logging.debug("Parsing inventory from data below:\n%s", json.dumps(item, indent=2))
         host = item['Computer']
         vmuuid = item['VMUUID']
@@ -171,16 +166,9 @@ def parse_inventory(args,data):
     for asset in assets:
         asset.pop('patch_tracker', None)
         asset.pop('vmuuid', None)
-        if asset['host'] in temp_assets:
-            temp_assets.remove(asset['host'])
-    """
-    logging.warning("Total assets reported: %s", len(all_assets))
-    logging.warning("Assets with s/w packages and patches: %s", len(assets))
-    logging.warning("Assets with only Windows Service: %s", len(temp_assets))
-    if (len(temp_assets)>0):
-        logging.warning("Sample asset with only Windows Service: %s", list(temp_assets)[0])
-    logging.warning("Not running VMs: %s", len(not_running_vms))
-    """
+    logging.debug("Total assets reported: %s", len(all_assets))
+    logging.debug("Assets with s/w packages and patches: %s", len(assets))
+    logging.debug("Not running VMs: %s", len(not_running_vms))
     return assets
 
 def parse_patch(item):
@@ -214,7 +202,7 @@ def get_os_type(ostype):
 def retrieve_inventory(args):
     email = args.handle
     workspace_id = args.azure_workspace
-    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | summarize by SoftwareName, SoftwareType, Publisher, CurrentVersion, ConfigDataType, Computer, VMUUID'" % workspace_id)
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" and TimeGenerated > ago(24h) | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project Computer, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion'" % workspace_id)
     return parse_inventory(args, rjson)
 
 def is_vm_running(vm_json):
