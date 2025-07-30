@@ -68,7 +68,7 @@ def get_all_devices(args, headers):
                     model = model.split('-')[0]
                 prodstr = 'Cisco Meraki '+model
                 if fw_version != None:
-                    prodstr = prodstr + ' firmware ' + fw_version
+                    prodstr = prodstr + ' firmware ' + fw_version.split()[1]
                 products = [prodstr]
                 asset['products'] = products
                 assets.append(asset)
