@@ -5,6 +5,7 @@ import subprocess
 import requests
 import re
 import logging
+import datetime
 
 from . import utils
 
@@ -79,7 +80,53 @@ def get_inventory(args):
     assets = retrieve_inventory(args)
     return assets
 
-def parse_inventory(args,data):
+def convert_to_datetime(datetime_str):
+    if '.' in datetime_str:
+        # Known behavior with Azure TimeGenerate values wherein at times it includes microseconds and that too with 7 digits (instead of 6 digits)
+        datetime_str = datetime_str.split('.')[0]
+        return datetime.datetime.strptime(datetime_str,  "%Y-%m-%dT%H:%M:%S")
+    else:
+        return datetime.datetime.strptime(datetime_str,  "%Y-%m-%dT%H:%M:%SZ")
+
+def is_product_removed(rpt, assetid, pnv, last_reported_on):
+    tasset = rpt.get(assetid)
+    if tasset is None:
+        return False
+    removed_on  = rpt[assetid].get(pnv)
+    if removed_on is None:
+        return False
+    else:
+        removed_on = convert_to_datetime(removed_on)
+        last_reported_on = convert_to_datetime(last_reported_on)
+        if removed_on > last_reported_on:
+            logging.debug("Product [%s] removed on asset [%s]", pnv, assetid)
+            logging.debug("ConfigurationData product last_reported_on %s", last_reported_on)
+            logging.debug("ConfigurationChange product removed_on %s", removed_on)
+            return True
+    return False
+
+def prepare_removed_product_tracker(workspace_id):
+    logging.info("Processing configuration change data retrieved from Azure...")
+    # Removed Product Tracker - this is a 2 level dict as assetid -> product -> removedtime 
+    rpt = { }
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationChange | where ConfigChangeType == \"Software\" and ChangeCategory == \"Removed\" | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project VMUUID, SoftwareName, Previous, SoftwareType, TimeGenerated'" % workspace_id)
+    logging.debug("ConfigurationChange data: %s", rjson)
+    for item in rjson:
+        if item['SoftwareType'] not in ['Application', 'Package']:
+            # currently we only handle software uninstallations
+            continue
+        pname = item['SoftwareName']
+        pversion = item['Previous']
+        # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
+        pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
+        pnv = pname + ' ' + pversion
+        if item['VMUUID'] not in rpt:
+            rpt[item['VMUUID']] = { }
+        rpt[item['VMUUID']][pnv] = item['TimeGenerated']
+    logging.debug("Removed product tracker dict: %s", rpt)
+    return rpt
+
+def parse_inventory(args, data, rpt):
     logging.info("Processing inventory retrieved from Azure...")
     hosts = []
     assets = []
@@ -119,7 +166,9 @@ def parse_inventory(args,data):
                 pversion =  item['CurrentVersion']
                 # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
                 pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
-                products.append(pname+' ' + pversion)
+                pnv = pname + ' ' + pversion
+                if not is_product_removed(rpt, asset_map['id'], pnv, item['TimeGenerated']):
+                    products.append(pnv)
             asset_map['products'] = products
             asset_map['patches'] = patches
             vm_running, os, os_version, sub_id, tags = get_vm_details(host, vmuuid)
@@ -147,21 +196,20 @@ def parse_inventory(args,data):
         else:
             for asset in assets:
                 if asset['host'] == host:
-                    products = asset['products']
-                    patches = asset['patches']
                     if item['SoftwareType'] in ['Update', 'Patch']: #ApplicationType for MS patches
                         patch = parse_patch(item)
                         if patch is not None and asset['patch_tracker'].get(patch['id']) is None:
-                            patches.append(patch)
-                            asset['patches'] = patches
+                            asset['patches'].append(patch)
                             asset['patch_tracker'][patch['id']] = patch['id']
                     if item['SoftwareType'] == 'Package' or item['SoftwareType'] == 'Application': #ApplicationType for Linux packages
                         pname = item['SoftwareName']
                         pversion =  item['CurrentVersion']
                         # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
                         pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
-                        products.append(pname+' ' + pversion)
-                        asset['products'] = products
+                        pnv = pname + ' ' + pversion
+                        if not is_product_removed(rpt, asset['id'], pnv, item['TimeGenerated']):
+                            asset['products'].append(pnv)
+
     # Remove the additional fields 'patch_tracker' (added to avoid duplicate patches) & 'vmuuid'
     for asset in assets:
         asset.pop('patch_tracker', None)
@@ -202,8 +250,9 @@ def get_os_type(ostype):
 def retrieve_inventory(args):
     email = args.handle
     workspace_id = args.azure_workspace
-    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project Computer, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion'" % workspace_id)
-    return parse_inventory(args, rjson)
+    rpt = prepare_removed_product_tracker(workspace_id)
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project Computer, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion, TimeGenerated'" % workspace_id)
+    return parse_inventory(args, rjson, rpt)
 
 def is_vm_running(vm_json):
     statuses = vm_json.get('statuses')
