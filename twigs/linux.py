@@ -490,6 +490,7 @@ def run_ssh_audit(args, assetid, ip):
     for l in audit_out.splitlines():
         if l.strip() == '':
             continue
+        logging.debug("output line: %s" % l)
         larr = l.split()
         rtype = larr[0].strip()
         if rtype not in ['(cve)','(kex)','(key)','(enc)','(mac)','(rec)']:
@@ -514,13 +515,17 @@ def run_ssh_audit(args, assetid, ip):
             if algo not in key_issues:
                 key_issues[algo] = {}
                 key_issues[algo]['type'] = larr[0].replace('(','').replace(')','')
-                rating = l.split('--')[1].split()[0]
+                if '--' in l:
+                    rating = l.split('--')[1].split()[0]
+                    detail = l.split('--')[1].split(']')[1].strip()
+                else:
+                    rating = l.split('`-')[1].split()[0]
+                    detail = l.split('`-')[1].split(']')[1].strip()
                 if rating == '[fail]':
                     rating = '4'
                 else:
                     rating = '3'
                 key_issues[algo]['rating'] = rating 
-                detail = l.split('--')[1].split(']')[1].strip()
                 title = ""
                 if rtype == '(kex)':
                     title = 'ssh-audit: Unsafe key exchange - '+algo
@@ -533,7 +538,10 @@ def run_ssh_audit(args, assetid, ip):
                 key_issues[algo]['title'] = title 
                 key_issues[algo]['details'] = detail 
             else:
-                detail = l.split('--')[1].split(']')[1].strip()
+                if '--' in l:
+                    detail = l.split('--')[1].split(']')[1].strip()
+                else:
+                    detail = l.split('`-')[1].split(']')[1].strip()
                 if 'details' in key_issues[algo]:
                     key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ detail
                 else:
