@@ -50,10 +50,12 @@ def run_cmd_on_host(args, host, cmdarr, logging_enabled=True):
     return pkgout
 
 def run_remote_ssh_command_helper(client, command, args):
+    logging.debug("Running command [%s] on remote host", command)
     output = ''
     stdin, stdout, stderr = client.exec_command(command)
     for line in stdout:
         output = output + line
+    logging.debug("Command returned output: %s", output)
     return output, stdout.channel.recv_exit_status()
 
 def run_remote_ssh_command(args, host, command):
