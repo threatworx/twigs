@@ -55,7 +55,7 @@ def run_remote_ssh_command_helper(client, command, args):
     stdin, stdout, stderr = client.exec_command(command)
     for line in stdout:
         output = output + line
-    logging.debug("Command returned output: %s", output)
+    logging.debug("Command returned output:\n%s", output)
     return output, stdout.channel.recv_exit_status()
 
 def run_remote_ssh_command(args, host, command):

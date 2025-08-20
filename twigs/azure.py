@@ -135,7 +135,7 @@ def parse_inventory(args, data, rpt):
     all_assets = { }
     for item in data:
         all_assets[item['Computer']] = item['VMUUID']
-        #logging.debug("Parsing inventory from data below:\n%s", json.dumps(item, indent=2))
+        logging.debug("Parsing inventory from data below:\n%s", json.dumps(item, indent=2))
         host = item['Computer']
         vmuuid = item['VMUUID']
         publisher = item['Publisher']
