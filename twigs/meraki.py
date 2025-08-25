@@ -35,6 +35,22 @@ def get_firmware_upgrades(args, headers, network_id):
    resp.raise_for_status()
    return resp.json()
 
+def get_sm_devices(args, headers, network_id):
+   url = args.base_url + f'/networks/{network_id}/sm/devices'
+   resp = requests.get(url, headers=headers, verify=False)
+   if resp.status_code == 404:
+       return None  # Some networks may not support this endpoint
+   resp.raise_for_status()
+   return resp.json()
+
+def get_sm_device_softwares(args, headers, network_id, device_id):
+   url = args.base_url + f'/networks/{network_id}/sm/devices/{device_id}/softwares'
+   resp = requests.get(url, headers=headers, verify=False)
+   if resp.status_code == 404:
+       return None  # Some networks may not support this endpoint
+   resp.raise_for_status()
+   return resp.json()
+
 def get_all_devices(args, headers):
     assets = []
     logging.info("Retrieving network inventory from Cisco Meraki") 
@@ -72,6 +88,15 @@ def get_all_devices(args, headers):
                 products = [prodstr]
                 asset['products'] = products
                 assets.append(asset)
+            sm_devices = get_sm_devices(args, headers, net['id'])
+            for sm_device in sm_devices:
+                jd = json.dumps(sm_device, indent=4)
+                logging.info('SM Device')
+                logging.info(jd)
+                softwares = get_sm_device_softwares(args, headers, net['id'], sm_device['id'])
+                for software in softwares:
+                    js = json.dumps(software, indent=4)
+                    logging.info(js)
     return assets
 
 # Main entry point
