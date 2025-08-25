@@ -1074,7 +1074,7 @@ def main(args=None):
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
         parser_nmap.add_argument('--hosts', help='Hostname, IP address or CIDR range. Multiple values should be comma separated')
-        parser_nmap.add_argument('--services', nargs='+', choices=['web', 'database', 'os', 'vmware'], help='Specify what class of services you want to scan', default='web')
+        parser_nmap.add_argument('--services', nargs='+', choices=['web', 'database', 'os', 'vmware', 'printers'], help='Specify what class of services / devices you want to scan', default='web')
         parser_nmap.add_argument('--extra_ports', help='List of comma separated ports that you would like to include in the scans in addition to the standard service ports e.g. 444,9000-9100,...')
         parser_nmap.add_argument('--timing', help=argparse.SUPPRESS, default='5')
         parser_nmap.add_argument('--discovery_scan_type', help=argparse.SUPPRESS)

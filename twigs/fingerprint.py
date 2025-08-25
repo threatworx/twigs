@@ -30,6 +30,10 @@ NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','904
 NSE_DB_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
 NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info','oracle-tns-version']
 
+NMAP_PRINTERS_PORTS = ['80','161','443','9100','U:161']
+NSE_PRINTERS_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/printers/'
+NSE_PRINTERS_SCRIPTS = [NSE_PRINTERS_PATH]
+
 NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/' 
 
 def nmap_exists():
@@ -181,6 +185,10 @@ def create_nmap_cmd (args):
     if "vmware" in args.services:
         scripts += ['vmware-version']
         ports += ['443'] 
+    if "printers" in args.services:
+        ports += NMAP_PRINTERS_PORTS
+        scripts += NSE_PRINTERS_SCRIPTS
+ 
     cmd = NMAP + vflag + ' -Pn -oX - -T ' + args.timing + os
     if len(ports) != 0:
         cmd += ' -p' + ','.join(list(set(ports)))
@@ -407,6 +415,12 @@ def nmap_scan(args, host):
                 wpout = s.getAttribute('output')
                 if wpout != None and 'zookeeper.version=' in wpout:
                     prod = 'apache zookeeper ' + wpout.split('zookeeper.version=')[1].split('-')[0].strip()
+                    if prod not in products:
+                        products.append(prod)
+            elif s.getAttribute('id') == 'hp-printers':
+                wpout = s.getAttribute('output')
+                if wpout != None and 'hp printer:' in wpout:
+                    prod = wpout.split('hp printer:')[1].strip()
                     if prod not in products:
                         products.append(prod)
 
