@@ -40,7 +40,7 @@ def get_sm_devices(args, headers, network_id):
    logging.info("SM devices url: "+url)
    resp = requests.get(url, headers=headers, verify=False)
    if resp.status_code == 404:
-       logging.info("SM devices response status: "+resp.status_code)
+       logging.info("SM devices response status: "+str(resp.status_code))
        logging.info("SM devices response: "+resp.text)
        return None  # Some networks may not support this endpoint
    resp.raise_for_status()
@@ -92,6 +92,9 @@ def get_all_devices(args, headers):
                 asset['products'] = products
                 assets.append(asset)
             sm_devices = get_sm_devices(args, headers, net['id'])
+            if not sm_devices:
+                logging.info(f"No SM devices for Network: {net['name']} ({net['id']})")
+                continue
             for sm_device in sm_devices:
                 jd = json.dumps(sm_device, indent=4)
                 logging.info('SM Device')
