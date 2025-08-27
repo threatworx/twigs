@@ -37,8 +37,11 @@ def get_firmware_upgrades(args, headers, network_id):
 
 def get_sm_devices(args, headers, network_id):
    url = args.base_url + f'/networks/{network_id}/sm/devices'
+   logging.info("SM devices url: "+url)
    resp = requests.get(url, headers=headers, verify=False)
    if resp.status_code == 404:
+       logging.info("SM devices response status: "+resp.status_code)
+       logging.info("SM devices response: "+resp.text)
        return None  # Some networks may not support this endpoint
    resp.raise_for_status()
    return resp.json()

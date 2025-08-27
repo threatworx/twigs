@@ -474,7 +474,10 @@ def add_attack_surface_label(args, assets):
             elif asset['type'] == 'VMware ESXi':
                 as_label = "Corporate::VMware::ESXi"
         elif args.mode == 'nmap':
-            as_label = get_host_as_label("Corporate::Server", asset)
+            if asset['type'] == 'HP Printer':
+                as_label = "Corporate::Printer::HP Printer"
+            else:
+                as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'docker':
             as_label = get_container_as_label("Container::Docker", asset)
         elif args.mode == 'k8s':

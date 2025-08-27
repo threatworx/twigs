@@ -321,11 +321,13 @@ def nmap_scan(args, host):
             elif s.getAttribute('id') == 'http-server-header':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
-                    prodstr = wpout.replace('/',' ').strip()
-                    prodstr = prodstr.replace('(',' ').strip()
-                    prodstr = prodstr.replace(')',' ').strip()
-                    if prodstr not in products:
-                        products.append(prodstr)
+                    prods = wpout.split(',')
+                    for prod in prods:
+                        prod = prod.replace('/',' ').strip()
+                        prod = prod.replace('(',' ').strip()
+                        prod = prod.replace(')',' ').strip()
+                        if prod not in products:
+                            products.append(prod)
             elif s.getAttribute('id') == 'http-php-version':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
@@ -380,7 +382,7 @@ def nmap_scan(args, host):
                         products.append(prodstr)
             elif s.getAttribute('id') == 'jira-version':
                 wpout = s.getAttribute('output')
-                if wpout != None:
+                if wpout != None and 'version:' in wpout:
                     if 'atlassian.net' in hostname:
                         prodstr = 'atlassian jira ' + wpout.split('version:')[1].strip()
                     else:
@@ -423,6 +425,7 @@ def nmap_scan(args, host):
                     prod = wpout.split('hp printer:')[1].strip()
                     if prod not in products:
                         products.append(prod)
+                    ostype = 'HP Printer'
 
         os_name_tag = None
         smb_os_name = get_smb_os(h)
