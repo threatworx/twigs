@@ -497,9 +497,9 @@ def nmap_scan(args, host):
         if os_name_tag:
             asset_tags.append("OS_RELEASE:" + os_name_tag)
         asset_data['tags'] = asset_tags
-        if len(ports_in_use_dict) > 0:
+        if len(ports_in_use_dict) > 0 and ostype != 'HP Printer':
             asset_data['config_issues'] = create_open_ports_issues(ports_in_use_dict, addr)
-        if args.no_ssh_audit == False and ssh_port_is_open:
+        if args.no_ssh_audit == False and ssh_port_is_open and ostype != 'HP Printer':
             ssh_issues = linux.run_ssh_audit(args, addr, addr)
             if len(ssh_issues) != 0:
                 asset_data['tags'].append('SSH Audit')
