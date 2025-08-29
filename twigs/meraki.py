@@ -108,7 +108,7 @@ def get_all_devices(args, headers):
                     asset['type'] = 'Android'
                 elif 'osName' in sm_device and 'iOS' in sm_device['osName']:
                     asset['type'] = 'iPhone'
-                asset_tags = list(set([asset['type'],sm_device['systemModel']]))
+                asset_tags = list(set(['Mobile Device', 'MDM', asset['type'],sm_device['systemModel']]))
                 if 'tags' in sm_device:
                     for t in sm_device['tags']:
                         asset_tags.append(t)
