@@ -102,18 +102,18 @@ def get_all_devices(args, headers):
                 logging.info(jd)
                 asset = {}
                 asset['owner'] = args.handle
-                asset['id'] = device['id']
-                asset['name'] = device['name']
-                if 'osName' in device and 'Android' in device['osName']:
+                asset['id'] = sm_device['id']
+                asset['name'] = sm_device['name']
+                if 'osName' in sm_device and 'Android' in sm_device['osName']:
                     asset['type'] = 'Android'
-                elif 'osName' in device and 'iOS' in device['osName']:
+                elif 'osName' in sm_device and 'iOS' in sm_device['osName']:
                     asset['type'] = 'iPhone'
-                asset_tags = list(set([asset['type'],device['systemModel']])
-                if 'tags' in device:
-                    for t in device['tags']:
+                asset_tags = list(set([asset['type'],sm_device['systemModel']]))
+                if 'tags' in sm_device:
+                    for t in sm_device['tags']:
                         asset_tags.append(t)
                 asset['tags'] = asset_tags
-                products = [device['osName']]
+                products = [sm_device['osName']]
                 softwares = get_sm_device_softwares(args, headers, net['id'], sm_device['id'])
                 for software in softwares:
                     js = json.dumps(software, indent=4)
