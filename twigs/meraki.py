@@ -81,7 +81,8 @@ def get_all_devices(args, headers):
                 asset['id'] = device['serial']
                 asset['name'] = device['model']
                 asset['type'] = 'Cisco'
-                asset_tags = [product_type, net['name']]
+                asset_tags = [product_type, net['name'], 'Meraki']
+                asset['tags'] = asset_tags
                 model = device['model']
                 if '-' in model:
                     model = model.split('-')[0]
@@ -99,10 +100,36 @@ def get_all_devices(args, headers):
                 jd = json.dumps(sm_device, indent=4)
                 logging.info('SM Device')
                 logging.info(jd)
+                asset = {}
+                asset['owner'] = args.handle
+                asset['id'] = device['id']
+                asset['name'] = device['name']
+                if 'osName' in device and 'Android' in device['osName']:
+                    asset['type'] = 'Android'
+                elif 'osName' in device and 'iOS' in device['osName']:
+                    asset['type'] = 'iPhone'
+                asset_tags = list(set([asset['type'],device['systemModel']])
+                if 'tags' in device:
+                    for t in device['tags']:
+                        asset_tags.append(t)
+                asset['tags'] = asset_tags
+                products = [device['osName']]
                 softwares = get_sm_device_softwares(args, headers, net['id'], sm_device['id'])
                 for software in softwares:
                     js = json.dumps(software, indent=4)
                     logging.info(js)
+                    prodstr = software['identifier'] + ' ' + software['shortVersion'] 
+                    products.append(prodstr)
+                    vendor = ''
+                    if 'vendor' in software and software['vendor'] != 'Unknown':
+                        vendor = software['vendor']
+                        vendor = vendor.replace('Corporation','')
+                        vendor = vendor.replace('LLC','')
+                        vendor = vendor.strip()
+                    prodstr = vendor + ' ' + software['name'] + ' ' + software['version'] 
+                    products.append(prodstr)
+                asset['products'] = products
+                assets.append(asset)
     return assets
 
 # Main entry point
