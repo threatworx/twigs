@@ -34,6 +34,10 @@ NMAP_PRINTERS_PORTS = ['80','161','443','9100','U:161']
 NSE_PRINTERS_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/printers/'
 NSE_PRINTERS_SCRIPTS = [NSE_PRINTERS_PATH]
 
+NMAP_CCTV_PORTS = ['21','80','161','443','8080','8443','4321', '37777', '9000', '10554', '5985','9100','5060']
+NSE_CCTV_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/cctv/'
+NSE_CCTV_SCRIPTS = [NSE_CCTV_PATH]
+
 NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/' 
 
 def nmap_exists():
@@ -188,6 +192,9 @@ def create_nmap_cmd (args):
     if "printers" in args.services:
         ports += NMAP_PRINTERS_PORTS
         scripts += NSE_PRINTERS_SCRIPTS
+    if "cctv" in args.services:
+        ports += NMAP_CCTV_PORTS
+        scripts += NSE_CCTV_SCRIPTS
  
     cmd = NMAP + vflag + ' -Pn -oX - -T ' + args.timing + os
     if len(ports) != 0:
@@ -426,6 +433,25 @@ def nmap_scan(args, host):
                     if prod not in products:
                         products.append(prod)
                     ostype = 'HP Printer'
+            elif s.getAttribute('id') == 'arecont-cctv':
+                wpout = s.getAttribute('output')
+                if wpout != None:
+                    if wpout not in products:
+                        products.append(wpout)
+                    ostype = 'Arecont Vision'
+            elif s.getAttribute('id') == 'axis-cctv':
+                wpout = s.getAttribute('output')
+                if wpout != None:
+                    if wpout not in products:
+                        products.append(wpout)
+                    ostype = 'Axis Communications'
+            elif s.getAttribute('id') == 'hanwhavision-cctv':
+                wpout = s.getAttribute('output')
+                if wpout != None:
+                    wpout = wpout.replace('Hanwha Vision','hanwhavision').strip()
+                    if wpout not in products:
+                        products.append(wpout)
+                    ostype = 'Hanwha Vision'
 
         os_name_tag = None
         smb_os_name = get_smb_os(h)
@@ -497,13 +523,15 @@ def nmap_scan(args, host):
         if os_name_tag:
             asset_tags.append("OS_RELEASE:" + os_name_tag)
         asset_data['tags'] = asset_tags
-        if len(ports_in_use_dict) > 0 and 'printers' not in args.services:
-            asset_data['config_issues'] = create_open_ports_issues(ports_in_use_dict, addr)
-        if args.no_ssh_audit == False and ssh_port_is_open and 'printers' not in args.services:
-            ssh_issues = linux.run_ssh_audit(args, addr, addr)
-            if len(ssh_issues) != 0:
-                asset_data['tags'].append('SSH Audit')
-            asset_data['config_issues'] = asset_data['config_issues'] + ssh_issues if 'config_issues' in asset_data else ssh_issues
+
+        if 'printers' not in args.services and 'cctv' not in args.services:
+            if len(ports_in_use_dict) > 0:
+                asset_data['config_issues'] = create_open_ports_issues(ports_in_use_dict, addr)
+            if args.no_ssh_audit == False and ssh_port_is_open:
+                ssh_issues = linux.run_ssh_audit(args, addr, addr)
+                if len(ssh_issues) != 0:
+                    asset_data['tags'].append('SSH Audit')
+                asset_data['config_issues'] = asset_data['config_issues'] + ssh_issues if 'config_issues' in asset_data else ssh_issues
 
         if asset_data['type'] == "Other" and len(asset_data['products']) == 0 and ('config_issues' not in asset_data or len(asset_data['config_issues'])==0):
             # skip any discovered assets which have asset type as "Other" and no products and no config_issues
