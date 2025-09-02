@@ -89,6 +89,7 @@ def run_zap(args, assetid):
         report_file = z_path.name
 
     try:
+        logging.debug("ZAP command [%s]", zap_cmd)
         out = subprocess.check_output([zap_cmd], shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
