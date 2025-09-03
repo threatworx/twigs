@@ -476,6 +476,12 @@ def add_attack_surface_label(args, assets):
         elif args.mode == 'nmap':
             if asset['type'] == 'HP Printer':
                 as_label = "Corporate::Printer::HP Printer"
+            elif asset['type'] == 'Arecont Vision':
+                as_label = "Corporate::CCTV::Arecont Vision"
+            elif asset['type'] == 'Axis Communications':
+                as_label = "Corporate::CCTV::Axis Communications"
+            elif asset['type'] == 'Hanwha Vision':
+                as_label = "Corporate::CCTV::Hanwha Vision"
             else:
                 as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'docker':
