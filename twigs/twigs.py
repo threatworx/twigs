@@ -517,7 +517,10 @@ def add_attack_surface_label(args, assets):
         elif args.mode == 'gcloud_functions':
             as_label = get_code_as_label("Cloud::GCP::Serverless", asset)
         elif args.mode == 'meraki' or args.mode == 'dna_center':
-            as_label = get_code_as_label("Corporate::Network::Cisco", asset)
+            if asset['type'] == 'Android':
+                as_label = "Corporate::Mobile Device::Android"
+            else:
+                as_label = get_code_as_label("Corporate::Network::Cisco", asset)
 
         if as_label is not None:
             asset['attack_surface_label'] = as_label
