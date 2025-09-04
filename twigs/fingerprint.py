@@ -522,6 +522,7 @@ def nmap_scan(args, host):
         asset_tags = ["DISCOVERY_TYPE:Unauthenticated"]
         if os_name_tag:
             asset_tags.append("OS_RELEASE:" + os_name_tag)
+            asset_tags.append(os_name_tag)
         asset_data['tags'] = asset_tags
 
         if 'printers' not in args.services and 'cctv' not in args.services:

@@ -37,7 +37,8 @@ def get_inventory(args):
         asset['id'] = device['managementIpAddress']
         asset['name'] = device['hostname']
         asset['type'] = 'Cisco'
-        asset_tags = ['Model:'+device['platformId'], 'Serial Number:'+device['serialNumber']]
+        asset['tags'] = 'Cisco DNA'
+        #asset['tags'] = ['Model:'+device['platformId'], 'Serial Number:'+device['serialNumber']]
         products = ['Cisco '+device['platformId']+' '+device['softwareVersion']]
         asset['products'] = products
     return assets

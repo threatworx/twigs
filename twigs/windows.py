@@ -259,6 +259,7 @@ def discover_windows_host(args, host):
     asset_data['patches'] = patches
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_name)
+    asset_tags.append(os_name)
     asset_tags.append('OS_VERSION:' + os_version)
     if os_release_id is not None and os_release_id.strip() != "":
         asset_tags.append('OS_RELEASE_ID:' + os_release_id)

@@ -81,7 +81,7 @@ def get_all_devices(args, headers):
                 asset['id'] = device['serial']
                 asset['name'] = device['model']
                 asset['type'] = 'Cisco'
-                asset_tags = [product_type, net['name'], 'Meraki']
+                asset_tags = ['Cisco Meraki']
                 asset['tags'] = asset_tags
                 model = device['model']
                 if '-' in model:
@@ -108,7 +108,7 @@ def get_all_devices(args, headers):
                     asset['type'] = 'Android'
                 elif 'osName' in sm_device and 'iOS' in sm_device['osName']:
                     asset['type'] = 'iPhone'
-                asset_tags = list(set(['Mobile Device', 'MDM', asset['type'],sm_device['systemModel']]))
+                asset_tags = list(set(['Cisco Meraki MDM', asset['type']]))
                 if 'tags' in sm_device:
                     for t in sm_device['tags']:
                         asset_tags.append(t)

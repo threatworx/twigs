@@ -123,10 +123,12 @@ def get_asset_inventory(args):
             asset_tags = []
             if args.enable_tracking_tags == True:
                 asset_tags.append('SOURCE:ServiceNow:' + args.snow_instance)
-                asset_tags.append("SERVICENOW_ASSET_TAG:" + snow_host['asset_tag'])
             else:
                 asset_tags.append('SOURCE:ServiceNow')
+            asset_tags.append('ServiceNow')
+            asset_tags.append(snow_host['asset_tag'])
             asset_tags.append('OS_RELEASE:' + snow_host['os'])
+            asset_tags.append(snow_host['os'])
             if host['type'] != 'Other':
                 asset_tags.append(host['type'])
             host['tags'] = asset_tags

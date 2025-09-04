@@ -43,7 +43,9 @@ def get_machines(args, token):
         asset_tags = []
         asset_tags.append('Windows')
         asset_tags.append('SOURCE:O365')
+        asset_tags.append('O365')
         asset_tags.append('OS_RELEASE:' + machine['osPlatform'])
+        asset_tags.append(machine['osPlatform'])
         asset_tags.append('OS_RELEASE_ID:' + machine['version'])
         # Defender does not provide complete build number like '10.0.14393.3686' instead it only provides partial value like '14393'
         #asset_tags.append('OS_VERSION:' + 'Build '+str(machine['osBuild']))

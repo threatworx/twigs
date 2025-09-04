@@ -42,6 +42,7 @@ def run_docker_bench(args):
     asset_data['products'] = []
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_release)
+    asset_tags.append(os_release)
     asset_tags.append('Docker')
     asset_tags.append('CIS')
     asset_tags.append('Container')

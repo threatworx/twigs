@@ -32,7 +32,7 @@ def get_inventory(args):
             asset_dict['type'] = get_asset_type(instance['os-family'])
             asset_dict['owner'] = args.handle
             os_release = get_os_release(instance['os-family'])
-            asset_tags = [ "OS_RELEASE:"+os_release, "SOURCE:OCI" ]
+            asset_tags = [ os_release, "OS_RELEASE:"+os_release, "OCI", "SOURCE:OCI" ]
             if args.enable_tracking_tags:
                 asset_tags.append("COMPARTMENT:" + compartment_name_dict[instance['compartment-id']])
             asset_dict['tags'] = asset_tags

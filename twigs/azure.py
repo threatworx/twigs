@@ -183,14 +183,20 @@ def parse_inventory(args, data, rpt):
                 asset_map['tags'].extend(tags)
             if asset_map['type'] == 'Windows':
                 asset_map['tags'].append('OS_RELEASE:' + os)
+                asset_map['tags'].append(os)
                 asset_map['tags'].append('OS_VERSION:' + os_version)
             else:
                 asset_map['tags'].append('OS_RELEASE:%s %s' % (os, os_version))
+                asset_map['tags'].append('%s %s' % (os, os_version))
             if args.enable_tracking_tags == True:
                 asset_map['tags'].append("SOURCE:Azure:Tenant:" + get_tenant_id())
+                asset_map['tags'].append("Azure:Tenant:" + get_tenant_id())
                 asset_map['tags'].append("SOURCE:Azure:Subscription:" + sub_id)
+                asset_map['tags'].append("Azure:Subscription:" + sub_id)
+                asset_map['tags'].append("Azure")
             else:
                 asset_map['tags'].append("SOURCE:Azure")
+                asset_map['tags'].append("Azure")
             assets.append(asset_map)
             hosts.append(host)
         else:

@@ -454,6 +454,7 @@ def discover_host(args, host):
     asset_data['products'] = plist
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os)
+    asset_tags.append(os)
     if atype != "Mac OS":
         asset_tags.append('Linux')
     asset_tags.append(atype)

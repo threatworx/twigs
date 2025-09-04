@@ -266,6 +266,7 @@ def create_asset(args, os_release, atype, plist, digest, container_fs):
     asset_data['products'] = plist
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_release)
+    asset_tags.append(os_release)
     if args.image is not None:
         asset_tags.append('IMAGE_NAME:' + args.image)
     if args.image is not None and digest is not None:
@@ -737,6 +738,7 @@ def run_docker_bench(args):
     asset_data['products'] = [] 
     asset_tags = []
     asset_tags.append('OS_RELEASE:' + os_release)
+    asset_tags.append(os_release)
     asset_tags.append('Docker')
     asset_tags.append('Container')
     asset_tags.append('Linux')

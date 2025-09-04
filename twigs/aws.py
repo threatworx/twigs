@@ -202,10 +202,14 @@ class EC2Impl(AWS):
 
                     if os_release is not None:
                         asset['tags'].append("OS_RELEASE:" + os_release)
+                        asset['tags'].append(os_release)
                     if self.enable_tracking_tags == True:
                         asset['tags'].append("SOURCE:AWS:"+self.account_id)
+                        asset['tags'].append("AWS:"+self.account_id)
+                        asset['tags'].append("AWS")
                     else:
                         asset['tags'].append("SOURCE:AWS")
+                        asset['tags'].append("AWS")
                     logging.info("Retrieving product details for [%s]", asset['name'])
                     asset['products'] = self.product_inventory(asset['id'], asset['type'])
                     asset['tags'].append(asset['type'])
