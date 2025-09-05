@@ -113,7 +113,11 @@ def get_all_devices(args, headers):
                     for t in sm_device['tags']:
                         asset_tags.append(t)
                 asset['tags'] = asset_tags
-                products = [sm_device['osName']]
+                if 'systemModel' in sm_device and sm_device['systemModel'].startswith('SM-'):
+                    # samsung android - adjust the version number to match dot decimal
+                    products = ['Samsung '+sm_device['osName']+'.0']
+                else:
+                    products = [sm_device['osName']]
                 softwares = get_sm_device_softwares(args, headers, net['id'], sm_device['id'])
                 for software in softwares:
                     js = json.dumps(software, indent=4)
@@ -126,7 +130,7 @@ def get_all_devices(args, headers):
                         vendor = vendor.replace('Corporation','')
                         vendor = vendor.replace('LLC','')
                         vendor = vendor.strip()
-                    prodstr = vendor + ' ' + software['name'] + ' ' + software['version'] 
+                    prodstr = vendor + ' ' + software['name'] + ' ' + software['shortVersion'] 
                     products.append(prodstr)
                 asset['products'] = products
                 assets.append(asset)
