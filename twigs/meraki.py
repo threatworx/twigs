@@ -79,7 +79,7 @@ def get_all_devices(args, headers):
                 asset = {}
                 asset['owner'] = args.handle
                 asset['id'] = device['serial']
-                asset['name'] = device['model']
+                asset['name'] = device['name']
                 asset['type'] = 'Cisco'
                 asset_tags = ['Cisco Meraki']
                 asset['tags'] = asset_tags
