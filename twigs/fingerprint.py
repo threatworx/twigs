@@ -13,10 +13,13 @@ from xml.dom.minidom import parse, parseString
 from distutils.version import LooseVersion 
 import csv
 from . import linux
-
 import shutil
+
 NMAP_default = "/usr/bin/nmap"
 NMAP = shutil.which("nmap")
+
+SNMPWALK = shutil.which('snmpwalk')
+
 if NMAP is None:
     NMAP = NMAP_default
 NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
@@ -42,6 +45,27 @@ NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/
 
 def nmap_exists():
     return NMAP and os.access(NMAP, os.X_OK)
+
+def build_snmp_walk_cmd(args, addr):
+    cmd = SNMPWALK
+    if args.snmp_security_name:
+        cmd = cmd + ' -v3 -u '+args.snmp_security_name
+    else:
+        cmd = cmd + ' -v2c '
+    cmd = cmd + ' -c '+args.snmp_community + ' ' + addr
+    return cmd
+
+def get_snmp_oid_value(args, snmpwalk, oid):
+    out = None
+    try:
+        logging.debug("snmpwalk command: " + snmpwalk + ' ' + oid)
+        out = subprocess.check_output([snmpwalk+' '+oid], shell=True)
+        out = out.decode(args.encoding)
+    except subprocess.CalledProcessError:
+        logging.error("Error running snmpwalk command")
+        return out
+    value = out.strip().split(':')[1].replace('"','')
+    return value
 
 def discover(args):
     handle = args.handle
@@ -195,6 +219,9 @@ def create_nmap_cmd (args):
     if "cctv" in args.services:
         ports += NMAP_CCTV_PORTS
         scripts += NSE_CCTV_SCRIPTS
+    if "snmp" in args.services:
+        ports = ['161']
+        vflag = " -sU "
  
     cmd = NMAP + vflag + ' -Pn -oX - -T ' + args.timing + os
     if len(ports) != 0:
@@ -289,6 +316,23 @@ def nmap_scan(args, host):
         services = h.getElementsByTagName("service")
         if services is not None:
             for s in services:
+                if s.getAttribute('name') == 'snmp' and 'snmp' in args.services:
+                    # use snmpwalk to find more
+                    if not SNMPWALK:
+                        logging.warn("snmpwalk command not found")
+                        continue
+                    # build the snmp walk command
+                    cmd = build_snmp_walk_cmd(args, addr)
+                    prod = get_snmp_oid_value(args, cmd, '1.3.6.1.2.1.1.1.0')
+                    if prod:
+                        products.append(prod)
+                        # handle Palo Alto Networks products
+                        if 'Palo Alto Networks' in prod:
+                            # oid for PANOS version
+                            panosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.25461.2.1.2.1.1')
+                            prod = 'paloaltonetworks pan-os '+panosver
+                            products.append(prod)
+                            ostype = 'Palo Alto Networks'
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
@@ -298,7 +342,6 @@ def nmap_scan(args, host):
                 prod = prod + ' ' + ver
                 if prod not in products:
                     products.append(prod)
-
         # check for script output
         scripts = h.getElementsByTagName("script")
         for s in scripts:
@@ -525,7 +568,7 @@ def nmap_scan(args, host):
             asset_tags.append(os_name_tag)
         asset_data['tags'] = asset_tags
 
-        if 'printers' not in args.services and 'cctv' not in args.services:
+        if 'printers' not in args.services and 'cctv' not in args.services and 'snmp' not in args.services:
             if len(ports_in_use_dict) > 0:
                 asset_data['config_issues'] = create_open_ports_issues(ports_in_use_dict, addr)
             if args.no_ssh_audit == False and ssh_port_is_open:
