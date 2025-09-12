@@ -12,6 +12,8 @@ apt-get -y install dialog apt-utils wget
 
 #install nmap
 apt-get -y install nmap
+#install snmpwalk
+apt-get -y install snmp
 
 # Setup gcloud sdk
 apt-get -y install curl
