@@ -65,10 +65,14 @@ def get_snmp_oid_value(args, snmpwalk, oid):
         logging.error("Error running snmpwalk command")
         return out
     try:
-        out = out.strip().split(':')[1].replace('"','')
+        if ':' in out:
+            out = out.strip().split(':')[1].replace('"','')
+        else:
+            out = out.strip().split('=')[1].replace('"','')
     except Exception as e:
         logging.error("Exception processing snmp oid walk output")
         return None
+    logging.debug("snmpwalk output: " + out)
     return out
 
 def discover(args):
@@ -351,6 +355,20 @@ def nmap_scan(args, host):
                             else:
                                 model = model.split()[0].strip()
                             products.append('juniper '+model)
+                        else: # try vendor specific oids
+                            fgosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.12356.101.4.1.1')
+                            if fgosver: # fortios
+                                fgosver = 'fortinet fortios '+fgosver.split(',')[0].replace('v','')
+                                ostype = 'Fortinet'
+                                products.append(fgosver)
+                                fgmodel = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.12356.100.1.1.1')
+                                if fgmodel:
+                                    model_regex = re.compile(r'\s([A-Za-z]+([0-9]+[A-Za-z]))')
+                                    m = re.findall(model_regex, fgmodel)
+                                    if m and len(m) > 0:
+                                        model = 'fortinet ' + [x[0] for x in m][0]
+                                        products.append(model)
+
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
