@@ -64,8 +64,12 @@ def get_snmp_oid_value(args, snmpwalk, oid):
     except subprocess.CalledProcessError:
         logging.error("Error running snmpwalk command")
         return out
-    value = out.strip().split(':')[1].replace('"','')
-    return value
+    try:
+        out = out.strip().split(':')[1].replace('"','')
+    except Exception as e:
+        logging.error("Exception processing snmp oid walk output")
+        return None
+    return out
 
 def discover(args):
     handle = args.handle
@@ -325,14 +329,28 @@ def nmap_scan(args, host):
                     cmd = build_snmp_walk_cmd(args, addr)
                     prod = get_snmp_oid_value(args, cmd, '1.3.6.1.2.1.1.1.0')
                     if prod:
-                        products.append(prod)
+                        logging.debug("SNMP sysDescr value:"+prod)
                         # handle Palo Alto Networks products
                         if 'Palo Alto Networks' in prod:
+                            #products.append(prod)
                             # oid for PANOS version
                             panosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.25461.2.1.2.1.1')
                             prod = 'paloaltonetworks pan-os '+panosver
                             products.append(prod)
                             ostype = 'Palo Alto Networks'
+                        elif 'Juniper Networks' in prod:
+                            version_regex = re.compile(r'\s([0-9A-Za-z_\-]+(\.[0-9A-Za-z_\-]+)+)')
+                            m = re.findall(version_regex, prod)
+                            if m and len(m) > 0:
+                                junosver = 'juniper junos ' + [x[0] for x in m][0]
+                                ostype = 'Juniper'
+                                products.append(junosver)
+                            model = prod.split(',')[1].replace('Inc.','').strip()
+                            if '[' in model and ']' in model:
+                                model = model.split()[1].replace('[','').replace(']','').strip()
+                            else:
+                                model = model.split()[0].strip()
+                            products.append('juniper '+model)
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
