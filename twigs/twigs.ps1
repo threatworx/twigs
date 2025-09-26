@@ -480,22 +480,27 @@ function Invoke-LocalDiscovery {
         if (Test-Path $hbm_csv_rpt) { Remove-Item $hbm_csv_rpt }
         # If twigs.exe is running, then no need to source HardeningKitty as it is already included
         if ($PSScriptRoot) {
-            # If twigs.ps1 is running, then source HardeningKitty
-            $hk_script = $FileLocation + '\Invoke-HardeningKitty.ps1'
+            # If twigs.ps1 is running, then import HardeningKitty
+            $hk_script = $FileLocation + '\HardeningKitty.psm1'
             Unblock-File $hk_script
-            . ($hk_script)
+            Import-Module $hk_script
         }
-        Invoke-HardeningKitty -Mode Audit -Report -ReportFile $hbm_csv_rpt
+        Invoke-HardeningKitty -Mode Audit -Report -ReportFile $hbm_csv_rpt 
         $misconfigs = Import-Csv $hbm_csv_rpt
+        $hk_md_file = $FileLocation + "\hk_metadata.json"
+        $hk_md_json = Get-Content -Path $hk_md_file -Raw -Encoding UTF8
+        $hk_md = $hk_md_json | ConvertFrom-Json
         foreach ($misconfig in $misconfigs) {
             if ($misconfig.Severity -ne 'Passed') {
-                if ($misconfig.Severity -eq 'Low') { $mc_rating = '2' }
-                elseif ($misconfig.Severity -ne 'Medium') { $mc_rating = '3' }
-                elseif ($misconfig.Severity -ne 'High') { $mc_rating = '5' }
+                $misconfig_ID = $misconfig.ID
+                $hk_md_entry = $hk_md.$misconfig_ID
+                $tmp_title = '[' + $hk_md_entry."category" + '] ' + $misconfig.Name
+                $mc_rating = $hk_md_entry."rating"
                 if ($misconfig.Result -eq '') { $cv = 'Not available' }
                 else { $cv = $misconfig.Result }
-                $details_msg = 'Current value is [' + $cv + '] and recommended value is [' + $misconfig.Recommended + '].'
-                $misconfig_entry_json = @{asset_id=$assetid;twc_id=$misconfig.ID;twc_title=$misconfig.Name;type='Host Benchmark';details=$details_msg;rating=$mc_rating;object_id='';object_meta=''}
+                $details_msg = "Current value is [" + $cv + "] and recommended value is [" + $misconfig.Recommended + "].<br/><br/>"
+                $details_msg = $details_msg + $hk_md_entry."description"
+                $misconfig_entry_json = @{asset_id=$assetid;twc_id=$misconfig.ID;twc_title=$tmp_title;type='Host Benchmark';details=$details_msg;rating=$mc_rating;object_id='';object_meta=''}
                 $misconfigs_json_array.add($misconfig_entry_json)
             }
         }
@@ -625,11 +630,13 @@ else {
     Invoke-LocalDiscovery
 }
 
+
+
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnv9ycdFK4i3DKkqdZRzuAiyg
-# nbKgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/JAxcYqkkilRZ1wIwQ0bYtlZ
+# XtCgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -656,11 +663,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFIHLeqXn2UZDREcM
-# ScZNDxMdCB/eMA0GCSqGSIb3DQEBAQUABIIBAH99zBLugtfTQ5NHxekyrW861oTX
-# XUG6gyzySdPoSsJx1PrYi9hIfpqabkOw89N1PjsMl1DY7fkfckowTh8N8oUki9C/
-# /AGonrj8/rwhrn1YolTQG0Qjev69ChA5DDWZOBRliagKSvcYyhPPyvrVbDL20pyD
-# 0XY1UWc2YR5gtOteVuU3ataHVCO4l4ir0ioznddLLuzhQJJQeNOMqeDzaR4qzqLQ
-# tgILkzpiq3BP5iC1jYW5uVwTbZFjBOAOVYLqlt+CP0NV8V3HdvTf77kSKoNjhF5V
-# W4r0+TjpVSdJ9K+IXAO+Ba2mvAjmFcFAZGF+cV1IS746HwgcKzumSmMTTqY=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFN7BJt00/aUBzg8K
+# StPpbxKnKpTPMA0GCSqGSIb3DQEBAQUABIIBABuchAsDVXJ9gVt3EKExyWUjjwI2
+# Z+Pke5iGAW9aM0od28r9M9nNYrIRAed633yaj2LQoRhTnM8O9YhfLA1hT+PA71U4
+# xwO0aD7zTKnsGazrMdEYl1/MJxMW8LpvqXZsmBvo3cmkTj65962AiNKCitIJ/neQ
+# 4hZv12HWzvsOuqXmwaVY2thlZNpoziTZZeWW5o52XecT5fh9EPKWB4VNLg84r2f2
+# dLhsvw6O3VNF8xdZc8CuOXJ+XLise7nIySRIAUPpei7py632AhuXD4RqOVEZmxFp
+# fcq4sJ5dAcynLzEo8DXzy5vYSTFL57kOvwv80dLFazFCDPt/pERls7OFE2A=
 # SIG # End signature block
