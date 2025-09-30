@@ -519,9 +519,11 @@ def run_ssh_audit(args, assetid, ip):
                 if '--' in l:
                     rating = l.split('--')[1].split()[0]
                     detail = l.split('--')[1].split(']')[1].strip()
-                else:
+                elif '`-' in l:
                     rating = l.split('`-')[1].split()[0]
                     detail = l.split('`-')[1].split(']')[1].strip()
+                else:
+                    continue
                 if rating == '[fail]':
                     rating = '4'
                 else:
