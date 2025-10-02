@@ -363,7 +363,7 @@ def nmap_scan(args, host):
                             prod = prod.split('/')[0].strip()
                             products.append(prod)
                             os_type = 'Zebra Printer'
-                        else: # try vendor specific oids
+                        elif 'Fortinet' in prod: # try vendor specific oids
                             fgosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.12356.101.4.1.1')
                             if fgosver: # fortios
                                 fgosver = 'fortinet fortios '+fgosver.split(',')[0].replace('v','')
