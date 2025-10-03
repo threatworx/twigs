@@ -557,7 +557,7 @@ def run_ssh_audit(args, assetid, ip):
             reco = 'Recommendation: '+l.split('--')[1].strip()
             key_issues[algo]['details'] = key_issues[algo]['details'] + '\n'+ reco 
     for k in key_issues:
-        if 'type' not in key_issues[k]:
+        if 'type' not in key_issues[k] or 'title' not in key_issues[k]:
             continue
         issue = {}
         issue['twc_id'] = 'ssh-audit-'+key_issues[k]['type'] + '-' + k 
