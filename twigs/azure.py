@@ -12,7 +12,6 @@ from . import utils
 g_encoding = None
 g_required_extensions = ["account", "log-analytics"]
 gTenantId = None
-gAllVMs = None
 
 def set_encoding(encoding):
     global g_encoding
@@ -60,19 +59,6 @@ def get_tenant_id():
     gTenantId = rjson[0]['tenantId']
     return gTenantId
 
-def get_all_vms():
-    global gAllVMs
-    if gAllVMs is not None:
-        return gAllVMs
-    gAllVMs = { }
-    allsubs = get_all_subscriptions()
-    for sub in allsubs:
-        resourcegroups = get_all_resourcegroups_for_subscription(sub)
-        for res_group in resourcegroups:
-            vms = get_vms(sub, res_group)
-            gAllVMs.update(vms)
-    return gAllVMs
-
 # Main entry point
 def get_inventory(args):
     set_encoding(args.encoding)
@@ -88,18 +74,18 @@ def convert_to_datetime(datetime_str):
     else:
         return datetime.datetime.strptime(datetime_str,  "%Y-%m-%dT%H:%M:%SZ")
 
-def is_product_removed(rpt, assetid, pnv, last_reported_on):
-    tasset = rpt.get(assetid)
+def is_product_removed(rpt, assetid, resource_id, pnv, last_reported_on):
+    tasset = rpt.get(resource_id)
     if tasset is None:
         return False
-    removed_on  = rpt[assetid].get(pnv)
+    removed_on  = rpt[resource_id].get(pnv)
     if removed_on is None:
         return False
     else:
         removed_on = convert_to_datetime(removed_on)
         last_reported_on = convert_to_datetime(last_reported_on)
         if removed_on > last_reported_on:
-            logging.debug("Product [%s] removed on asset [%s]", pnv, assetid)
+            logging.debug("Product [%s] removed on asset [%s] with resource_id [%s]", pnv, assetid, resource_id)
             logging.debug("ConfigurationData product last_reported_on %s", last_reported_on)
             logging.debug("ConfigurationChange product removed_on %s", removed_on)
             return True
@@ -109,7 +95,7 @@ def prepare_removed_product_tracker(workspace_id):
     logging.info("Processing configuration change data retrieved from Azure...")
     # Removed Product Tracker - this is a 2 level dict as assetid -> product -> removedtime 
     rpt = { }
-    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationChange | where ConfigChangeType == \"Software\" and ChangeCategory == \"Removed\" | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project VMUUID, SoftwareName, Previous, SoftwareType, TimeGenerated'" % workspace_id)
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationChange | where ConfigChangeType == \"Software\" and ChangeCategory == \"Removed\" | summarize arg_max(TimeGenerated, *) by _ResourceId, Publisher, SoftwareName, SoftwareType | project _ResourceId, SoftwareName, Previous, SoftwareType, TimeGenerated'" % workspace_id)
     logging.debug("ConfigurationChange data: %s", rjson)
     for item in rjson:
         if item['SoftwareType'] not in ['Application', 'Package']:
@@ -120,9 +106,10 @@ def prepare_removed_product_tracker(workspace_id):
         # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
         pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
         pnv = pname + ' ' + pversion
-        if item['VMUUID'] not in rpt:
-            rpt[item['VMUUID']] = { }
-        rpt[item['VMUUID']][pnv] = item['TimeGenerated']
+        resource_id = item['_ResourceId']
+        if resource_id not in rpt:
+            rpt[resource_id] = { }
+        rpt[resource_id][pnv] = item['TimeGenerated']
     logging.debug("Removed product tracker dict: %s", rpt)
     return rpt
 
@@ -134,28 +121,28 @@ def parse_inventory(args, data, rpt):
     not_running_vms = {}
     all_assets = { }
     for item in data:
-        all_assets[item['Computer']] = item['VMUUID']
+        all_assets[item['_ResourceId']] = item['Computer']
         logging.debug("Parsing inventory from data below:\n%s", json.dumps(item, indent=2))
         host = item['Computer']
-        vmuuid = item['VMUUID']
+        resource_id = item['_ResourceId']
         publisher = item['Publisher']
 
         # If VM is known to be not running, then skip it
-        if not_running_vms.get(vmuuid) == 1:
+        if not_running_vms.get(resource_id) == 1:
             continue
 
         if host not in hosts  and publisher != '0':
-            logging.debug("Found new asset - host [%s] vmuuid [%s]", host, vmuuid)
+            logging.debug("Found new asset - host [%s] resource_id [%s]", host, resource_id)
             patches = []
             products = []
             asset_map = {}
             asset_map['owner'] = args.handle
             asset_map['host'] = host
-            asset_map['id'] = vmuuid
+            asset_map['id'] = item['VMUUID']
             asset_map['name'] = host
             asset_map['tags'] = [ ]
             asset_map['patch_tracker'] = { } # To help remove duplicate patches
-            asset_map['vmuuid'] = vmuuid
+            asset_map['resource_id'] = resource_id
             if item['SoftwareType'] in ['Update', 'Patch']: #ApplicationType for MS patches
                 patch = parse_patch(item)
                 if patch is not None:
@@ -167,14 +154,14 @@ def parse_inventory(args, data, rpt):
                 # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
                 pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
                 pnv = pname + ' ' + pversion
-                if not is_product_removed(rpt, asset_map['id'], pnv, item['TimeGenerated']):
+                if not is_product_removed(rpt, asset_map['id'], asset_map['resource_id'], pnv, item['TimeGenerated']):
                     products.append(pnv)
             asset_map['products'] = products
             asset_map['patches'] = patches
-            vm_running, os, os_version, sub_id, tags = get_vm_details(host, vmuuid)
+            vm_running, os, os_version, sub_id, tags = get_vm_details(host, resource_id)
             if vm_running == False:
                 # skip vm's which are not running
-                not_running_vms[vmuuid] = 1
+                not_running_vms[resource_id] = 1
                 continue
             asset_map['type'] = get_os_type(os)
             if len(asset_map['type']) > 0:
@@ -193,7 +180,6 @@ def parse_inventory(args, data, rpt):
                 asset_map['tags'].append("Azure:Tenant:" + get_tenant_id())
                 asset_map['tags'].append("SOURCE:Azure:Subscription:" + sub_id)
                 asset_map['tags'].append("Azure:Subscription:" + sub_id)
-                asset_map['tags'].append("Azure")
             else:
                 asset_map['tags'].append("SOURCE:Azure")
                 asset_map['tags'].append("Azure")
@@ -201,7 +187,7 @@ def parse_inventory(args, data, rpt):
             hosts.append(host)
         else:
             for asset in assets:
-                if asset['host'] == host:
+                if asset['resource_id'] == resource_id:
                     if item['SoftwareType'] in ['Update', 'Patch']: #ApplicationType for MS patches
                         patch = parse_patch(item)
                         if patch is not None and asset['patch_tracker'].get(patch['id']) is None:
@@ -213,13 +199,13 @@ def parse_inventory(args, data, rpt):
                         # Azure Monitoring Agent bug - version has "(none):1.4.6-1.el8" for Linux packages
                         pversion = pversion[7:] if item['SoftwareType'] == 'Package' and pversion.startswith('(none):') else pversion
                         pnv = pname + ' ' + pversion
-                        if not is_product_removed(rpt, asset['id'], pnv, item['TimeGenerated']):
+                        if not is_product_removed(rpt, asset['id'], asset['resource_id'], pnv, item['TimeGenerated']):
                             asset['products'].append(pnv)
 
-    # Remove the additional fields 'patch_tracker' (added to avoid duplicate patches) & 'vmuuid'
+    # Remove the additional fields 'patch_tracker' (added to avoid duplicate patches) & 'resource_id'
     for asset in assets:
         asset.pop('patch_tracker', None)
-        asset.pop('vmuuid', None)
+        asset.pop('resource_id', None)
     logging.debug("Total assets reported: %s", len(all_assets))
     logging.debug("Assets with s/w packages and patches: %s", len(assets))
     logging.debug("Not running VMs: %s", len(not_running_vms))
@@ -257,7 +243,7 @@ def retrieve_inventory(args):
     email = args.handle
     workspace_id = args.azure_workspace
     rpt = prepare_removed_product_tracker(workspace_id)
-    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" | summarize arg_max(TimeGenerated, *) by Computer, VMUUID, Publisher, SoftwareName, SoftwareType | project Computer, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion, TimeGenerated'" % workspace_id)
+    rjson = run_az_cmd("monitor log-analytics query -w '%s' --analytics-query 'ConfigurationData | where ConfigDataType == \"Software\" | summarize arg_max(TimeGenerated, *) by _ResourceId, Publisher, SoftwareName, SoftwareType | project Computer, _ResourceId, VMUUID, ConfigDataType, Publisher, SoftwareName, SoftwareType, CurrentVersion, TimeGenerated'" % workspace_id)
     return parse_inventory(args, rjson, rpt)
 
 def is_vm_running(vm_json):
@@ -274,29 +260,13 @@ def is_vm_running(vm_json):
     return False
 
 # Try to get OS details, subscription Id and tags for given VM
-def get_vm_details(host, vmuuid):
-    all_vms = get_all_vms()
-    vm_id = all_vms.get(vmuuid)
-    if vm_id is None:
-        # Handle Endian-ness issue with Azure VM UUIDs
-        tokens = vmuuid.split('-')
-        t = tokens[0]
-        alt_vmuuid = "%s%s%s%s" % (t[6:8], t[4:6], t[2:4], t[0:2])
-        t = tokens[1]
-        alt_vmuuid = alt_vmuuid + "-%s%s" % (t[2:4], t[0:2])
-        t = tokens[2]
-        alt_vmuuid = alt_vmuuid + "-%s%s" % (t[2:4], t[0:2])
-        alt_vmuuid = alt_vmuuid + '-%s-%s' % (tokens[3], tokens[4])
-        vm_id = all_vms.get(alt_vmuuid)
-        if vm_id is None:
-            logging.debug("Unable to find VM with vmuuid [%s] for host [%s]", vmuuid, host)
-            return False, None, None, None, []
-
-    logging.debug("Getting OS details for host [%s] vmuuid [%s]", host, vmuuid)
-    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % vm_id)
+def get_vm_details(host, resource_id):
+    logging.debug("Getting OS details for host [%s] resource_id [%s]", host, resource_id)
+    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id)
     ijson = rjson['instanceView']
     tags = []
-    if is_vm_running(ijson):
+    # At times VM is marked as running but osName details are not yet populated in instanceView JSONand in such cases it is best to skip the VM in this discovery for now.
+    if is_vm_running(ijson) and ijson.get('osName') is not None:
         rid = rjson['id']
         rid_tokens = rid.split('/')
         sub_id = rid_tokens[2]
@@ -309,29 +279,4 @@ def get_vm_details(host, vmuuid):
         return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, tags
     else:
         return False, None, None, None, tags
-
-# Get details for all VMs
-def get_vms(subscription, resource_group):
-    all_vms = { }
-    rjson = run_az_cmd("vm list --subscription '%s' --resource-group '%s'" % (subscription, resource_group))
-    for vm in rjson:
-        all_vms[vm['vmId']] = vm['id']
-    return all_vms
-
-# Get a list of subscriptions for current AAD/Tenant
-def get_all_subscriptions():
-    allsubs = []
-    rjson = run_az_cmd('account subscription list')
-    for sub in rjson:
-        allsubs.append(sub['subscriptionId'])
-    return allsubs
-
-#Get all resource groups for a subscription
-def get_all_resourcegroups_for_subscription(subid):
-    allresourcegroups = []
-    rjson = run_az_cmd("group list --subscription '%s'" % subid)
-    for rg in rjson:
-        allresourcegroups.append(rg['name'])
-
-    return allresourcegroups
 
