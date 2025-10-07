@@ -363,7 +363,7 @@ def nmap_scan(args, host):
                             prod = prod.split('/')[0].strip()
                             products.append(prod)
                             os_type = 'Zebra Printer'
-                        elif 'Fortinet' in prod: # try vendor specific oids
+                        elif 'Fortinet' in prod: 
                             fgosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.12356.101.4.1.1')
                             if fgosver: # fortios
                                 fgosver = 'fortinet fortios '+fgosver.split(',')[0].replace('v','')
@@ -376,7 +376,22 @@ def nmap_scan(args, host):
                                     if m and len(m) > 0:
                                         model = 'fortinet ' + [x[0] for x in m][0]
                                         products.append(model)
-
+                        elif 'Aruba' in prod:
+                            ostype = 'Aruba'
+                            swmodel = prod.split()[2].split('-')[0]
+                            version_regex = re.compile(r'([0-9]+\.[0-9]+\.[0-9]+)')
+                            aos_version = None
+                            m = re.findall(version_regex, prod)
+                            if m and len(m) > 0:
+                                aos_version = m[0]
+                            modelnum = re.sub("[^\d]", "", swmodel)
+                            if int(modelnum) < 6000:
+                                if aos_version:
+                                    products.append(swmodel+' arubaos-switch '+aos_version)
+                                    products.append(swmodel+' firmware '+aos_version)
+                            else:
+                                if aos_version:
+                                    products.append(swmodel+' aos-cx '+aos_version)
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
