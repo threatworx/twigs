@@ -21,19 +21,29 @@ def get_encoding():
     global g_encoding
     return g_encoding
 
-def run_az_cmd(cmd):
+def run_az_cmd(cmd, suppress_errors=False):
     cmd = 'az ' + cmd + ' --output json --only-show-errors'
+    if suppress_errors:
+        cmd = cmd + ' 2>&1 >/dev/null'
     try:
         logging.debug("Running cmd [%s]", cmd)
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
         cmd_output = cmd_output.decode(get_encoding())
         ret_json = json.loads(cmd_output)
     except subprocess.CalledProcessError:
-        logging.error("Error running az command [%s]", cmd)
-        utils.tw_exit(1)
+        if suppress_errors:
+            logging.debug("Error running az command [%s]", cmd)
+            return None
+        else:
+            logging.error("Error running az command [%s]", cmd)
+            utils.tw_exit(1)
     except ValueError:
-        logging.error("Error parsing JSON output for az command [%s]: %s", cmd, cmd_output)
-        utils.tw_exit(1)
+        if suppress_errors:
+            logging.debug("Error parsing JSON output for az command [%s]: %s", cmd, cmd_output)
+            return None
+        else:
+            logging.error("Error parsing JSON output for az command [%s]: %s", cmd, cmd_output)
+            utils.tw_exit(1)
     return ret_json
 
 def check_required_az_extensions():
@@ -262,9 +272,12 @@ def is_vm_running(vm_json):
 # Try to get OS details, subscription Id and tags for given VM
 def get_vm_details(host, resource_id):
     logging.debug("Getting OS details for host [%s] resource_id [%s]", host, resource_id)
-    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id)
-    ijson = rjson['instanceView']
     tags = []
+    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id[:-2], True)
+    if rjson is None:
+        # VM not found (probably deleted)
+        return False, None, None, None, tags
+    ijson = rjson['instanceView']
     # At times VM is marked as running but osName details are not yet populated in instanceView JSONand in such cases it is best to skip the VM in this discovery for now.
     if is_vm_running(ijson) and ijson.get('osName') is not None:
         rid = rjson['id']
