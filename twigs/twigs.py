@@ -476,12 +476,22 @@ def add_attack_surface_label(args, assets):
         elif args.mode == 'nmap':
             if asset['type'] == 'HP Printer':
                 as_label = "Corporate::Printer::HP Printer"
-            elif asset['type'] == 'Arecont Vision':
-                as_label = "Corporate::CCTV::Arecont Vision"
-            elif asset['type'] == 'Axis Communications':
-                as_label = "Corporate::CCTV::Axis Communications"
+            elif asset['type'] == 'Canon Printer':
+                as_label = "Corporate::Printer::Canon Printer"
+            elif asset['type'] == 'Honeywell Printer':
+                as_label = "Corporate::Printer::Honeywell Printer"
+            elif asset['type'] == 'Zebra Printer':
+                as_label = "Corporate::Printer::Zebra Printer"
             elif asset['type'] == 'Hanwha Vision':
                 as_label = "Corporate::CCTV::Hanwha Vision"
+            elif asset['type'] == 'Palo Alto Networks':
+                as_label = "Corporate::Firewall::Palo Alto Networks"
+            elif asset['type'] == 'Fortinet':
+                as_label = "Corporate::Firewall::Fortinet"
+            elif asset['type'] == 'Juniper':
+                as_label = "Corporate::Network::Juniper"
+            elif asset['type'] == 'Aruba':
+                as_label = "Corporate::Network::Aruba"
             else:
                 as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'docker':

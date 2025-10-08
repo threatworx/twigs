@@ -51,7 +51,7 @@ def build_snmp_walk_cmd(args, addr):
     if args.snmp_security_name:
         cmd = cmd + ' -v3 -u '+args.snmp_security_name
     else:
-        cmd = cmd + ' -v2c '
+        cmd = cmd + ' -v1 '
     cmd = cmd + ' -c '+args.snmp_community + ' ' + addr
     return cmd
 
@@ -347,7 +347,6 @@ def nmap_scan(args, host):
                             m = re.findall(version_regex, prod)
                             if m and len(m) > 0:
                                 junosver = 'juniper junos ' + [x[0] for x in m][0]
-                                ostype = 'Juniper'
                                 products.append(junosver)
                             model = prod.split(',')[1].replace('Inc.','').strip()
                             if '[' in model and ']' in model:
@@ -355,6 +354,11 @@ def nmap_scan(args, host):
                             else:
                                 model = model.split()[0].strip()
                             products.append('juniper '+model)
+                            ostype = 'Juniper'
+                        elif 'Canon' in prod:
+                            model = prod.split()[1].strip()
+                            products.append('Canon '+model)
+                            os_type = 'Canon Printer'
                         elif 'Honeywell' in prod:
                             prod = prod.replace(';',' ')
                             products.append(prod)
