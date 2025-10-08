@@ -396,6 +396,32 @@ def nmap_scan(args, host):
                             else:
                                 if aos_version:
                                     products.append(swmodel+' aos-cx '+aos_version)
+                        elif 'Cisco' in prod:
+                            ostype = 'Cisco'
+                            ver = ''
+                            if 'Version' in prod:
+                                ver = prod.split('Version')[1].split()[0].strip()
+                                ver = ver.replace(',','')
+                            os_prod = None 
+                            if 'IOS' in prod:
+                                if 'XE' in prod or 'IOS-XE' in prod:
+                                    os_prod = 'cisco ios xe software '+ver
+                                else:
+                                    os_prod = 'cisco ios '+ver
+                            elif 'NX-OS(tm)' in prod:
+                                os_prod = 'cisco nx-os software '+ver
+                                device = prod.split(',')[0]
+                                if 'Nexus' in device:
+                                    device = device.replace('Nexus','Nexus ')
+                                    device = device.replace('NX-OS(tm)','')
+                                    if len(device.split()) > 3:
+                                        dlist = device.split()[:-1]
+                                        device = " ".join(dlist)
+                                    device = device + " series devices running nx-os software"
+                                    products.append(device)
+                            if os_prod:
+                                os_prod = os_prod.strip()
+                                products.append(os_prod)
                 prod = s.getAttribute('product')
                 if not prod:
                     continue

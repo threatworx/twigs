@@ -492,6 +492,8 @@ def add_attack_surface_label(args, assets):
                 as_label = "Corporate::Network::Juniper"
             elif asset['type'] == 'Aruba':
                 as_label = "Corporate::Network::Aruba"
+            elif asset['type'] == 'Cisco':
+                as_label = "Corporate::Network::Cisco"
             else:
                 as_label = get_host_as_label("Corporate::Server", asset)
         elif args.mode == 'docker':
