@@ -24,7 +24,7 @@ def get_encoding():
 def run_az_cmd(cmd, suppress_errors=False):
     cmd = 'az ' + cmd + ' --output json --only-show-errors'
     if suppress_errors:
-        cmd = cmd + ' 2>&1 >/dev/null'
+        cmd = cmd + ' 2>/dev/null'
     try:
         logging.debug("Running cmd [%s]", cmd)
         cmd_output = subprocess.check_output([cmd], shell=True, stdin=None, stderr=None)
@@ -273,7 +273,7 @@ def is_vm_running(vm_json):
 def get_vm_details(host, resource_id):
     logging.debug("Getting OS details for host [%s] resource_id [%s]", host, resource_id)
     tags = []
-    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id[:-2], True)
+    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id, True)
     if rjson is None:
         # VM not found (probably deleted)
         return False, None, None, None, tags
