@@ -27,7 +27,7 @@ NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
 NMAP_HTTP_PORTS = ['80','443','6443','8080','8443','2181'] 
 NSE_APACHE_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/apache/'
 NSE_HTTP_PATH = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/http/'
-NSE_HTTP_SCRIPTS = ['+http-generator','+http-wordpress-enum','+http-apache-server-status','+http-server-header','http-php-version',NSE_HTTP_PATH,NSE_APACHE_PATH]
+NSE_HTTP_SCRIPTS = ['+http-generator','+http-wordpress-enum','+http-apache-server-status','+http-server-header','+http-php-version',NSE_HTTP_PATH,NSE_APACHE_PATH]
 
 NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','9042','7199','523','445','1443','6379','1521']
 NSE_DB_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
@@ -250,6 +250,8 @@ def nmap_scan(args, host):
     if args.verbosity >= 3:
         logging.debug('Enabled nmap debug logging...')
         nmap_cmd = nmap_cmd + ' -vvv -d --packet-trace --reason'
+    elif args.verbosity == 2:
+        nmap_cmd = nmap_cmd + ' -vv -d '
     cmdarr = [nmap_cmd + ' ' + host]
     try:
         logging.debug("NMAP command: " + cmdarr[0])
