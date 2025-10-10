@@ -472,6 +472,8 @@ def nmap_scan(args, host):
             elif s.getAttribute('id') == 'http-php-version':
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout != '':
+                    if ':' not in wpout:
+                        continue
                     prodstr = wpout.split(':')[1].strip()
                     prodstr = prodstr.split(',')[0]
                     prodstr = prodstr.split(' ')[0]
@@ -586,6 +588,10 @@ def nmap_scan(args, host):
                     if wpout not in products:
                         products.append(wpout)
                     ostype = 'Hanwha Vision'
+            elif s.getAttribute('id') == 'goanywhere_version':
+                wpout = s.getAttribute('output')
+                if wpout != None and wpout not in products:
+                    products.append(wpout)
 
         os_name_tag = None
         smb_os_name = get_smb_os(h)
