@@ -24,6 +24,7 @@ from urllib.parse import urlparse, urlunparse
 
 from . import utils as lib_utils
 from . import code_secrets as lib_code_secrets
+from . import th_secrets
 from . import sast
 from . import iac
 
@@ -932,7 +933,10 @@ def discover_inventory(args, localpath, base_path, repo_chksum=None):
 
     if args.secrets_scan:
         logging.info("Discovering secrets/sensitive information. This may take some time.")
-        secret_records = lib_code_secrets.scan_for_secrets(args, localpath, base_path)
+        if args.use_trufflehog:
+            secret_records = th_secrets.scan_for_secrets(args, localpath, base_path)
+        else:
+            secret_records = lib_code_secrets.scan_for_secrets(args, localpath, base_path)
         asset_data['secrets'] = secret_records
         if len(secret_records) > 0:
             asset_tags.append('Secret')
