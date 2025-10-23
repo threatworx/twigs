@@ -25,7 +25,8 @@ def scan_for_secrets(args, local_path, base_path):
     out = None
     try:
         logging.debug("Running TH command "+th_cmd)
-        out = subprocess.check_output([th_cmd], shell=True, stderr=subprocess.DEVNULL)
+        #out = subprocess.check_output([th_cmd], shell=True, stderr=subprocess.DEVNULL)
+        out = subprocess.check_output([th_cmd], shell=True)
         out = out.decode(args.encoding)
     except subprocess.CalledProcessError:
         traceback.print_exc()
@@ -66,23 +67,23 @@ def scan_for_secrets(args, local_path, base_path):
                 lines = lines.split('\n')
                 fd.close()
 
-                if line_no >= 2:
-                    before_content = lib_utils.ascii_string(lines[line_no-2]) + '\n' + lib_utils.ascii_string(lines[line_no-1])
-                elif line_no == 1:
-                    before_content = lib_utils.ascii_string(lines[line_no-1])
+                if line_no >= 2 and line_no < len(lines):
+                    before_content = lib_utils.ascii_string(lines[line_no-3]) + '\n' + lib_utils.ascii_string(lines[line_no-2])
+                elif line_no == 1 and line_no < len(lines):
+                    before_content = lib_utils.ascii_string(lines[line_no-2])
                 else:
                     before_content = ''
                 if line_no < len(lines) - 2:
-                    after_content = lib_utils.ascii_string(lines[line_no+1]) + '\n' + lib_utils.ascii_string(lines[line_no+2])
+                    after_content = lib_utils.ascii_string(lines[line_no]) + '\n' + lib_utils.ascii_string(lines[line_no+1])
                 elif line_no == len(lines) - 2:
-                    after_content = lib_utils.ascii_string(lines[line_no+1])
+                    after_content = lib_utils.ascii_string(lines[line_no])
                 else:
                     after_content = ''
 
                 secret_record['before_content'] = before_content 
                 secret_record['after_content'] = after_content 
-                if not args.mask_secret:
-                    secret_record['line_content'] = lines[line_no]
+                if not args.mask_secret and line_no < len(lines):
+                    secret_record['line_content'] = lines[line_no-1]
                 else:
                     secret_record['line_content'] = lj['Redacted']
             secret_records.append(secret_record)
