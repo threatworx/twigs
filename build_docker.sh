@@ -84,6 +84,9 @@ then
     printf "\nexport PROWLER_HOME=/usr/share/prowler\n" >> $HOME/.bashrc
 fi
 
+# install trufflehog
+curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
 # Replace motd
 cp -f /tmp/motd /etc/motd
 chmod 600 /etc/update-motd.d/*
