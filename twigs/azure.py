@@ -269,27 +269,54 @@ def is_vm_running(vm_json):
                 return False
     return False
 
+def is_cm_running(cm_json):
+    status = cm_json.get('status')
+    if status == "Connected":
+        return True
+    return False
+
+def get_tags(rjson):
+    tags = []
+    if rjson.get('tags') is not None:
+        vm_tags = rjson['tags']
+        for key in list(vm_tags.keys()):
+            tag_name = key
+            tag_value = vm_tags[key]
+            tags.append(tag_name + ':' + tag_value)
+    return tags
+
 # Try to get OS details, subscription Id and tags for given VM
 def get_vm_details(host, resource_id):
     logging.debug("Getting OS details for host [%s] resource_id [%s]", host, resource_id)
-    tags = []
-    rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id, True)
-    if rjson is None:
-        # VM not found (probably deleted)
-        return False, None, None, None, tags
-    ijson = rjson['instanceView']
-    # At times VM is marked as running but osName details are not yet populated in instanceView JSONand in such cases it is best to skip the VM in this discovery for now.
-    if is_vm_running(ijson) and ijson.get('osName') is not None:
-        rid = rjson['id']
-        rid_tokens = rid.split('/')
-        sub_id = rid_tokens[2]
-        if rjson.get('tags') is not None:
-            vm_tags = rjson['tags']
-            for key in list(vm_tags.keys()):
-                tag_name = key
-                tag_value = vm_tags[key]
-                tags.append(tag_name + ':' + tag_value)
-        return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, tags
+    rid_tokens = resource_id.split('/')
+    sub_id = rid_tokens[2]
+    if '/providers/microsoft.hybridcompute/machines/' in resource_id.lower():
+        # Azure Connected Machines i.e. external to Azure
+        rjson = run_az_cmd("connectedmachine show --ids '%s'" % resource_id, True)
+        if rjson is None:
+            return False, None, None, None, []
+        if is_cm_running(rjson):
+            osname = rjson['osName'] if rjson['osName'].lower() != 'windows' else rjson['osSku']
+            osversion = rjson['osVersion']
+            tags = get_tags(rjson)
+            tags.append("AzureArcConnectedMachine")
+            return True, osname, osversion, sub_id, tags
+        else:
+            return False, None, None, None, []
     else:
-        return False, None, None, None, tags
+        # Azure VMs
+        rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id, True)
+        if rjson is None:
+            # VM not found (probably deleted)
+            return False, None, None, None, []
+        ijson = rjson['instanceView']
+        # At times VM is marked as running but osName details are not yet populated in instanceView JSONand in such cases it is best to skip the VM in this discovery for now.
+        if is_vm_running(ijson) and ijson.get('osName') is not None:
+            rid = rjson['id']
+            rid_tokens = rid.split('/')
+            sub_id = rid_tokens[2]
+            tags = get_tags(rjson)
+            return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, tags
+        else:
+            return False, None, None, None, []
 

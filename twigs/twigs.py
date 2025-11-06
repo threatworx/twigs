@@ -441,7 +441,12 @@ def add_attack_surface_label(args, assets):
         if args.mode == 'aws':
             as_label = get_host_as_label("Cloud::AWS::EC2", asset)
         elif args.mode == 'azure':
-            as_label = get_host_as_label("Cloud::Azure::VM", asset)
+            # check for Connected Machine from Azure Arc
+            tags = asset.get('tags')
+            if tags is not None and 'AzureArcConnectedMachine' in tags:
+                as_label = get_host_as_label("Cloud::Azure::CM", asset)
+            else:
+                as_label = get_host_as_label("Cloud::Azure::VM", asset)
         elif args.mode == 'gcp':
             as_label = get_host_as_label("Cloud::GCP::Compute", asset)
         elif args.mode == 'oci':

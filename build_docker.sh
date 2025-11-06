@@ -26,6 +26,7 @@ apt-get -y update && apt-get install -y google-cloud-sdk
 curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 /usr/bin/az extension add --name account
 /usr/bin/az extension add --name log-analytics
+/usr/bin/az extension add --name connectedmachine
 
 
 # Link python3 as default python
