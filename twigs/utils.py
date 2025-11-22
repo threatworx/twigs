@@ -2,11 +2,14 @@ import sys
 import os
 import socket
 import subprocess
-import paramiko
 from scp import SCPClient
 import logging
 import requests
 import time
+import warnings
+with warnings.catch_warnings():
+   warnings.simplefilter("ignore", category=Warning)
+   import paramiko
 
 try:
     from .__init__ import __version__

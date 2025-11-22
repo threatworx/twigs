@@ -123,12 +123,25 @@ def prepare_removed_product_tracker(workspace_id):
     logging.debug("Removed product tracker dict: %s", rpt)
     return rpt
 
+def get_alternate_vm_id(vmuuid):
+    # Handle Endian-ness issue with Azure VM UUIDs
+    tokens = vmuuid.split('-')
+    t = tokens[0]
+    alt_vmuuid = "%s%s%s%s" % (t[6:8], t[4:6], t[2:4], t[0:2])
+    t = tokens[1]
+    alt_vmuuid = alt_vmuuid + "-%s%s" % (t[2:4], t[0:2])
+    t = tokens[2]
+    alt_vmuuid = alt_vmuuid + "-%s%s" % (t[2:4], t[0:2])
+    alt_vmuuid = alt_vmuuid + '-%s-%s' % (tokens[3], tokens[4])
+    return alt_vmuuid
+
 def parse_inventory(args, data, rpt):
     logging.info("Processing inventory retrieved from Azure...")
     hosts = []
     assets = []
     asset_map = {}
     not_running_vms = {}
+    resource_id_2_vm_id = {}
     all_assets = { }
     for item in data:
         all_assets[item['_ResourceId']] = item['Computer']
@@ -142,13 +155,27 @@ def parse_inventory(args, data, rpt):
             continue
 
         if host not in hosts  and publisher != '0':
+            if resource_id in resource_id_2_vm_id:
+                vm_id = resource_id_2_vm_id[resource_id]
+            else:
+                vm_running, os, os_version, sub_id, vm_id, tags = get_vm_details(host, resource_id)
+                if vm_running == False:
+                    # skip vm's which are not running
+                    not_running_vms[resource_id] = 1
+                    continue
+                resource_id_2_vm_id[resource_id] = vm_id
+            alt_vm_id = get_alternate_vm_id(vm_id)
+            if vm_id != item['VMUUID'] and alt_vm_id != item['VMUUID']:
+                # not latest VM for resource_id, so ignore it
+                logging.debug("Found old software %s", item)
+                continue
             logging.debug("Found new asset - host [%s] resource_id [%s]", host, resource_id)
             patches = []
             products = []
             asset_map = {}
             asset_map['owner'] = args.handle
             asset_map['host'] = host
-            asset_map['id'] = item['VMUUID']
+            asset_map['id'] = vm_id
             asset_map['name'] = host
             asset_map['tags'] = [ ]
             asset_map['patch_tracker'] = { } # To help remove duplicate patches
@@ -168,11 +195,6 @@ def parse_inventory(args, data, rpt):
                     products.append(pnv)
             asset_map['products'] = products
             asset_map['patches'] = patches
-            vm_running, os, os_version, sub_id, tags = get_vm_details(host, resource_id)
-            if vm_running == False:
-                # skip vm's which are not running
-                not_running_vms[resource_id] = 1
-                continue
             asset_map['type'] = get_os_type(os)
             if len(asset_map['type']) > 0:
                 asset_map['tags'].append(asset_map['type'])
@@ -196,6 +218,12 @@ def parse_inventory(args, data, rpt):
             assets.append(asset_map)
             hosts.append(host)
         else:
+            vm_id = resource_id_2_vm_id[resource_id]
+            alt_vm_id = get_alternate_vm_id(vm_id)
+            if vm_id != item['VMUUID'] and alt_vm_id != item['VMUUID']:
+                # not latest VM for resource_id, so ignore it
+                logging.debug("Found old software %s", item)
+                continue
             for asset in assets:
                 if asset['resource_id'] == resource_id:
                     if item['SoftwareType'] in ['Update', 'Patch']: #ApplicationType for MS patches
@@ -294,29 +322,31 @@ def get_vm_details(host, resource_id):
         # Azure Connected Machines i.e. external to Azure
         rjson = run_az_cmd("connectedmachine show --ids '%s'" % resource_id, True)
         if rjson is None:
-            return False, None, None, None, []
+            return False, None, None, None, None, []
         if is_cm_running(rjson):
             osname = rjson['osName'] if rjson['osName'].lower() != 'windows' else rjson['osSku']
             osversion = rjson['osVersion']
+            vm_id = rjson['vmId']
             tags = get_tags(rjson)
             tags.append("AzureArcConnectedMachine")
-            return True, osname, osversion, sub_id, tags
+            return True, osname, osversion, sub_id, vm_id, tags
         else:
-            return False, None, None, None, []
+            return False, None, None, None, None, []
     else:
         # Azure VMs
         rjson = run_az_cmd("vm get-instance-view --ids '%s'" % resource_id, True)
         if rjson is None:
             # VM not found (probably deleted)
-            return False, None, None, None, []
+            return False, None, None, None, None, []
         ijson = rjson['instanceView']
         # At times VM is marked as running but osName details are not yet populated in instanceView JSONand in such cases it is best to skip the VM in this discovery for now.
         if is_vm_running(ijson) and ijson.get('osName') is not None:
             rid = rjson['id']
             rid_tokens = rid.split('/')
             sub_id = rid_tokens[2]
+            vm_id = rjson['vmId']
             tags = get_tags(rjson)
-            return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, tags
+            return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, vm_id, tags
         else:
-            return False, None, None, None, []
+            return False, None, None, None, None, []
 
