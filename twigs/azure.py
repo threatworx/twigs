@@ -137,7 +137,7 @@ def get_alternate_vm_id(vmuuid):
 
 def parse_inventory(args, data, rpt):
     logging.info("Processing inventory retrieved from Azure...")
-    hosts = []
+    vm_resources = []
     assets = []
     asset_map = {}
     not_running_vms = {}
@@ -154,7 +154,7 @@ def parse_inventory(args, data, rpt):
         if not_running_vms.get(resource_id) == 1:
             continue
 
-        if host not in hosts  and publisher != '0':
+        if resource_id not in vm_resources  and publisher != '0':
             if resource_id in resource_id_2_vm_id:
                 vm_id = resource_id_2_vm_id[resource_id]
             else:
@@ -174,7 +174,6 @@ def parse_inventory(args, data, rpt):
             products = []
             asset_map = {}
             asset_map['owner'] = args.handle
-            asset_map['host'] = host
             asset_map['id'] = vm_id
             asset_map['name'] = host
             asset_map['tags'] = [ ]
@@ -216,7 +215,7 @@ def parse_inventory(args, data, rpt):
                 asset_map['tags'].append("SOURCE:Azure")
                 asset_map['tags'].append("Azure")
             assets.append(asset_map)
-            hosts.append(host)
+            vm_resources.append(resource_id)
         else:
             vm_id = resource_id_2_vm_id[resource_id]
             alt_vm_id = get_alternate_vm_id(vm_id)
