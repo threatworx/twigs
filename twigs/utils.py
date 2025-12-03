@@ -316,6 +316,19 @@ def get_ip():
         s.close()
     return IP
 
+def get_hostname(ip_address):
+    try:
+        hostname_info = socket.gethostbyaddr(ip_address)
+        hostname = hostname_info[0]  # The first element is the primary hostname
+        if hostname == 'localhost':
+            return ip_address
+        return hostname
+    except socket.herror:
+        return ip_address
+    except socket.gaierror:
+        return ip_address
+
+
 def find_files(localpath, filename):
     ret_files = []
     for root, subdirs, files in os.walk(localpath):

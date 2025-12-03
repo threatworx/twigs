@@ -536,6 +536,8 @@ def add_attack_surface_label(args, assets):
         elif args.mode == 'meraki' or args.mode == 'dna_center':
             if asset['type'] == 'Android':
                 as_label = "Corporate::Mobile Device::Android"
+            elif asset['type'] == 'Apple':
+                as_label = "Corporate::Mobile Device::Apple"
             else:
                 as_label = get_code_as_label("Corporate::Network::Cisco", asset)
 

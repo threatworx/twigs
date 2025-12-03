@@ -106,8 +106,8 @@ def get_all_devices(args, headers):
                 asset['name'] = sm_device['name']
                 if 'osName' in sm_device and 'Android' in sm_device['osName']:
                     asset['type'] = 'Android'
-                elif 'osName' in sm_device and 'iOS' in sm_device['osName']:
-                    asset['type'] = 'iPhone'
+                elif 'osName' in sm_device and 'iOS' in sm_device['osName'] or 'iPadOS' in sm_device['os_name']:
+                    asset['type'] = 'Apple'
                 asset_tags = list(set(['Cisco Meraki MDM', asset['type']]))
                 if 'tags' in sm_device:
                     for t in sm_device['tags']:

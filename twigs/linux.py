@@ -448,7 +448,7 @@ def discover_host(args, host):
 
     asset_data = {}
     asset_data['id'] = asset_id
-    asset_data['name'] = asset_name
+    asset_data['name'] = utils.get_hostname(asset_name)
     asset_data['type'] = atype
     asset_data['owner'] = args.handle
     asset_data['products'] = plist
