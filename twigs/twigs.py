@@ -235,7 +235,7 @@ def push_asset_to_TW(asset, args):
             ret_scan_status = False
         else:
             if resp.status_code != 200:
-                logging.info("Creating new asset [%s]", asset_id)
+                logging.info("Creating new asset [%s] [%s] [%s]", asset_id, asset['type'], asset['as_label'])
                 # Asset does not exist so create one with POST
                 resp = utils.requests_post(asset_url + auth_data, json=asset)
                 if resp is not None and resp.status_code == 200:
@@ -485,8 +485,10 @@ def add_attack_surface_label(args, assets):
                 as_label = "Corporate::Printer::Canon Printer"
             elif asset['type'] == 'Honeywell Printer':
                 as_label = "Corporate::Printer::Honeywell Printer"
+                logging.info("Setting attack surface label for Honeywell Printer [%s]", asset['id'])
             elif asset['type'] == 'Zebra Printer':
                 as_label = "Corporate::Printer::Zebra Printer"
+                logging.info("Setting attack surface label for Zebra Printer [%s]", asset['id'])
             elif asset['type'] == 'Hanwha Vision':
                 as_label = "Corporate::CCTV::Hanwha Vision"
             elif asset['type'] == 'Palo Alto Networks':
@@ -1117,7 +1119,7 @@ def main(args=None):
         # Arguments required for nmap discovery
         parser_nmap = subparsers.add_parser ("nmap", help = "Discover endpoints and services as assets using nmap")
         parser_nmap.add_argument('--hosts', help='Hostname, IP address or CIDR range. Multiple values should be comma separated')
-        parser_nmap.add_argument('--services', nargs='+', choices=['web', 'database', 'os', 'vmware', 'printers', 'cctv', 'snmp'], help='Specify what class of services / devices you want to scan', default='web')
+        parser_nmap.add_argument('--services', nargs='+', choices=['web', 'database', 'os', 'vmware', 'printers', 'cctv', 'snmp', 'ot'], help='Specify what class of services / devices you want to scan', default='web')
         parser_nmap.add_argument('--extra_ports', help='List of comma separated ports that you would like to include in the scans in addition to the standard service ports e.g. 444,9000-9100,...')
         parser_nmap.add_argument('--timing', help=argparse.SUPPRESS, default='5')
         parser_nmap.add_argument('--discovery_scan_type', help=argparse.SUPPRESS)

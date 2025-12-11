@@ -9,27 +9,41 @@ import time
 
 from . import utils
 
+def make_request_with_backoff(url, headers, max_retries=5):
+    retries = 0
+    while retries < max_retries:
+        response = requests.get(url, headers=headers, verify=False)
+        if response.status_code == 429:
+            retry_after = response.headers.get("Retry-After")
+            wait_time = int(retry_after) if retry_after else (2 ** retries)
+            print(f"Received 429, waiting for {wait_time} seconds...")
+            time.sleep(wait_time)
+            retries += 1
+        elif response.status_code == 200:
+            return response
+    raise Exception("Max retries exceeded")
+
 def get_organizations(args, headers):
    url = args.base_url + f'/organizations'
-   resp = requests.get(url, headers=headers)
+   resp = make_request_with_backoff(url, headers=headers)
    resp.raise_for_status()
    return resp.json()
 
 def get_networks(args, headers, org_id):
    url = args.base_url + f'/organizations/{org_id}/networks'
-   resp = requests.get(url, headers=headers, verify=False)
+   resp = make_request_with_backoff(url, headers=headers)
    resp.raise_for_status()
    return resp.json()
 
 def get_devices(args, headers, org_id):
    url = args.base_url + f'/organizations/{org_id}/devices'
-   resp = requests.get(url, headers=headers, verify=False)
+   resp = make_request_with_backoff(url, headers=headers)
    resp.raise_for_status()
    return resp.json()
 
 def get_firmware_upgrades(args, headers, network_id):
    url = args.base_url + f'/networks/{network_id}/firmwareUpgrades'
-   resp = requests.get(url, headers=headers, verify=False)
+   resp = make_request_with_backoff(url, headers=headers)
    if resp.status_code == 404:
        return None  # Some networks may not support this endpoint
    resp.raise_for_status()
@@ -38,7 +52,7 @@ def get_firmware_upgrades(args, headers, network_id):
 def get_sm_devices(args, headers, network_id):
    url = args.base_url + f'/networks/{network_id}/sm/devices'
    logging.info("SM devices url: "+url)
-   resp = requests.get(url, headers=headers, verify=False)
+   resp = make_request_with_backoff(url, headers=headers)
    if resp.status_code == 404:
        logging.info("SM devices response status: "+str(resp.status_code))
        logging.info("SM devices response: "+resp.text)
@@ -48,7 +62,7 @@ def get_sm_devices(args, headers, network_id):
 
 def get_sm_device_softwares(args, headers, network_id, device_id):
    url = args.base_url + f'/networks/{network_id}/sm/devices/{device_id}/softwares'
-   resp = requests.get(url, headers=headers, verify=False)
+   resp = make_request_with_backoff(url, headers=headers)
    if resp.status_code == 404:
        return None  # Some networks may not support this endpoint
    resp.raise_for_status()
@@ -106,7 +120,7 @@ def get_all_devices(args, headers):
                 asset['name'] = sm_device['name']
                 if 'osName' in sm_device and 'Android' in sm_device['osName']:
                     asset['type'] = 'Android'
-                elif 'osName' in sm_device and 'iOS' in sm_device['osName'] or 'iPadOS' in sm_device['os_name']:
+                elif 'osName' in sm_device and 'iOS' in sm_device['osName'] or 'iPadOS' in sm_device['osName']:
                     asset['type'] = 'Apple'
                 asset_tags = list(set(['Cisco Meraki MDM', asset['type']]))
                 if 'tags' in sm_device:

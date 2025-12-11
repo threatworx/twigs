@@ -41,6 +41,9 @@ NMAP_CCTV_PORTS = ['21','80','161','443','8080','8443','4321', '37777', '9000', 
 NSE_CCTV_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/cctv/'
 NSE_CCTV_SCRIPTS = [NSE_CCTV_PATH]
 
+NMAP_OT_PORTS = ['502']
+NSE_OT_SCRIPTS = ['modbus-discover']
+
 NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/' 
 
 def nmap_exists():
@@ -227,6 +230,9 @@ def create_nmap_cmd (args):
     if "cctv" in args.services:
         ports += NMAP_CCTV_PORTS
         scripts += NSE_CCTV_SCRIPTS
+    if "ot" in args.services:
+        ports += NMAP_OT_PORTS
+        scripts += NSE_OT_SCRIPTS
     if "snmp" in args.services:
         ports = ['161']
         vflag = " -sU "
@@ -326,7 +332,7 @@ def nmap_scan(args, host):
         services = h.getElementsByTagName("service")
         if services is not None:
             for s in services:
-                if s.getAttribute('name') == 'snmp' and 'snmp' in args.services:
+                if s.getAttribute('name') == 'snmp' and ('snmp' in args.services or 'ot' in args.services):
                     # use snmpwalk to find more
                     if not SNMPWALK:
                         logging.warn("snmpwalk command not found")
@@ -365,10 +371,12 @@ def nmap_scan(args, host):
                             prod = prod.replace(';',' ')
                             products.append(prod)
                             os_type = 'Honeywell Printer'
+                            logging.info("Found Honeywell Printer")
                         elif 'Zebra' in prod:
                             prod = prod.split('/')[0].strip()
                             products.append(prod)
                             os_type = 'Zebra Printer'
+                            logging.info("Found Zebra Printer")
                         elif 'Fortinet' in prod: 
                             fgosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.12356.101.4.1.1')
                             if fgosver: # fortios
@@ -424,6 +432,10 @@ def nmap_scan(args, host):
                             if os_prod:
                                 os_prod = os_prod.strip()
                                 products.append(os_prod)
+                        elif 'Siemens' in prod:
+                            prod = prod.replace(',','')
+                            products.append(prod)
+                            os_type = 'Siemens'
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
@@ -592,6 +604,16 @@ def nmap_scan(args, host):
                 wpout = s.getAttribute('output')
                 if wpout != None and wpout not in products:
                     products.append(wpout)
+            elif s.getAttribute('id') == 'modbus-discover':
+                wpout = s.getAttribute('output')
+                if wpout != None:
+                    if 'Device identification:' in wpout:
+                        prod = wpout.split('Device identification:')[1].strip()
+                    elif 'Slave ID data:' in wpout:
+                        prod = wpout.split('Slave ID data:')[1].strip()
+                    if 'Schneider Electric' in prod:
+                        ostype = 'Schneider Electric'
+                    products.append(prod)
 
         os_name_tag = None
         smb_os_name = get_smb_os(h)
