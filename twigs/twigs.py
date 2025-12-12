@@ -235,7 +235,7 @@ def push_asset_to_TW(asset, args):
             ret_scan_status = False
         else:
             if resp.status_code != 200:
-                logging.info("Creating new asset [%s] [%s] [%s]", asset_id, asset['type'], asset['as_label'])
+                logging.info("Creating new asset [%s] [%s] [%s]", asset_id, asset['type'], asset['attack_surface_label'])
                 # Asset does not exist so create one with POST
                 resp = utils.requests_post(asset_url + auth_data, json=asset)
                 if resp is not None and resp.status_code == 200:
