@@ -165,7 +165,8 @@ def parse_inventory(args, data, rpt):
                     continue
                 resource_id_2_vm_id[resource_id] = vm_id
             alt_vm_id = get_alternate_vm_id(vm_id)
-            if vm_id != item['VMUUID'] and alt_vm_id != item['VMUUID']:
+            vmuuid = item['VMUUID'].lower()
+            if vm_id != vmuuid and alt_vm_id != vmuuid:
                 # not latest VM for resource_id, so ignore it
                 logging.debug("Found old software %s", item)
                 continue
@@ -219,7 +220,8 @@ def parse_inventory(args, data, rpt):
         else:
             vm_id = resource_id_2_vm_id[resource_id]
             alt_vm_id = get_alternate_vm_id(vm_id)
-            if vm_id != item['VMUUID'] and alt_vm_id != item['VMUUID']:
+            vmuuid = item['VMUUID'].lower()
+            if vm_id != vmuuid and alt_vm_id != vmuuid:
                 # not latest VM for resource_id, so ignore it
                 logging.debug("Found old software %s", item)
                 continue
@@ -325,7 +327,7 @@ def get_vm_details(host, resource_id):
         if is_cm_running(rjson):
             osname = rjson['osName'] if rjson['osName'].lower() != 'windows' else rjson['osSku']
             osversion = rjson['osVersion']
-            vm_id = rjson['vmId']
+            vm_id = rjson['vmUuid'].lower()
             tags = get_tags(rjson)
             tags.append("AzureArcConnectedMachine")
             return True, osname, osversion, sub_id, vm_id, tags
@@ -343,7 +345,7 @@ def get_vm_details(host, resource_id):
             rid = rjson['id']
             rid_tokens = rid.split('/')
             sub_id = rid_tokens[2]
-            vm_id = rjson['vmId']
+            vm_id = rjson['vmId'].lower()
             tags = get_tags(rjson)
             return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, vm_id, tags
         else:
