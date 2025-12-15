@@ -366,16 +366,16 @@ def nmap_scan(args, host):
                         elif 'Canon' in prod:
                             model = prod.split()[1].strip()
                             products.append('Canon '+model)
-                            os_type = 'Canon Printer'
+                            ostype = 'Canon Printer'
                         elif 'Honeywell' in prod:
                             prod = prod.replace(';',' ')
                             products.append(prod)
-                            os_type = 'Honeywell Printer'
+                            ostype = 'Honeywell Printer'
                             logging.info("Found Honeywell Printer")
                         elif 'Zebra' in prod:
                             prod = prod.split('/')[0].strip()
                             products.append(prod)
-                            os_type = 'Zebra Printer'
+                            ostype = 'Zebra Printer'
                             logging.info("Found Zebra Printer")
                         elif 'Fortinet' in prod: 
                             fgosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.12356.101.4.1.1')
@@ -435,7 +435,7 @@ def nmap_scan(args, host):
                         elif 'Siemens' in prod:
                             prod = prod.replace(',','')
                             products.append(prod)
-                            os_type = 'Siemens'
+                            ostype = 'Siemens'
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
