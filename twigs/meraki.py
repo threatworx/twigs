@@ -19,7 +19,7 @@ def make_request_with_backoff(url, headers, max_retries=5):
             print(f"Received 429, waiting for {wait_time} seconds...")
             time.sleep(wait_time)
             retries += 1
-        elif response.status_code == 200:
+        else:
             return response
     raise Exception("Max retries exceeded")
 

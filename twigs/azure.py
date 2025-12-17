@@ -341,10 +341,7 @@ def get_vm_details(host, resource_id):
             return False, None, None, None, None, []
         ijson = rjson['instanceView']
         # At times VM is marked as running but osName details are not yet populated in instanceView JSONand in such cases it is best to skip the VM in this discovery for now.
-        if is_vm_running(ijson) and ijson.get('osName') is not None:
-            rid = rjson['id']
-            rid_tokens = rid.split('/')
-            sub_id = rid_tokens[2]
+        if is_vm_running(ijson) and ijson.get('osName') is not None and len(ijson['osName'].strip()) > 0:
             vm_id = rjson['vmId'].lower()
             tags = get_tags(rjson)
             return True, ijson.get('osName'), ijson.get('osVersion'), sub_id, vm_id, tags
