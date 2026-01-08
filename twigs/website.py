@@ -36,6 +36,8 @@ def get_inventory(args):
     asset_data_list = []
     logging.info("Starting OS/Service detection for "+hostname)
     args.services = ['web', 'os']
+    if v.port:
+        args.extra_ports = str(v.port)
     asset_data_list = fingerprint.nmap_scan(args, hostname)
     if len(asset_data_list) != 0:
         asset_data = asset_data_list[0]
