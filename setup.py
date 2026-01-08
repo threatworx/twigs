@@ -47,7 +47,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatworx/twigs',
-    version='1.2.85',
+    version='1.2.86',
     zip_safe=False,
     entry_points={
         'console_scripts': [
