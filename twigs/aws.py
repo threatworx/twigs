@@ -236,3 +236,4 @@ def get_inventory(args):
     aws =  EC2Impl(params)
     assets = aws.asset_inventory(args.handle)
     return assets
+#EOF
