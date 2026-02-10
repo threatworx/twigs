@@ -26,6 +26,7 @@ import hashlib
 import shutil
 import stat
 from os.path import expanduser
+import urllib.parse
 import copy
 import warnings
 with warnings.catch_warnings():
@@ -140,7 +141,7 @@ def push_sourcecode(asset, args, base_path, skip_checksum_check):
     if len(sourcefilepaths) == 0:
         return
 
-    base_api_url = "https://%s/api/v1/assets/%s/" % (args.instance, asset['id'])
+    base_api_url = "https://%s/api/v1/assets/%s/" % (args.instance, urllib.parse.quote(asset['id']))
     auth_data = "?handle=%s&token=%s&format=json" % (args.handle, args.token)
     checksum_check_api_url = base_api_url + "sourcefiles_check/"
     upload_sourcefile_api_url = base_api_url + "sourcefiles/"
@@ -228,7 +229,7 @@ def push_asset_to_TW(asset, args):
     delete_base_path = asset.pop('tw_delete_base_path', False)
 
     if not args.test:
-        resp = utils.requests_get(asset_url + asset_id + "/" + auth_data)
+        resp = utils.requests_get(asset_url + urllib.parse.quote(asset_id) + "/" + auth_data)
         if resp is None:
             logging.info("Unable to check if asset exists...skipping asset [%s]", asset_id)
             ret_asset_id = None
@@ -253,7 +254,7 @@ def push_asset_to_TW(asset, args):
             else:
                 logging.info("Updating asset [%s]", asset_id)
                 # asset exists so update it with PUT
-                resp = utils.requests_put(asset_url + asset_id + "/" + auth_data, json=asset)
+                resp = utils.requests_put(asset_url + urllib.parse.quote(asset_id) + "/" + auth_data, json=asset)
                 if resp is not None and resp.status_code == 200:
                     logging.info("Successfully updated asset [%s]", asset_id)
                     logging.debug("Response content: %s", resp.content.decode(args.encoding))

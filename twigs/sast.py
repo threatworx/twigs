@@ -49,7 +49,7 @@ def run_sast(args, path, base_path):
         logging.warning('SAST plugin CLI not found')
         return findings
 
-    params = ' -q --json --config=r/all ' + base_path
+    params = " -q --json --config=r/all '" + base_path + "'"
     
     cmdarr = [sast_plugin+ " " + params]
     sast_issues = None

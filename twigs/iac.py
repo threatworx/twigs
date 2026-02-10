@@ -39,7 +39,7 @@ def run_iac_checks(args, path, base_path):
         logging.error('IaC security checks CLI - checkov not found')
         return findings
 
-    params = '--output json --directory ' + path
+    params = "--output json --directory '" + path + "'"
     
     cmdarr = [checkov_plugin + " " + params]
     logging.debug("Running command %s", cmdarr)
