@@ -38,7 +38,7 @@ def process_oci_cis_reports(report_dir):
                 resources_str = "\n".join(resources)
                 details = details + "Non-compliant resource(s):\n" + resources_str + "\n\n"
             details = details + "Remediation: " + row['Remediation'] + "\n\n"
-            if len(crd['Recommendation']) > 0:
+            if crd.get('Recommendation') is not None and len(crd['Recommendation']) > 0:
                 details = details + "Recommendation: " + crd['Recommendation'] + "\n\n"
 
             issue['details'] = details
