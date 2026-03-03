@@ -141,7 +141,7 @@ def parse_inventory(args, data, rpt):
     assets = []
     asset_map = {}
     not_running_vms = {}
-    resource_id_2_vm_id = {}
+    resource_id_2_vm_details = {}
     all_assets = { }
     for item in data:
         all_assets[item['_ResourceId']] = item['Computer']
@@ -155,15 +155,15 @@ def parse_inventory(args, data, rpt):
             continue
 
         if resource_id not in vm_resources  and publisher != '0':
-            if resource_id in resource_id_2_vm_id:
-                vm_id = resource_id_2_vm_id[resource_id]
+            if resource_id in resource_id_2_vm_details:
+                os, os_version, sub_id, vm_id, tags = resource_id_2_vm_details[resource_id]
             else:
                 vm_running, os, os_version, sub_id, vm_id, tags = get_vm_details(host, resource_id)
                 if vm_running == False:
                     # skip vm's which are not running
                     not_running_vms[resource_id] = 1
                     continue
-                resource_id_2_vm_id[resource_id] = vm_id
+                resource_id_2_vm_details[resource_id] = (os, os_version, sub_id, vm_id, tags)
             alt_vm_id = get_alternate_vm_id(vm_id)
             vmuuid = item['VMUUID'].lower()
             if vm_id != vmuuid and alt_vm_id != vmuuid:
@@ -218,7 +218,7 @@ def parse_inventory(args, data, rpt):
             assets.append(asset_map)
             vm_resources.append(resource_id)
         else:
-            vm_id = resource_id_2_vm_id[resource_id]
+            vm_id = resource_id_2_vm_details[resource_id][3]
             alt_vm_id = get_alternate_vm_id(vm_id)
             vmuuid = item['VMUUID'].lower()
             if vm_id != vmuuid and alt_vm_id != vmuuid:
