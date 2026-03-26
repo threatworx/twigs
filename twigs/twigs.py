@@ -67,8 +67,9 @@ try:
     from . import vmware 
     from . import website 
     from . import meraki
-    from . import dna_center 
+    from . import dna_center
     from . import policy as policy_lib
+    from . import trustmodel_eval
     from .__init__ import __version__
 except (ImportError,ValueError):
     from twigs import aws
@@ -100,9 +101,10 @@ except (ImportError,ValueError):
     from twigs import vmware
     from twigs import website
     from twigs import meraki
-    from twigs import dna_center 
+    from twigs import dna_center
     from twigs import utils
     from twigs import policy as policy_lib
+    from twigs import trustmodel_eval
     from twigs.__init__ import __version__
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
@@ -1245,6 +1247,39 @@ def main(args=None):
         parser_dna_center.add_argument('--user', help='User name for basic authentication', required=True)
         parser_dna_center.add_argument('--password', help='Password for basic authentication', required=True)
 
+        # Arguments required for TrustModel
+        parser_trustmodel = subparsers.add_parser("trustmodel", help = "TrustModel AI model evaluation")
+        parser_trustmodel.add_argument('--trustmodel_api_key', help='TrustModel API key', required=True)
+        # Action flags (mutually exclusive)
+        trustmodel_action_group = parser_trustmodel.add_mutually_exclusive_group(required=True)
+        trustmodel_action_group.add_argument('--evaluate', action='store_true', help='Run a TrustModel evaluation')
+        trustmodel_action_group.add_argument('--ping', action='store_true', help=argparse.SUPPRESS)
+        trustmodel_action_group.add_argument('--models', action='store_true', help=argparse.SUPPRESS)
+        trustmodel_action_group.add_argument('--config', action='store_true', help=argparse.SUPPRESS)
+        trustmodel_action_group.add_argument('--list_evaluations', action='store_true', help=argparse.SUPPRESS)
+        trustmodel_action_group.add_argument('--get_result', action='store_true', help=argparse.SUPPRESS)
+        # Visible optional arguments
+        parser_trustmodel.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset')
+        parser_trustmodel.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
+        parser_trustmodel.add_argument('--model_identifier', help='Model to evaluate (e.g., "gpt-4")')
+        parser_trustmodel.add_argument('--vendor_identifier', help='Vendor (e.g., "openai")')
+        parser_trustmodel.add_argument('--api_key', help='Your own vendor API key (BYOK)')
+        parser_trustmodel.add_argument('--api_endpoint', help='Custom OpenAI-compatible API endpoint URL')
+        # Suppressed optional arguments
+        parser_trustmodel.add_argument('--base_url', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--environment', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--categories', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--model_config_name', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--application_type', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--user_personas', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--application_description', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--domain_expert_description', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--evaluation_type', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--model_name', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--output_dir', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--status_filter', help=argparse.SUPPRESS)
+        parser_trustmodel.add_argument('--evaluation_id', help=argparse.SUPPRESS, type=int)
+
         args = parser.parse_args()
         if args.out is not None:
             args.sbom  = args.out
@@ -1433,6 +1468,8 @@ def main(args=None):
             assets = gcloud_functions.get_inventory(args)
         elif args.mode == 'webapp':
             assets = website.get_inventory(args)
+        elif args.mode == 'trustmodel':
+            assets = trustmodel_eval.get_inventory(args)
 
         exit_code = None
         run_status = 'SUCCESS'
