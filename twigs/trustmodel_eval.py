@@ -392,7 +392,7 @@ def _build_asset_from_result(result, args):
     asset = {}
     asset["id"] = asset_id
     asset["name"] = getattr(args, "assetname", None) or display_name
-    asset["type"] = vendor_name or "AI Model"
+    asset["type"] = vendor_name
     asset["owner"] = args.handle
     asset["products"] = []
     asset["tags"] = tags
