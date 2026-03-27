@@ -8,6 +8,8 @@ import sys
 import time
 import logging
 
+from . import utils
+
 
 def _init_client(args):
     try:
@@ -16,7 +18,7 @@ def _init_client(args):
         logging.error(
             "trustmodel SDK is not installed. Install it with: pip install trustmodel"
         )
-        sys.exit(1)
+        utils.tw_exit(1)
 
     client_kwargs = {"api_key": args.trustmodel_api_key}
     if getattr(args, "base_url", None):
@@ -27,7 +29,7 @@ def _init_client(args):
         return TrustModelClient(**client_kwargs)
     except Exception as e:
         logging.error("Failed to initialize TrustModel client: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
 
 def _cmd_ping(args):
@@ -39,10 +41,10 @@ def _cmd_ping(args):
         print("API key is valid.")
     except AuthenticationError:
         logging.error("Invalid API key.")
-        sys.exit(1)
+        utils.tw_exit(1)
     except TrustModelError as e:
         logging.error("Ping failed: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
 
 def _cmd_models(args):
@@ -53,7 +55,7 @@ def _cmd_models(args):
         models, api_sources = client.models.list()
     except TrustModelError as e:
         logging.error("Failed to list models: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
     print("\n%-30s %-20s %-15s %-10s" % ("Model", "Vendor", "Platform Key", "BYOK"))
     print("-" * 80)
@@ -78,7 +80,7 @@ def _cmd_config(args):
         config = client.config.get()
     except TrustModelError as e:
         logging.error("Failed to get config: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
     print("\n--- Application Types ---")
     for at in config.application_types:
@@ -115,16 +117,16 @@ def _cmd_evaluate(args):
         if is_custom_endpoint:
             if not getattr(args, "api_key", None):
                 logging.error("--api_key is required for custom endpoint evaluation.")
-                sys.exit(1)
+                utils.tw_exit(1)
         else:
             if not getattr(args, "vendor_identifier", None):
                 logging.error("--vendor_identifier is required for evaluate.")
-                sys.exit(1)
+                utils.tw_exit(1)
     elif not has_assetid:
         logging.error(
             "--model_identifier (with --vendor_identifier) or --assetid is required for evaluate."
         )
-        sys.exit(1)
+        utils.tw_exit(1)
 
     client = _init_client(args)
 
@@ -134,10 +136,10 @@ def _cmd_evaluate(args):
         logging.info("API key validated.")
     except AuthenticationError:
         logging.error("Invalid TrustModel API key.")
-        sys.exit(1)
+        utils.tw_exit(1)
     except TrustModelError as e:
         logging.error("Failed to validate API key: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
     # Common optional kwargs
     extra_kwargs = {}
@@ -204,16 +206,14 @@ def _cmd_evaluate(args):
             # Asset ID only — use it as template_id to look up existing template
             logging.info("Creating evaluation from template ID '%s'...", args.assetid)
             evaluation = client.evaluations.create_from_template(
-                template_id=args.assetid,
-                trigger_source="threatworx",
-                **extra_kwargs
+                template_id=args.assetid, trigger_source="threatworx", **extra_kwargs
             )
 
         eval_id = evaluation.id
         logging.info("Evaluation created with ID: %s", eval_id)
     except TrustModelError as e:
         logging.error("Failed to create evaluation: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
     # Poll for completion and return result
     return _poll_and_print_result(client, eval_id, args)
@@ -228,7 +228,7 @@ def _cmd_list_evaluations(args):
         evaluations = client.evaluations.list(status=status_filter)
     except TrustModelError as e:
         logging.error("Failed to list evaluations: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
     if not evaluations:
         print("No evaluations found.")
@@ -261,14 +261,14 @@ def _cmd_get_result(args):
 
     if not args.evaluation_id:
         logging.error("--evaluation_id is required for get-result.")
-        sys.exit(1)
+        utils.tw_exit(1)
 
     client = _init_client(args)
     try:
         result = client.evaluations.get_result(args.evaluation_id)
     except TrustModelError as e:
         logging.error("Failed to get result: %s", str(e))
-        sys.exit(1)
+        utils.tw_exit(1)
 
     return result
 
@@ -284,7 +284,7 @@ def _poll_and_print_result(client, eval_id, args):
     while True:
         if time.time() - start_time > timeout_seconds:
             logging.error("Evaluation timed out after 3 hours.")
-            sys.exit(1)
+            utils.tw_exit(1)
 
         try:
             result = client.evaluations.get_result(eval_id)
@@ -305,10 +305,11 @@ def _poll_and_print_result(client, eval_id, args):
             last_percentage = result.completion_percentage
 
         if result.status == "completed":
+            logging.debug("Evaluation %s completed successfully.", eval_id)
             return result
         elif result.status == "failed":
             logging.error("Evaluation failed.")
-            sys.exit(1)
+            utils.tw_exit(1)
 
         time.sleep(poll_interval)
 
@@ -343,6 +344,8 @@ def _build_asset_from_result(result, args):
     else:
         display_name = model_name
     vendor_name = result.vendor_name or ""
+    if vendor_name.lower() == "others":
+        vendor_name = "Generic AI Platform"
 
     findings = []
 
@@ -388,7 +391,7 @@ def _build_asset_from_result(result, args):
 
     asset = {}
     asset["id"] = asset_id
-    asset["name"] = "%s report" % display_name
+    asset["name"] = getattr(args, "assetname", None) or display_name
     asset["type"] = vendor_name or "AI Model"
     asset["owner"] = args.handle
     asset["products"] = []
