@@ -25,6 +25,7 @@ import getpass
 import hashlib
 import shutil
 import stat
+import csv
 from os.path import expanduser
 import urllib.parse
 import copy
@@ -106,6 +107,8 @@ except (ImportError,ValueError):
     from twigs import policy as policy_lib
     from twigs import trustmodel_eval
     from twigs.__init__ import __version__
+
+csv.field_size_limit(sys.maxsize)
 
 # Note this error routine assumes that the file was read-only and hence could not be deleted
 def on_rm_error( func, path, exc_info):
