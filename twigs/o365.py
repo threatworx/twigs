@@ -6,6 +6,7 @@ import re
 import logging
 import random
 import time
+import traceback
 
 from . import utils
 
@@ -17,8 +18,12 @@ def get_machines(args, token):
         url = "https://api.securitycenter.microsoft.com/api/machines?$filter=healthStatus+eq+'Active'+and+riskScore+eq+'High'"
 
     logging.info("Retrieving inventory o365") 
-
-    resp = requests.get(url, headers=headers)
+    try:
+        resp = requests.get(url, headers=headers)
+    except ConnectionRefusedError as cre:
+        logging.error("Error got connection refused error while retrieving inventory o365")
+        logging.error(traceback.format_exc())
+        utils.tw_exit(1)
     if resp.status_code != 200:
         logging.error("Error could not get machine inventory details from O365")
         logging.error("Response content: %s" % resp.text)
@@ -65,7 +70,12 @@ def get_machines(args, token):
         products = []
         logging.debug("Getting product info for "+asset['name'])
         url = "https://api.securitycenter.microsoft.com/api/machines/"+machine['id']+"/software"
-        resp = requests.get(url, headers=headers)
+        try:
+            resp = requests.get(url, headers=headers)
+        except ConnectionRefusedError as cre:
+            logging.error("Error got connection refused error while retrieving software inventory for [%s]" % machine['computerDnsName'])
+            logging.error(traceback.format_exc())
+            continue
         if resp.status_code != 200:
             logging.error("Error could not get software inventory details from O365 for machine [%s]" % machine['id'])
             logging.error("Response content: %s" % resp.text)
@@ -82,7 +92,12 @@ def get_machines(args, token):
         impacts = []
         logging.debug("Getting vulnerabilities for "+asset['name'])
         url = "https://api.securitycenter.microsoft.com/api/vulnerabilities/machinesVulnerabilities?$filter=machineId+eq+'"+machine['id']+"'"
-        resp = requests.get(url, headers=headers)
+        try:
+            resp = requests.get(url, headers=headers)
+        except ConnectionRefusedError as cre:
+            logging.error("Error got connection refused error while retrieving vulnerability details for [%s]" % machine['computerDnsName'])
+            logging.error(traceback.format_exc())
+            continue
         if resp.status_code != 200:
             logging.error("Error could not get vulnerability details from O365 for machine [%s]" % machine['id'])
             logging.error("Response content: %s" % resp.text)
