@@ -153,6 +153,7 @@ class EC2Impl(AWS):
         for obj in self.bucket_object_list:
             if 'AWS:InstanceInformation' in obj.key:
                 splits = obj.key.rsplit('/')
+                aws_account_id = splits[-4].split('=')[1]
                 fname = tempfile.gettempdir() + os.path.sep + 'InstanceInformation-' +  splits[-1]
                 if os.path.isfile(fname) == True:
                     os.remove(fname)
@@ -204,8 +205,8 @@ class EC2Impl(AWS):
                         asset['tags'].append("OS_RELEASE:" + os_release)
                         asset['tags'].append(os_release)
                     if self.enable_tracking_tags == True:
-                        asset['tags'].append("SOURCE:AWS:"+self.account_id)
-                        asset['tags'].append("AWS:"+self.account_id)
+                        asset['tags'].append("SOURCE:AWS:"+aws_account_id)
+                        asset['tags'].append("AWS:"+aws_account_id)
                         asset['tags'].append("AWS")
                     else:
                         asset['tags'].append("SOURCE:AWS")
