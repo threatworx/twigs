@@ -175,6 +175,7 @@ class EC2Impl(AWS):
                     asset['owner'] = email
                     asset['tags'] = []
                     os_release = None
+                    os_version = None
                     if 'Linux' in asset['type']:
                         asset['tags'].append('Linux')
                     elif 'Ubuntu' in asset['type']:
@@ -183,6 +184,7 @@ class EC2Impl(AWS):
                     elif 'Windows' in asset['type']:
                         asset['tags'].append('Windows')
                         os_release = data[0]['PlatformName']
+                        os_version = data[0]['PlatformVersion']
                     elif asset['type'] == 'Suse':
                         asset['tags'].append('Linux')
                         pv = data[0]['PlatformVersion']
@@ -199,11 +201,14 @@ class EC2Impl(AWS):
                     elif asset['type'] == 'CentOS':
                         asset['tags'].append('Linux')
                     elif asset['type'] == 'Red Hat':
+                        os_release = "rhel %s" % data[0]['PlatformVersion']
                         asset['tags'].append('Linux')
 
                     if os_release is not None:
                         asset['tags'].append("OS_RELEASE:" + os_release)
                         asset['tags'].append(os_release)
+                    if os_version is not None:
+                        asset['tags'].append("OS_VERSION:" + os_version)
                     if self.enable_tracking_tags == True:
                         asset['tags'].append("SOURCE:AWS:"+aws_account_id)
                         asset['tags'].append("AWS:"+aws_account_id)
