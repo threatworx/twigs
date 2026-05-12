@@ -153,7 +153,6 @@ class EC2Impl(AWS):
         for obj in self.bucket_object_list:
             if 'AWS:InstanceInformation' in obj.key:
                 splits = obj.key.rsplit('/')
-                aws_account_id = splits[-4].split('=')[1]
                 fname = tempfile.gettempdir() + os.path.sep + 'InstanceInformation-' +  splits[-1]
                 if os.path.isfile(fname) == True:
                     os.remove(fname)
@@ -167,6 +166,7 @@ class EC2Impl(AWS):
                     if data[0].get('InstanceStatus') == 'Terminated':
                         # skip instances which are not running
                         continue
+                    aws_account_id = splits[-4].split('=')[1]
                     asset = {}
                     asset['id'] = data[0]['resourceId']
                     asset['name'] = data[0]['ComputerName']
