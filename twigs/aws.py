@@ -6,7 +6,7 @@ import os
 import logging
 import tempfile
 
-RELEVANT_BUCKET_OBJECT_KEYS = ['AWS:WindowsUpdate', 'AWS:Application', 'AWS:InstanceInformation']
+RELEVANT_BUCKET_OBJECT_KEYS = ['AWS:WindowsUpdate', 'AWS:Application', 'AWS:InstanceInformation', 'AWS:InstanceDetailedInformation']
 
 class AWS(object):
     def __init__(self, params):
@@ -50,6 +50,31 @@ class EC2Impl(AWS):
                     self.bucket_object_list.append(obj)
         #print "S3_relevant_bucket_object_array_len: %s" % (str(len(self.bucket_object_list)))
         #print "S3_relevant_bucket_objecgt: %s" % (self.bucket_object_list)
+
+    def get_windows_ubr_version(self, host):
+        for obj in self.bucket_object_list:
+            if 'AWS:InstanceDetailedInformation' in obj.key and host in obj.key:
+                splits = obj.key.rsplit('/')
+                fname = tempfile.gettempdir() + os.path.sep + 'InstanceDetailedInformation-' +  splits[-1]
+                if os.path.isfile(fname) == True:
+                    os.remove(fname)
+                self.s3_bucket.download_file(obj.key,fname)
+                try:
+                    data = { }
+                    with codecs.open(fname,'rU','utf-8') as f:
+                        data = json.load(f)
+
+                    kernel_version = data.get('KernelVersion')
+                    if kernel_version is not None:
+                        kernel_version = kernel_version.split()[0]
+                        return kernel_version
+                except ValueError:
+                    logging.error("JSON parsing failed for [%s]", fname)
+                try:
+                    os.remove(fname)
+                except OSError:
+                    logging.error("Failed to cleanup file [%s]", fname)
+        return None
 
     def windows_patch_inventory(self, host):
         for obj in self.bucket_object_list:
@@ -163,8 +188,8 @@ class EC2Impl(AWS):
                         s = f.read()
                         #print s
                         data.append(json.loads(s))
-                    if data[0].get('InstanceStatus') == 'Terminated':
-                        # skip instances which are not running
+                    if data[0].get('InstanceStatus').lower() in ['stopped', 'terminated']:
+                        # skip instances which are not running or terminated
                         continue
                     aws_account_id = splits[-4].split('=')[1]
                     asset = {}
@@ -204,6 +229,19 @@ class EC2Impl(AWS):
                         os_release = "rhel %s" % data[0]['PlatformVersion']
                         asset['tags'].append('Linux')
 
+                    logging.info("Retrieving product details for [%s]", asset['name'])
+                    asset['products'] = self.product_inventory(asset['id'], asset['type'])
+                    asset['tags'].append(asset['type'])
+                    if asset['type'] == "Windows":
+                        tmp_os_version = self.get_windows_ubr_version(asset['id'])
+                        if tmp_os_version is not None:
+                            os_version = tmp_os_version
+                            logging.debug("Windows asset [%s] has OS_VERSION with UBR [%s]" % (asset['id'], os_version))
+                        else:
+                            logging.debug("Windows asset [%s] is missing UBR in OS_VERSION" % asset['id'])
+                        logging.info("Retrieving patch details for [%s]", asset['name'])
+                        asset['patches'] = self.windows_patch_inventory(asset['id'])
+
                     if os_release is not None:
                         asset['tags'].append("OS_RELEASE:" + os_release)
                         asset['tags'].append(os_release)
@@ -216,11 +254,6 @@ class EC2Impl(AWS):
                     else:
                         asset['tags'].append("SOURCE:AWS")
                         asset['tags'].append("AWS")
-                    logging.info("Retrieving product details for [%s]", asset['name'])
-                    asset['products'] = self.product_inventory(asset['id'], asset['type'])
-                    asset['tags'].append(asset['type'])
-                    logging.info("Retrieving patch details for [%s]", asset['name'])
-                    asset['patches'] = self.windows_patch_inventory(asset['id'])
                     assets.append(asset)
                 except ValueError:
                     logging.error("JSON parsing failed for [%s]", fname)

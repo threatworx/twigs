@@ -40,18 +40,6 @@ ln -fs /usr/bin/pip3 /usr/bin/pip
 
 rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
 
-# Install twigs and related packages
-pip install twigs
-rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
-pip install twigs_host_benchmark
-pip install twigs_ssl_audit
-rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
-
-# Setup twigs update script
-printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install --upgrade twigs_host_benchmark\n/usr/bin/pip install twigs_ssl_audit --upgrade\n" > /usr/local/bin/twigs-update.sh
-
-chmod 755 /usr/local/bin/twigs-update.sh
-
 # Install git
 apt-get install -y git
 
@@ -105,6 +93,18 @@ apt-get install openjdk-17-jdk -y
 wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16.0_Linux.tar.gz -P /tmp
 tar -xvzf /tmp/ZAP_2.16.0_Linux.tar.gz -C /usr/share
 ln -s /usr/share/ZAP_2.16.0/zap.sh /usr/bin/zaproxy
+
+# Install twigs and related packages
+pip install twigs
+rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
+pip install twigs_host_benchmark
+pip install twigs_ssl_audit
+rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
+
+# Setup twigs update script
+printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install --upgrade twigs_host_benchmark\n/usr/bin/pip install twigs_ssl_audit --upgrade\n" > /usr/local/bin/twigs-update.sh
+
+chmod 755 /usr/local/bin/twigs-update.sh
 
 # Cleanup /tmp
 rm -rf /tmp/*
