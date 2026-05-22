@@ -44,7 +44,7 @@ rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
 apt-get install -y git
 
 # Install grep
-wget -O /usr/local/bin/opengrep https://github.com/opengrep/opengrep/releases/download/v1.1.2/opengrep_manylinux_x86 
+wget -O /usr/local/bin/opengrep https://github.com/opengrep/opengrep/releases/download/v1.22.0/opengrep_manylinux_x86 
 chmod +x /usr/local/bin/opengrep
 
 # Install checkov 
