@@ -1060,7 +1060,7 @@ def main(args=None):
         parser_az_functions.add_argument('--branch', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--type', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--level', help=argparse.SUPPRESS, default='shallow')
-        parser_az.add_argument('--ssh_private_key', help=argparse.SUPPRESS, required=False)
+        parser_az_functions.add_argument('--ssh_private_key', help=argparse.SUPPRESS, required=False)
         parser_az_functions.add_argument('--include_unused_dependencies', action='store_true', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--assetid', help=argparse.SUPPRESS)
         parser_az_functions.add_argument('--assetname', help=argparse.SUPPRESS)

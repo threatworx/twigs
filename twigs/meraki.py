@@ -144,7 +144,7 @@ def get_all_devices(args, headers):
                         vendor = vendor.replace('Corporation','')
                         vendor = vendor.replace('LLC','')
                         vendor = vendor.strip()
-                    if vendor != ""
+                    if vendor != "":
                         prodstr = vendor + ' ' + software['name'] + ' ' + software['shortVersion'] if software['shortVersion'] is not None else vendor + ' ' + software['name']
                     else:
                         prodstr = software['name'] + ' ' + software['shortVersion'] if software['shortVersion'] is not None else software['name']
