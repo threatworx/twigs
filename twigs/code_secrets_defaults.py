@@ -221,8 +221,9 @@ default_regex_rules = {
 
     # HASHICORP TERRAFORM / VAULT
     "Terraform Cloud API Token": r"(?i)terraform[_\-\s]?(?:cloud)?[_\-\s]?(?:api)?[_\-\s]?token['\"\s:=]+[a-zA-Z0-9]{14}\.[a-zA-Z0-9\-_]{60,}",
-    "HashiCorp Vault Token": r"\bs\.[a-zA-Z0-9]{24}\b",
-    "HashiCorp Vault Batch Token": r"\bb\.[a-zA-Z0-9]{24}\b",
+    "HashiCorp Vault Token": r"\bhvs\.[a-zA-Z0-9]{24}\b",
+    "HashiCorp Vault Batch Token": r"\bhvb\.[a-zA-Z0-9]{24}\b",
+    "HashiCorp Vault Recovery Token": r"\bhvr\.[a-zA-Z0-9]{24}\b",
 
     # HUBSPOT
     "HubSpot API Key": r"(?i)hubspot[_\-\s]?api[_\-\s]?key['\"\s:=]+[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",

@@ -136,7 +136,7 @@ def get_all_devices(args, headers):
                 for software in softwares:
                     js = json.dumps(software, indent=4)
                     logging.info(js)
-                    prodstr = software['identifier'] + ' ' + software['shortVersion'] 
+                    prodstr = software['identifier'] + ' ' + software['shortVersion'] if software['shortVersion'] is not None else software['identifier']
                     products.append(prodstr)
                     vendor = ''
                     if 'vendor' in software and software['vendor'] != 'Unknown':
@@ -144,7 +144,10 @@ def get_all_devices(args, headers):
                         vendor = vendor.replace('Corporation','')
                         vendor = vendor.replace('LLC','')
                         vendor = vendor.strip()
-                    prodstr = vendor + ' ' + software['name'] + ' ' + software['shortVersion'] 
+                    if vendor != ""
+                        prodstr = vendor + ' ' + software['name'] + ' ' + software['shortVersion'] if software['shortVersion'] is not None else vendor + ' ' + software['name']
+                    else:
+                        prodstr = software['name'] + ' ' + software['shortVersion'] if software['shortVersion'] is not None else software['name']
                     products.append(prodstr)
                 asset['products'] = products
                 assets.append(asset)

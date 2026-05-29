@@ -34,6 +34,9 @@ if GIT_PATH is None:
         GIT_PATH = 'C:\\Program Files\\Git\\cmd\\git.exe'
     else:
         GIT_PATH = '/usr/bin/git'
+SSH_PATH = shutil.which('ssh')
+if SSH_PATH is None:
+    SSH_PATH = '/usr/bin/ssh'
 
 SUPPORTED_TYPES = ['pip', 'ruby', 'yarn', 'nuget', 'npm', 'maven', 'gradle', 'dll', 'jar', 'cargo', 'go', 'composer']
 
@@ -974,7 +977,7 @@ def on_rm_error( func, path, exc_info):
 def get_inventory_helper(args):
     path = None
     repo_chksum = None
-    if args.repo.startswith('http'):
+    if args.repo.startswith('http') or args.repo.startswith('git@'):
         if os.path.isfile(GIT_PATH) == False:
             logging.error("git executable does not exist at [%s]", GIT_PATH)
             return None
@@ -983,13 +986,20 @@ def get_inventory_helper(args):
         base_path = path
         logging.info("Cloning repo locally...")
         out = ""
+        GIT_AUTH_ENV = os.environ.copy()
+        if args.repo.startswith('git@'):
+            if args.ssh_private_key is None or args.ssh_private_key.strip() == "":
+                logging.error("ssh private key required for repository access is missing")
+                return None
+            GIT_AUTH_ENV['GIT_SSH_COMMAND'] = SSH_PATH+' -i '+args.ssh_private_key
         try:
             if args.branch and args.branch != '':
                 cmdarr = [GIT_PATH, 'clone', '--branch', args.branch, args.repo, path+'/.']
             else:
                 cmdarr = [GIT_PATH, 'clone', args.repo, path+'/.']
             #out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-            out = subprocess.check_output(cmdarr)
+            #print(cmdarr)
+            out = subprocess.check_output(cmdarr, env=GIT_AUTH_ENV)
         except Exception as e:
             logging.error(out)
             logging.error(str(e))
@@ -1000,7 +1010,7 @@ def get_inventory_helper(args):
         try:
             cmdarr = [GIT_PATH, '-C', path+'/.', 'rev-parse', 'HEAD']
             #out = subprocess.check_output(cmdarr, stderr=dev_null_device)
-            out = subprocess.check_output(cmdarr)
+            out = subprocess.check_output(cmdarr, env=GIT_AUTH_ENV)
             repo_chksum = out.decode('utf-8').strip()
             logging.debug("Repo checksum is [%s]", repo_chksum)
         except Exception as e:
@@ -1014,6 +1024,7 @@ def get_inventory_helper(args):
         if base_path == os.path.dirname(base_path):
             base_path = "" # handle directory contained in root directory
     else:
+        #print(args.repo)
         logging.error('Not a valid repo')
         return None
 
@@ -1057,7 +1068,8 @@ def get_inventory(args):
             args.repo = repo['html_url'].replace("//","//"+args.gh_access_token+"@")
             logging.debug("Repo URL: %s", args.repo)
             temp_assets = get_inventory_helper(args)
-            assets.extend(temp_assets)
+            if temp_assets is not None:
+                assets.extend(temp_assets)
         return assets
     elif hasattr(args, 'gl_access_token'):
         repo_api_url = "https://%s/api/v4/projects?membership=1" % (args.gl_host)
@@ -1074,7 +1086,8 @@ def get_inventory(args):
             args.repo = repo['http_url_to_repo'].replace("//","//gitlab-ci-token:"+args.gl_access_token+"@")
             logging.debug("Repo URL: %s", args.repo)
             temp_assets = get_inventory_helper(args)
-            assets.extend(temp_assets)
+            if temp_assets is not None:
+                assets.extend(temp_assets)
         return assets
     elif hasattr(args, 'bb_app_password'):
         response = requests.get(args.bb_repo_url, auth=(args.bb_user, args.bb_app_password), verify=False)
@@ -1089,7 +1102,8 @@ def get_inventory(args):
             args.repo = repo['links']['html']['href'].replace("//","//"+args.bb_user+":"+args.bb_app_password+"@")
             logging.debug("Repo URL: %s", args.repo)
             temp_assets = get_inventory_helper(args)
-            assets.extend(temp_assets)
+            if temp_assets is not None:
+                assets.extend(temp_assets)
         return assets
     else:
         return get_inventory_helper(args)
