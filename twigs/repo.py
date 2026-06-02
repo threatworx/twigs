@@ -991,7 +991,7 @@ def get_inventory_helper(args):
             if args.ssh_private_key is None or args.ssh_private_key.strip() == "":
                 logging.error("ssh private key required for repository access is missing")
                 return None
-            GIT_AUTH_ENV['GIT_SSH_COMMAND'] = SSH_PATH+' -i '+args.ssh_private_key
+            GIT_AUTH_ENV['GIT_SSH_COMMAND'] = SSH_PATH+' -o "StrictHostKeyChecking no" -i '+args.ssh_private_key
         try:
             if args.branch and args.branch != '':
                 cmdarr = [GIT_PATH, 'clone', '--branch', args.branch, args.repo, path+'/.']
@@ -1083,7 +1083,11 @@ def get_inventory(args):
         assets = []
         for repo in repos:
             logging.info("Discovering repo [%s] as an asset", repo['http_url_to_repo'])
-            args.repo = repo['http_url_to_repo'].replace("//","//gitlab-ci-token:"+args.gl_access_token+"@")
+            if args.ssh_private_key is None or args.ssh_private_key.strip() == "":
+                args.repo = repo['http_url_to_repo'].replace("//","//gitlab-ci-token:"+args.gl_access_token+"@")
+            else:
+                # if ssh_private_key is specified, then use ssh url for repo
+                args.repo = repo['ssh_url_to_repo']
             logging.debug("Repo URL: %s", args.repo)
             temp_assets = get_inventory_helper(args)
             if temp_assets is not None:
