@@ -10,10 +10,11 @@ import json
 import re
 import requests
 from xml.dom.minidom import parse, parseString
-from distutils.version import LooseVersion 
+from distutils.version import LooseVersion
 import csv
 from . import linux
 import shutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 NMAP_default = "/usr/bin/nmap"
 NMAP = shutil.which("nmap")
@@ -24,27 +25,51 @@ if NMAP is None:
     NMAP = NMAP_default
 NSE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/nse/'
 
-NMAP_HTTP_PORTS = ['80','443','6443','8080','8443','2181'] 
+NMAP_HTTP_PORTS = ['80','443','6443','8080','8443','2181','8000','8008','8888','5000','7001','7002','4848']
 NSE_APACHE_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/apache/'
 NSE_HTTP_PATH = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/http/'
-NSE_HTTP_SCRIPTS = ['+http-generator','+http-wordpress-enum','+http-apache-server-status','+http-server-header','+http-php-version',NSE_HTTP_PATH,NSE_APACHE_PATH]
+NSE_HTTP_SCRIPTS = [
+    'http-generator', 'http-wordpress-enum', 'http-apache-server-status',
+    'http-server-header', 'http-php-version',
+    'http-title', 'http-ntlm-info', 'http-favicon',
+    'http-qnap-nas-info', 'http-hp-ilo-info', 'http-trane-info',
+    NSE_HTTP_PATH, NSE_APACHE_PATH,
+]
 
-NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','7000','7001','9042','7199','523','445','1443','6379','1521']
-NSE_DB_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
-NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info','oracle-tns-version']
+NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','5432','7000','7001','9042','7199','523','445','1433','6379','1521','5601','11211','9092','5672','4369','5984','6984','8098','2375','2376','15672','15671','6380']
+NSE_DB_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
+NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info','oracle-tns-version','amqp-info','epmd-info','memcached-info','docker-version','riak-http-info']
 
 NMAP_PRINTERS_PORTS = ['80','161','443','9100','U:161']
-NSE_PRINTERS_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/printers/'
+NSE_PRINTERS_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/printers/'
 NSE_PRINTERS_SCRIPTS = [NSE_PRINTERS_PATH]
 
 NMAP_CCTV_PORTS = ['21','80','161','443','8080','8443','4321', '37777', '9000', '10554', '5985','9100','5060']
-NSE_CCTV_PATH  = "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/cctv/'
+NSE_CCTV_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/cctv/'
 NSE_CCTV_SCRIPTS = [NSE_CCTV_PATH]
 
-NMAP_OT_PORTS = ['502']
-NSE_OT_SCRIPTS = ['modbus-discover']
+NMAP_OT_PORTS = ['502','102','44818','20000','1962','4840']
+NSE_OT_SCRIPTS = ['modbus-discover','s7-info','enip-info','pcworx-info']
 
-NSE_OTHER_PATH =  "/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/' 
+NMAP_FTP_PORTS = ['21','990']
+NSE_FTP_SCRIPTS = ['ftp-syst','ftp-anon']
+
+NMAP_EMAIL_PORTS = ['25','465','587','110','995','143','993']
+NSE_EMAIL_SCRIPTS = ['smtp-commands','smtp-ntlm-info','imap-capabilities','pop3-capabilities']
+
+NMAP_LDAP_PORTS = ['389','636','3268','3269']
+NSE_LDAP_SCRIPTS = ['ldap-rootdse']
+
+NMAP_RDP_PORTS = ['3389']
+NSE_RDP_SCRIPTS = ['rdp-enum-encryption','rdp-ntlm-info']
+
+NMAP_VNC_PORTS = ['5900','5901','5902','5903','5904','5905']
+NSE_VNC_SCRIPTS = ['vnc-info']
+
+NMAP_INFRA_PORTS = ['3000','9090','9091','8500','8501','8200','8201','8086','15672','15671','8161','9000','8081','2379','2380','50070','9870','8088','19888','4848','7474','7687']
+NSE_INFRA_SCRIPTS = [NSE_HTTP_PATH]
+
+NSE_OTHER_PATH = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/'
 
 def nmap_exists():
     return NMAP and os.access(NMAP, os.X_OK)
@@ -168,10 +193,10 @@ def get_os_type(host, products):
     for product in products:
         if 'microsoft windows' in product:
             logging.debug("Found os_type [Windows] from products")
-            return 'Windows', os_name
+            return 'Windows'
         if 'linux linux kernel' in product:
             logging.debug("Found os_type [Linux] from products")
-            return 'Linux', os_name
+            return 'Linux'
 
     logging.debug("Unable to determine os_type...assuming [Other]")
     return 'Other'
@@ -203,12 +228,12 @@ def create_open_ports_issues(ports_in_use_dict, asset_id):
         open_port_issues.append(issue)
     return open_port_issues
 
-def create_nmap_cmd (args):
-    ports = [] 
-    scripts = [] 
-    os = ""
+def create_nmap_cmd(args):
+    ports = []
+    scripts = []
+    os_detect = ""
     vflag = ""
-    if 'default' in args.services: 
+    if 'default' in args.services:
         vflag = " -sV "
     if "database" in args.services:
         ports += NMAP_DB_PORTS
@@ -216,14 +241,26 @@ def create_nmap_cmd (args):
     if "web" in args.services:
         ports += NMAP_HTTP_PORTS
         scripts += NSE_HTTP_SCRIPTS
-    if "os" in args.services: 
+    if "os" in args.services:
         vflag = " -sV "
-        os = " -O "
+        os_detect = " -O "
         scripts += ['smb-os-discovery']
-        ports += ['1-100'] 
+        ports += ['1-100']
+        ports += NMAP_FTP_PORTS
+        scripts += NSE_FTP_SCRIPTS
+        ports += NMAP_EMAIL_PORTS
+        scripts += NSE_EMAIL_SCRIPTS
+        ports += NMAP_LDAP_PORTS
+        scripts += NSE_LDAP_SCRIPTS
+        ports += NMAP_RDP_PORTS
+        scripts += NSE_RDP_SCRIPTS
+        ports += NMAP_VNC_PORTS
+        scripts += NSE_VNC_SCRIPTS
+        ports += NMAP_INFRA_PORTS
+        scripts += NSE_INFRA_SCRIPTS
     if "vmware" in args.services:
         scripts += ['vmware-version']
-        ports += ['443'] 
+        ports += ['443']
     if "printers" in args.services:
         ports += NMAP_PRINTERS_PORTS
         scripts += NSE_PRINTERS_SCRIPTS
@@ -231,19 +268,23 @@ def create_nmap_cmd (args):
         ports += NMAP_CCTV_PORTS
         scripts += NSE_CCTV_SCRIPTS
     if "ot" in args.services:
+        vflag = " -sV "
         ports += NMAP_OT_PORTS
         scripts += NSE_OT_SCRIPTS
     if "snmp" in args.services:
         ports = ['161']
         vflag = " -sU "
- 
-    cmd = NMAP + vflag + ' -Pn -oX - -T ' + args.timing + os
+
+    # Use version intensity 5 for a good accuracy/speed tradeoff
+    vi_flag = " --version-intensity 5 " if vflag and '-sV' in vflag else ""
+
+    cmd = NMAP + vflag + vi_flag + ' -Pn --open -oX - -T ' + args.timing + os_detect
     if len(ports) != 0:
         cmd += ' -p' + ','.join(list(set(ports)))
     if args.extra_ports:
-        cmd += ','+args.extra_ports
+        cmd += ',' + args.extra_ports
     if len(scripts) != 0:
-        cmd += ' --script '+','.join(list(set(scripts)))
+        cmd += ' --script ' + ','.join(list(set(scripts)))
     return cmd
 
 def nmap_scan(args, host):
@@ -458,6 +499,8 @@ def nmap_scan(args, host):
                             continue
                         if wp.startswith('Search limited to'):
                             continue
+                        if wp.startswith('Nothing found'):
+                            continue
                         if wp == 'plugins':
                             continue
                         if wp == 'themes':
@@ -517,7 +560,7 @@ def nmap_scan(args, host):
                 for e in elems:
                     key = e.getAttribute('key')
                     if key and key == 'Version':
-                        prodstr = 'mongodb '+e.firstChild.data
+                        prodstr = 'mysql ' + e.firstChild.data
                         if prodstr not in products:
                             products.append(prodstr)
             elif s.getAttribute('id') == 'erldp-info':
@@ -614,6 +657,518 @@ def nmap_scan(args, host):
                     if 'Schneider Electric' in prod:
                         ostype = 'Schneider Electric'
                     products.append(prod)
+            elif s.getAttribute('id') == 'jenkins-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'jenkins version number:' in wpout:
+                    ver = wpout.split('jenkins version number:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'jenkins ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'elasticsearch-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'elasticsearch version number:' in wpout:
+                    ver = wpout.split('elasticsearch version number:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'elasticsearch ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'kibana-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'kibana version number:' in wpout:
+                    ver = wpout.split('kibana version number:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'kibana ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'redis-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'Version:' in wpout:
+                    ver = wpout.split('Version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'redis ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'mongodb-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'version:' in wpout:
+                    ver = wpout.split('version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'mongodb ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'grafana-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'grafana version:' in wpout:
+                    ver = wpout.split('grafana version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'grafana ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'prometheus-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'prometheus version:' in wpout:
+                    ver = wpout.split('prometheus version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'prometheus ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'consul-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'consul version:' in wpout:
+                    ver = wpout.split('consul version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'hashicorp consul ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'vault-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'vault version:' in wpout:
+                    ver = wpout.split('vault version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'hashicorp vault ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'influxdb-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'influxdb version:' in wpout:
+                    ver = wpout.split('influxdb version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'influxdb ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'rabbitmq-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'rabbitmq version:' in wpout:
+                    ver = wpout.split('rabbitmq version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'rabbitmq ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'sonarqube-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'sonarqube version:' in wpout:
+                    ver = wpout.split('sonarqube version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'sonarqube ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'nexus-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'nexus version:' in wpout:
+                    ver = wpout.split('nexus version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'sonatype nexus repository manager ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'activemq-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'activemq version:' in wpout:
+                    ver = wpout.split('activemq version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'apache activemq ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'etcd-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'etcd version:' in wpout:
+                    ver = wpout.split('etcd version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'etcd ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'couchdb-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'couchdb version:' in wpout:
+                    ver = wpout.split('couchdb version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'apache couchdb ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'docker-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'Version:' in wpout:
+                    ver = wpout.split('Version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'docker ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'amqp-info':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    prod = None
+                    ver = None
+                    for line in wpout.splitlines():
+                        line = line.strip()
+                        if line.startswith('product:'):
+                            prod = line.split(':', 1)[1].strip()
+                        elif line.startswith('version:'):
+                            ver = line.split(':', 1)[1].strip()
+                    if prod and ver:
+                        prodstr = prod.lower() + ' ' + ver
+                        if prodstr not in products:
+                            products.append(prodstr)
+                    elif prod:
+                        if prod not in products:
+                            products.append(prod)
+            elif s.getAttribute('id') == 'epmd-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'nodes:' in wpout:
+                    # Identify Erlang-based services (RabbitMQ, CouchDB, ejabberd, etc.)
+                    for line in wpout.splitlines():
+                        line = line.strip()
+                        if line and ':' in line and not line.startswith('epmd'):
+                            svc_name = line.split(':')[0].strip()
+                            if svc_name and svc_name not in products:
+                                products.append('erlang ' + svc_name)
+            elif s.getAttribute('id') == 'memcached-info':
+                elems = s.getElementsByTagName('elem')
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'Authentication' and e.firstChild:
+                        # presence of memcached confirmed; no version from this script
+                        prodstr = 'memcached'
+                        if prodstr not in products:
+                            products.append(prodstr)
+                        break
+            elif s.getAttribute('id') == 'riak-http-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'Basho version' in wpout:
+                    ver = wpout.split('Basho version')[1].strip().split('\n')[0].strip()
+                    prodstr = 'basho riak ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'ftp-syst':
+                wpout = s.getAttribute('output')
+                if wpout and 'SYST:' in wpout:
+                    syst = wpout.split('SYST:')[1].strip().split('\n')[0].strip()
+                    if syst and syst.upper() != 'UNIX TYPE: L8':
+                        prodstr = 'ftp ' + syst
+                        if prodstr not in products:
+                            products.append(prodstr)
+            elif s.getAttribute('id') == 'smtp-commands':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    # First line of output is typically the EHLO banner with product info
+                    first_line = wpout.strip().split('\n')[0].strip()
+                    if first_line and len(first_line) > 5:
+                        if first_line not in products:
+                            products.append('smtp ' + first_line)
+            elif s.getAttribute('id') == 'smtp-ntlm-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'Product_Version:' in wpout:
+                    ver = wpout.split('Product_Version:')[1].strip().split('\n')[0].strip()
+                    if ver:
+                        prodstr = 'microsoft windows ' + ver
+                        if prodstr not in products:
+                            products.append(prodstr)
+            elif s.getAttribute('id') == 'rdp-ntlm-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'Product_Version:' in wpout:
+                    ver = wpout.split('Product_Version:')[1].strip().split('\n')[0].strip()
+                    if ver:
+                        prodstr = 'microsoft windows ' + ver
+                        if prodstr not in products:
+                            products.append(prodstr)
+                        if ostype == 'Other':
+                            ostype = 'Windows'
+            elif s.getAttribute('id') == 'vnc-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'Protocol version:' in wpout:
+                    ver = wpout.split('Protocol version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'vnc ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 's7-info':
+                elems = s.getElementsByTagName('elem')
+                module_type = ''
+                version = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'Module Type' and e.firstChild:
+                        module_type = e.firstChild.data.strip()
+                    elif key == 'Version' and e.firstChild:
+                        version = e.firstChild.data.strip()
+                if module_type:
+                    prodstr = 'siemens s7 ' + module_type
+                    if version:
+                        prodstr += ' ' + version
+                    if prodstr not in products:
+                        products.append(prodstr)
+                    if ostype == 'Other':
+                        ostype = 'Siemens'
+            elif s.getAttribute('id') == 'enip-info':
+                elems = s.getElementsByTagName('elem')
+                product_name = ''
+                vendor = ''
+                revision = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'productName' and e.firstChild:
+                        product_name = e.firstChild.data.strip()
+                    elif key == 'vendor' and e.firstChild:
+                        vendor = e.firstChild.data.strip()
+                        # Strip trailing "(N)" vendor id suffix
+                        vendor = vendor.split('(')[0].strip()
+                    elif key == 'revision' and e.firstChild:
+                        revision = e.firstChild.data.strip()
+                if product_name:
+                    prodstr = product_name
+                    if revision:
+                        prodstr += ' ' + revision
+                    if prodstr not in products:
+                        products.append(prodstr)
+                if vendor:
+                    prodstr = vendor
+                    if prodstr not in products:
+                        products.append(prodstr)
+                    if ostype == 'Other':
+                        ostype = vendor
+            elif s.getAttribute('id') == 'bacnet-info':
+                elems = s.getElementsByTagName('elem')
+                vendor_name = ''
+                firmware = ''
+                model_name = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'Vendor Name' and e.firstChild:
+                        vendor_name = e.firstChild.data.strip()
+                    elif key == 'Firmware' and e.firstChild:
+                        firmware = e.firstChild.data.strip()
+                    elif key == 'Model Name' and e.firstChild:
+                        model_name = e.firstChild.data.strip()
+                if vendor_name:
+                    prodstr = vendor_name
+                    if firmware:
+                        prodstr += ' ' + firmware
+                    if prodstr not in products:
+                        products.append(prodstr)
+                    if model_name and model_name not in products:
+                        products.append(model_name)
+            elif s.getAttribute('id') == 'pcworx-info':
+                elems = s.getElementsByTagName('elem')
+                plc_type = ''
+                fw_version = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'PLC Type' and e.firstChild:
+                        plc_type = e.firstChild.data.strip()
+                    elif key == 'Firmware Version' and e.firstChild:
+                        fw_version = e.firstChild.data.strip()
+                if plc_type:
+                    prodstr = 'phoenix contact ' + plc_type
+                    if fw_version:
+                        prodstr += ' ' + fw_version
+                    if prodstr not in products:
+                        products.append(prodstr)
+                    if ostype == 'Other':
+                        ostype = 'Phoenix Contact'
+            # --- web / HTTP detection ---
+            elif s.getAttribute('id') == 'http-title':
+                elems = s.getElementsByTagName('elem')
+                title = None
+                for e in elems:
+                    if e.getAttribute('key') == 'title' and e.firstChild:
+                        title = e.firstChild.data.strip()
+                        break
+                if title:
+                    title_lower = title.lower()
+                    title_map = [
+                        ('gitlab',       'gitlab'),
+                        ('gitea',        'gitea'),
+                        ('forgejo',      'forgejo'),
+                        ('jenkins',      'jenkins'),
+                        ('portainer',    'portainer'),
+                        ('traefik',      'traefik'),
+                        ('grafana',      'grafana'),
+                        ('keycloak',     'keycloak'),
+                        ('sonarqube',    'sonarqube'),
+                        ('nexus',        'sonatype nexus repository manager'),
+                        ('jira',         'atlassian jira'),
+                        ('confluence',   'atlassian confluence'),
+                        ('bitbucket',    'atlassian bitbucket'),
+                        ('harbor',       'harbor'),
+                        ('rancher',      'rancher'),
+                        ('argo cd',      'argo cd'),
+                        ('argocd',       'argo cd'),
+                        ('jupyterlab',   'jupyterlab'),
+                        ('jupyter',      'jupyter notebook'),
+                        ('weblogic',     'oracle weblogic server'),
+                        ('glassfish',    'glassfish'),
+                        ('jboss',        'jboss'),
+                        ('wildfly',      'wildfly'),
+                        ('tomcat',       'apache tomcat'),
+                        ('iis windows',  'microsoft internet information services'),
+                        ('exchange',     'microsoft exchange'),
+                        ('sharepoint',   'microsoft sharepoint'),
+                        ('mirth connect','mirth connect'),
+                        ('rabbitmq',     'rabbitmq'),
+                        ('activemq',     'apache activemq'),
+                        ('zookeeper',    'apache zookeeper'),
+                        ('kibana',       'kibana'),
+                        ('elastic',      'elasticsearch'),
+                        ('prometheus',   'prometheus'),
+                        ('alertmanager', 'prometheus alertmanager'),
+                        ('vault',        'hashicorp vault'),
+                        ('consul',       'hashicorp consul'),
+                    ]
+                    for keyword, prodname in title_map:
+                        if keyword in title_lower:
+                            if prodname not in products:
+                                products.append(prodname)
+                            break
+            elif s.getAttribute('id') == 'http-ntlm-info':
+                elems = s.getElementsByTagName('elem')
+                for e in elems:
+                    if e.getAttribute('key') == 'Product_Version' and e.firstChild:
+                        ver = e.firstChild.data.strip()
+                        prodstr = 'microsoft windows ' + ver
+                        if prodstr not in products:
+                            products.append(prodstr)
+                        if ostype == 'Other':
+                            ostype = 'Windows'
+                        break
+            elif s.getAttribute('id') == 'http-favicon':
+                wpout = s.getAttribute('output')
+                if wpout and 'unknown' not in wpout.lower() and len(wpout.strip()) > 2:
+                    prodstr = wpout.strip()
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'http-qnap-nas-info':
+                elems = s.getElementsByTagName('elem')
+                model = ''
+                firmware = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'Device Model' and e.firstChild:
+                        model = e.firstChild.data.strip()
+                    elif key == 'Firmware Version' and e.firstChild:
+                        firmware = e.firstChild.data.strip()
+                if model:
+                    prodstr = 'qnap ' + model
+                    if firmware:
+                        prodstr += ' ' + firmware
+                    if prodstr not in products:
+                        products.append(prodstr)
+                    if ostype == 'Other':
+                        ostype = 'QNAP'
+            elif s.getAttribute('id') == 'http-hp-ilo-info':
+                elems = s.getElementsByTagName('elem')
+                ilo_type = ''
+                ilo_fw = ''
+                server_type = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'ILOType' and e.firstChild:
+                        ilo_type = e.firstChild.data.strip()
+                    elif key == 'ILOFirmware' and e.firstChild:
+                        ilo_fw = e.firstChild.data.strip()
+                    elif key == 'ServerType' and e.firstChild:
+                        server_type = e.firstChild.data.strip()
+                if ilo_type:
+                    prodstr = 'hp ' + ilo_type.lower()
+                    if ilo_fw:
+                        prodstr += ' ' + ilo_fw
+                    if prodstr not in products:
+                        products.append(prodstr)
+                if server_type and server_type not in products:
+                    products.append('hp ' + server_type)
+            elif s.getAttribute('id') == 'http-trane-info':
+                elems = s.getElementsByTagName('elem')
+                product_name = ''
+                product_ver = ''
+                for e in elems:
+                    key = e.getAttribute('key')
+                    if key == 'productName' and e.firstChild:
+                        product_name = e.firstChild.data.strip()
+                    elif key == 'productVersion' and e.firstChild:
+                        product_ver = e.firstChild.data.strip().lstrip('v').split(' ')[0]
+                if product_name:
+                    prodstr = 'trane ' + product_name.lower()
+                    if product_ver:
+                        prodstr += ' ' + product_ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                    if ostype == 'Other':
+                        ostype = 'Trane'
+            elif s.getAttribute('id') == 'spring-boot-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    if 'spring boot version:' in wpout:
+                        ver = wpout.split('spring boot version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'spring boot ' + ver
+                        if prodstr not in products:
+                            products.append(prodstr)
+                    elif 'spring boot application:' in wpout:
+                        prodstr = 'spring boot'
+                        if prodstr not in products:
+                            products.append(prodstr)
+                    elif 'spring boot detected:' in wpout:
+                        prodstr = 'spring boot'
+                        if prodstr not in products:
+                            products.append(prodstr)
+            elif s.getAttribute('id') == 'gitlab-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    if 'gitlab version:' in wpout:
+                        ver = wpout.split('gitlab version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'gitlab ' + ver
+                    else:
+                        prodstr = 'gitlab'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'gitea-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    if 'gitea version:' in wpout:
+                        ver = wpout.split('gitea version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'gitea ' + ver
+                    elif 'forgejo version:' in wpout:
+                        ver = wpout.split('forgejo version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'forgejo ' + ver
+                    else:
+                        prodstr = 'gitea'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'keycloak-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    if 'keycloak version:' in wpout:
+                        ver = wpout.split('keycloak version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'keycloak ' + ver
+                    else:
+                        prodstr = 'keycloak'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'traefik-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'traefik version:' in wpout:
+                    ver = wpout.split('traefik version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'traefik ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'portainer-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'portainer version:' in wpout:
+                    ver = wpout.split('portainer version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'portainer ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'jupyter-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    if 'jupyter version:' in wpout:
+                        ver = wpout.split('jupyter version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'jupyter notebook ' + ver
+                    elif 'jupyterhub version:' in wpout:
+                        ver = wpout.split('jupyterhub version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'jupyterhub ' + ver
+                    else:
+                        prodstr = 'jupyter notebook'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'weblogic-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    if 'weblogic version:' in wpout:
+                        ver = wpout.split('weblogic version:')[1].strip().split('\n')[0].strip()
+                        prodstr = 'oracle weblogic server ' + ver
+                    else:
+                        prodstr = 'oracle weblogic server'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'waf-detect':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    for line in wpout.splitlines():
+                        line = line.strip()
+                        if line.startswith('waf:'):
+                            waf_name = line[4:].strip()
+                            if waf_name and waf_name not in products:
+                                products.append(waf_name)
 
         os_name_tag = None
         smb_os_name = get_smb_os(h)
@@ -704,16 +1259,24 @@ def nmap_scan(args, host):
 
     return asset_data_list
 
-def get_inventory(args): 
+def get_inventory(args):
     if not nmap_exists():
         logging.error('nmap CLI not found')
         return None
 
-    if args.hosts == None:
+    if args.hosts is None:
         args.hosts = get_private_ip_cidrs()
     else:
         args.hosts = args.hosts.split(',')
+
     assets = []
-    for host in args.hosts:
-        assets.extend(nmap_scan(args, host))
-    return assets 
+    max_workers = min(len(args.hosts), 5)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(nmap_scan, args, host): host for host in args.hosts}
+        for future in as_completed(futures):
+            host = futures[future]
+            try:
+                assets.extend(future.result())
+            except Exception as exc:
+                logging.error("Scan failed for host %s: %s", host, exc)
+    return assets
