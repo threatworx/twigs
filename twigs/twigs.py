@@ -69,7 +69,6 @@ try:
     from . import website 
     from . import meraki
     from . import dna_center
-    from . import do_cis
     from . import policy as policy_lib
     from . import trustmodel_eval
     from .__init__ import __version__
@@ -104,7 +103,6 @@ except (ImportError,ValueError):
     from twigs import website
     from twigs import meraki
     from twigs import dna_center
-    from twigs import do_cis
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs import trustmodel_eval
@@ -550,8 +548,6 @@ def add_attack_surface_label(args, assets):
                 as_label = "Corporate::Mobile Device::Apple"
             else:
                 as_label = get_code_as_label("Corporate::Network::Cisco", asset)
-        elif args.mode == 'do_cis':
-            as_label = "Cloud::DigitalOcean::Account"
 
         if as_label is not None:
             asset['attack_surface_label'] = as_label
@@ -1266,12 +1262,6 @@ def main(args=None):
         parser_dna_center.add_argument('--user', help='User name for basic authentication', required=True)
         parser_dna_center.add_argument('--password', help='Password for basic authentication', required=True)
 
-        # Arguments required for DigitalOcean CIS benchmark
-        parser_do_cis = subparsers.add_parser("do_cis", help = "Run DigitalOcean CIS benchmark checks")
-        parser_do_cis.add_argument('--do_api_key', help='DigitalOcean personal access token', required=True)
-        parser_do_cis.add_argument('--assetid', help='A unique ID to be assigned to the discovered asset', required=True)
-        parser_do_cis.add_argument('--assetname', help='A name/label to be assigned to the discovered asset')
-
         # Arguments required for TrustModel
         parser_trustmodel = subparsers.add_parser("trustmodel", help = "TrustModel AI model evaluation")
         parser_trustmodel.add_argument('--trustmodel_api_key', help='TrustModel API key', required=True)
@@ -1487,8 +1477,6 @@ def main(args=None):
             assets = k8s_cis.get_inventory(args, 'k8s')
         elif args.mode == 'gke_cis':
             assets = k8s_cis.get_inventory(args, 'gke')
-        elif args.mode == 'do_cis':
-            assets = do_cis.get_inventory(args)
         elif args.mode == 'azure_functions':
             assets = azure_functions.get_inventory(args)
         elif args.mode == 'gcloud_functions':
