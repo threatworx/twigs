@@ -36,7 +36,7 @@ NSE_HTTP_SCRIPTS = [
     NSE_HTTP_PATH, NSE_APACHE_PATH,
 ]
 
-NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','5432','7000','7001','9042','7199','523','445','1433','6379','1521','5601','11211','9092','5672','4369','5984','6984','8098','2375','2376','15672','15671','6380']
+NMAP_DB_PORTS = ['9200','9300','27017','27018','27019','3306','5432','7000','7001','9042','7199','523','445','1433','6379','1521','5601','11211','9092','5672','4369','5984','6984','8098','2375','2376','15672','15671','6380','1883','8883','26257']
 NSE_DB_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/database/'
 NSE_DB_SCRIPTS = [NSE_DB_PATH,'mongodb-info','mysql-info','cassandra-info','db2-das-info','ms-sql-info','redis-info','oracle-tns-version','amqp-info','epmd-info','memcached-info','docker-version','riak-http-info']
 
@@ -48,8 +48,8 @@ NMAP_CCTV_PORTS = ['21','80','161','443','8080','8443','4321', '37777', '9000', 
 NSE_CCTV_PATH  = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/cctv/'
 NSE_CCTV_SCRIPTS = [NSE_CCTV_PATH]
 
-NMAP_OT_PORTS = ['502','102','44818','20000','1962','4840']
-NSE_OT_SCRIPTS = ['modbus-discover','s7-info','enip-info','pcworx-info']
+NMAP_OT_PORTS = ['502','102','44818','20000','1962','4840','U:47808']
+NSE_OT_SCRIPTS = ['modbus-discover','s7-info','enip-info','pcworx-info','bacnet-info']
 
 NMAP_FTP_PORTS = ['21','990']
 NSE_FTP_SCRIPTS = ['ftp-syst','ftp-anon']
@@ -66,7 +66,7 @@ NSE_RDP_SCRIPTS = ['rdp-enum-encryption','rdp-ntlm-info']
 NMAP_VNC_PORTS = ['5900','5901','5902','5903','5904','5905']
 NSE_VNC_SCRIPTS = ['vnc-info']
 
-NMAP_INFRA_PORTS = ['3000','9090','9091','8500','8501','8200','8201','8086','15672','15671','8161','9000','8081','2379','2380','50070','9870','8088','19888','4848','7474','7687']
+NMAP_INFRA_PORTS = ['3000','9090','9091','8500','8501','8200','8201','8086','15672','15671','8161','9000','8081','2379','2380','50070','9870','8088','19888','4848','7474','7687','9093','3100','16686','9411','8428','8065','8001','1936','9901','5555','8222','4222','8111','8085','8123','8529','9001']
 NSE_INFRA_SCRIPTS = [NSE_HTTP_PATH]
 
 NSE_OTHER_PATH = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/'
@@ -80,15 +80,19 @@ def build_snmp_walk_cmd(args, addr):
         cmd = cmd + ' -v3 -u '+args.snmp_security_name
     else:
         cmd = cmd + ' -v1 '
-    cmd = cmd + ' -c '+args.snmp_community + ' ' + addr
+    # -t 3: 3-second timeout per retry; -r 1: 1 retry — fail fast on non-responsive hosts
+    cmd = cmd + ' -t 3 -r 1 -c '+args.snmp_community + ' ' + addr
     return cmd
 
 def get_snmp_oid_value(args, snmpwalk, oid):
     out = None
     try:
         logging.debug("snmpwalk command: " + snmpwalk + ' ' + oid)
-        out = subprocess.check_output([snmpwalk+' '+oid], shell=True)
+        out = subprocess.check_output([snmpwalk+' '+oid], shell=True, timeout=15)
         out = out.decode(args.encoding)
+    except subprocess.TimeoutExpired:
+        logging.error("Timeout running snmpwalk command")
+        return None
     except subprocess.CalledProcessError:
         logging.error("Error running snmpwalk command")
         return out
@@ -385,10 +389,8 @@ def nmap_scan(args, host):
                         logging.debug("SNMP sysDescr value:"+prod)
                         # handle Palo Alto Networks products
                         if 'Palo Alto Networks' in prod:
-                            #products.append(prod)
-                            # oid for PANOS version
                             panosver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.25461.2.1.2.1.1')
-                            prod = 'paloaltonetworks pan-os '+panosver
+                            prod = 'paloaltonetworks pan-os ' + panosver.strip() if panosver else 'paloaltonetworks pan-os'
                             products.append(prod)
                             ostype = 'Palo Alto Networks'
                         elif 'Juniper Networks' in prod:
@@ -397,12 +399,15 @@ def nmap_scan(args, host):
                             if m and len(m) > 0:
                                 junosver = 'juniper junos ' + [x[0] for x in m][0]
                                 products.append(junosver)
-                            model = prod.split(',')[1].replace('Inc.','').strip()
-                            if '[' in model and ']' in model:
-                                model = model.split()[1].replace('[','').replace(']','').strip()
-                            else:
-                                model = model.split()[0].strip()
-                            products.append('juniper '+model)
+                            parts = prod.split(',')
+                            if len(parts) > 1:
+                                model = parts[1].replace('Inc.','').strip()
+                                if '[' in model and ']' in model:
+                                    model = model.split()[1].replace('[','').replace(']','').strip()
+                                else:
+                                    model = model.split()[0].strip()
+                                if model:
+                                    products.append('juniper '+model)
                             ostype = 'Juniper'
                         elif 'Canon' in prod:
                             model = prod.split()[1].strip()
@@ -433,14 +438,15 @@ def nmap_scan(args, host):
                                         products.append(model)
                         elif 'Aruba' in prod:
                             ostype = 'Aruba'
-                            swmodel = prod.split()[2].split('-')[0]
+                            words = prod.split()
+                            swmodel = words[2].split('-')[0] if len(words) > 2 else ''
                             version_regex = re.compile(r'([0-9]+\.[0-9]+\.[0-9]+)')
                             aos_version = None
                             m = re.findall(version_regex, prod)
                             if m and len(m) > 0:
                                 aos_version = m[0]
                             modelnum = re.sub("[^\d]", "", swmodel)
-                            if int(modelnum) < 6000:
+                            if modelnum and int(modelnum) < 6000:
                                 if aos_version:
                                     products.append(swmodel+' arubaos-switch '+aos_version)
                                     products.append(swmodel+' firmware '+aos_version)
@@ -477,13 +483,338 @@ def nmap_scan(args, host):
                             prod = prod.replace(',','')
                             products.append(prod)
                             ostype = 'Siemens'
+                        # --- Network security appliances ---
+                        elif 'BIG-IP' in prod or ('F5' in prod and 'Networks' in prod):
+                            ostype = 'F5 Networks'
+                            ver = None
+                            f5ver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.3375.2.1.4.2.0')
+                            if f5ver:
+                                m = re.search(r'([\d]+\.[\d]+[\.\d]*)', f5ver)
+                                ver = m.group(1) if m else f5ver.strip()
+                            if not ver:
+                                m = re.search(r'BIG-IP[_\s]+v?([\d]+\.[\d]+[\.\d]*)', prod)
+                                if m:
+                                    ver = m.group(1)
+                            prodstr = 'f5 big-ip ' + ver if ver else 'f5 big-ip'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Check Point' in prod or 'Gaia' in prod:
+                            ostype = 'Check Point'
+                            cpver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.2620.1.6.4.1.0')
+                            if cpver:
+                                prodstr = 'check point gaia ' + cpver.strip()
+                            else:
+                                m = re.search(r'(R[\d]+[\.\d]*)', prod)
+                                prodstr = 'check point gaia ' + m.group(1) if m else 'check point gaia'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'NetScaler' in prod or 'Citrix ADC' in prod:
+                            ostype = 'Citrix'
+                            m = re.search(r'NS([\d]+\.[\d]+)', prod)
+                            ver = m.group(1) if m else None
+                            if not ver:
+                                nsver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.5951.4.1.1.1.0')
+                                if nsver:
+                                    m2 = re.search(r'([\d]+\.[\d]+[\.\d]*)', nsver)
+                                    ver = m2.group(1) if m2 else nsver.strip()
+                            prodstr = 'citrix netscaler ' + ver if ver else 'citrix netscaler'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'SonicWALL' in prod or 'SonicWall' in prod:
+                            ostype = 'SonicWall'
+                            m = re.search(r'SonicOS[^\d]+([\d]+\.[\d]+[\.\d\-]*)', prod, re.IGNORECASE)
+                            ver = m.group(1) if m else None
+                            if not ver:
+                                m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d\-]*)', prod)
+                                ver = m.group(1) if m else None
+                            prodstr = 'sonicwall sonicos ' + ver if ver else 'sonicwall'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'WatchGuard' in prod:
+                            ostype = 'WatchGuard'
+                            m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'watchguard fireware ' + ver if ver else 'watchguard'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Sophos' in prod or 'Astaro' in prod:
+                            ostype = 'Sophos'
+                            m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'sophos ' + ver if ver else 'sophos'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Pulse Secure' in prod or 'Pulse Connect' in prod or 'Ivanti Connect' in prod:
+                            ostype = 'Ivanti'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'ivanti connect secure ' + ver if ver else 'ivanti connect secure'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Barracuda' in prod:
+                            ostype = 'Barracuda'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'barracuda ' + ver if ver else 'barracuda'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        # --- Network infrastructure ---
+                        elif 'RouterOS' in prod or ('MikroTik' in prod and 'RouterOS' in prod):
+                            ostype = 'MikroTik'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            if not ver:
+                                mkver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.14988.1.1.7.4.0')
+                                if mkver:
+                                    ver = mkver.strip()
+                            prodstr = 'mikrotik routeros ' + ver if ver else 'mikrotik routeros'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                            mkmodel = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.14988.1.1.7.3.0')
+                            if mkmodel and mkmodel.strip():
+                                products.append('mikrotik ' + mkmodel.strip())
+                        elif 'ExtremeXOS' in prod or ('Extreme Networks' in prod and 'ExtremeXOS' in prod):
+                            ostype = 'Extreme Networks'
+                            m = re.search(r'ExtremeXOS[^\d]+([\d]+\.[\d]+[\.\d]*)', prod)
+                            if not m:
+                                m = re.search(r'[Vv]ersion\s+([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'extreme networks extremexos ' + ver if ver else 'extreme networks extremexos'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Huawei' in prod or ('VRP' in prod and 'Huawei' in prod):
+                            ostype = 'Huawei'
+                            m = re.search(r'V([\d]+R[\d]+C[\d]+)', prod)
+                            ver = m.group(1) if m else None
+                            if not ver:
+                                m = re.search(r'[Vv]ersion\s+([\d]+\.[\d]+[\.\d]*)', prod)
+                                ver = m.group(1) if m else None
+                            prodstr = 'huawei vrp ' + ver if ver else 'huawei'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'TiMOS' in prod:
+                            ostype = 'Nokia'
+                            m = re.search(r'TiMOS-[A-Z]-([\d]+\.[\d]+\.[A-Z][\d]+)', prod)
+                            ver = m.group(1) if m else None
+                            if not ver:
+                                m = re.search(r'TiMOS-(\S+)', prod)
+                                ver = m.group(1) if m else None
+                            prodstr = 'nokia sr os ' + ver if ver else 'nokia sr os'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Ruckus' in prod:
+                            ostype = 'Ruckus'
+                            m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'ruckus ' + ver if ver else 'ruckus'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Ubiquiti' in prod or 'airOS' in prod or 'UniFi' in prod:
+                            ostype = 'Ubiquiti'
+                            m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            if 'UniFi' in prod:
+                                prodstr = 'ubiquiti unifi ' + ver if ver else 'ubiquiti unifi'
+                            else:
+                                prodstr = 'ubiquiti airos ' + ver if ver else 'ubiquiti airos'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Brocade' in prod:
+                            ostype = 'Brocade'
+                            m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*[a-z]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'brocade nos ' + ver if ver else 'brocade'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'ZyXEL' in prod or 'Zyxel' in prod:
+                            ostype = 'Zyxel'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'zyxel ' + ver if ver else 'zyxel'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'D-Link' in prod:
+                            ostype = 'D-Link'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'd-link ' + ver if ver else 'd-link'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'NETGEAR' in prod or 'Netgear' in prod:
+                            ostype = 'Netgear'
+                            m = re.search(r'([A-Z]{2,}\d{3,})', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('netgear ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Aerohive' in prod:
+                            ostype = 'Aerohive'
+                            m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'aerohive hiveos ' + ver if ver else 'aerohive'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Meraki' in prod:
+                            ostype = 'Cisco Meraki'
+                            if 'cisco meraki' not in products:
+                                products.append('cisco meraki')
+                        # --- Storage ---
+                        elif 'NetApp' in prod or 'ONTAP' in prod or 'Data ONTAP' in prod:
+                            ostype = 'NetApp'
+                            m = re.search(r'(?:Release|ONTAP)\s+([\d]+\.[\d]+[\.\d]*[A-Za-z0-9]*)', prod)
+                            ver = m.group(1) if m else None
+                            if not ver:
+                                naver = get_snmp_oid_value(args, cmd, '1.3.6.1.4.1.789.1.1.2.0')
+                                if naver:
+                                    m2 = re.search(r'([\d]+\.[\d]+[\.\d]*[A-Za-z0-9]*)', naver)
+                                    ver = m2.group(1) if m2 else None
+                            prodstr = 'netapp ontap ' + ver if ver else 'netapp'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Synology' in prod:
+                            ostype = 'Synology'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d\-]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'synology dsm ' + ver if ver else 'synology'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        # --- Hardware management ---
+                        elif 'iDRAC' in prod:
+                            ostype = 'Dell'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'dell idrac ' + ver if ver else 'dell idrac'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        # --- Virtualization ---
+                        elif 'VMware ESXi' in prod:
+                            ostype = 'VMware'
+                            m = re.search(r'ESXi\s+([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'vmware esxi ' + ver if ver else 'vmware esxi'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        # --- UPS / Power ---
+                        elif 'APC' in prod and any(x in prod for x in ['UPS', 'Power', 'Battery', 'Smart-']):
+                            ostype = 'APC UPS'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'apc ups ' + ver if ver else 'apc ups'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Eaton' in prod:
+                            ostype = 'Eaton'
+                            m = re.search(r'([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'eaton ups ' + ver if ver else 'eaton'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        # --- Printers ---
+                        elif 'EPSON' in prod or ('Epson' in prod and any(x in prod for x in ['Printer', 'ET-', 'WF-', 'XP-', 'SC-'])):
+                            ostype = 'Epson Printer'
+                            words = prod.split()
+                            model = words[1] if len(words) > 1 else ''
+                            prodstr = ('epson ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Brother' in prod:
+                            ostype = 'Brother Printer'
+                            m = re.search(r'Brother\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('brother ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Lexmark' in prod:
+                            ostype = 'Lexmark Printer'
+                            m = re.search(r'Lexmark\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('lexmark ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'KYOCERA' in prod or 'Kyocera' in prod:
+                            ostype = 'Kyocera Printer'
+                            m = re.search(r'(?:KYOCERA|Kyocera)\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('kyocera ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'RICOH' in prod or 'Ricoh' in prod:
+                            ostype = 'Ricoh Printer'
+                            m = re.search(r'(?:RICOH|Ricoh)\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('ricoh ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Xerox' in prod:
+                            ostype = 'Xerox Printer'
+                            m = re.search(r'Xerox\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('xerox ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'KONICA MINOLTA' in prod or 'Konica Minolta' in prod:
+                            ostype = 'Konica Minolta Printer'
+                            m = re.search(r'(?:KONICA MINOLTA|Konica Minolta)\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('konica minolta ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif 'Sharp' in prod and any(x in prod for x in ['MX-', 'AR-', 'BP-', 'DX-', 'Copier', 'Printer', 'MFP']):
+                            ostype = 'Sharp Printer'
+                            m = re.search(r'Sharp\s+(\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('sharp ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif any(x in prod for x in ['HP LaserJet', 'HP Color LaserJet', 'HP OfficeJet', 'HP DeskJet', 'HP PageWide', 'HP ETHERNET MULTI-ENVIRONMENT']):
+                            ostype = 'HP Printer'
+                            m = re.search(r'HP\s+((?:Color\s+)?(?:LaserJet|OfficeJet|DeskJet|PageWide)\s+\S+)', prod)
+                            model = m.group(1) if m else ''
+                            prodstr = ('hp ' + model).strip()
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        # --- Generic OS (must be last) ---
+                        elif 'VMware ESX' in prod:
+                            ostype = 'VMware'
+                            m = re.search(r'ESX\S*\s+([\d]+\.[\d]+[\.\d]*)', prod)
+                            ver = m.group(1) if m else None
+                            prodstr = 'vmware esx ' + ver if ver else 'vmware esx'
+                            if prodstr not in products:
+                                products.append(prodstr)
+                        elif prod.startswith('Linux'):
+                            ostype = 'Linux'
+                            m = re.search(r'Linux[^\d]+([\d]+\.[\d]+\.[\d]+[\w\.\-]*)', prod)
+                            if m:
+                                ver = m.group(1).rstrip('.')
+                                prodstr = 'linux linux kernel ' + ver
+                                if prodstr not in products:
+                                    products.append(prodstr)
+                        elif 'Windows' in prod and ('Software' in prod or 'Microsoft' in prod or 'Hardware' in prod):
+                            ostype = 'Windows'
+                            m = re.search(r'Windows[^\d,]+([\d]+\.[\d]+)', prod)
+                            if m:
+                                ver = m.group(1)
+                                # Map major.minor to readable name where possible
+                                win_map = {
+                                    '10.0': 'microsoft windows 10.0',
+                                    '6.3':  'microsoft windows server 2012',
+                                    '6.2':  'microsoft windows server 2012',
+                                    '6.1':  'microsoft windows server 2008',
+                                    '6.0':  'microsoft windows server 2008',
+                                    '5.2':  'microsoft windows server 2003',
+                                }
+                                major_minor = '.'.join(ver.split('.')[:2])
+                                prodstr = win_map.get(major_minor, 'microsoft windows ' + ver)
+                                if prodstr not in products:
+                                    products.append(prodstr)
+                        else:
+                            logging.debug("Unrecognized SNMP sysDescr: " + prod[:120])
                 prod = s.getAttribute('product')
                 if not prod:
                     continue
                 ver = s.getAttribute('version')
-                if not ver:
-                    continue
-                prod = prod + ' ' + ver
+                if ver:
+                    prod = prod + ' ' + ver
                 if prod not in products:
                     products.append(prod)
         # check for script output
@@ -832,11 +1163,33 @@ def nmap_scan(args, host):
             elif s.getAttribute('id') == 'smtp-commands':
                 wpout = s.getAttribute('output')
                 if wpout:
-                    # First line of output is typically the EHLO banner with product info
                     first_line = wpout.strip().split('\n')[0].strip()
-                    if first_line and len(first_line) > 5:
-                        if first_line not in products:
-                            products.append('smtp ' + first_line)
+                    mta_map = [
+                        ('Postfix',     'postfix'),
+                        ('Sendmail',    'sendmail'),
+                        ('Exim',        'exim'),
+                        ('Dovecot',     'dovecot'),
+                        ('Exchange',    'microsoft exchange'),
+                        ('Lotus',       'ibm lotus domino'),
+                        ('hMailServer', 'hmailserver'),
+                        ('MailEnable',  'mailenable'),
+                        ('Zimbra',      'zimbra'),
+                    ]
+                    # MTA name appears after "ESMTP" or "SMTP" in the banner,
+                    # not in the hostname part — restrict search to avoid
+                    # hostname false positives (e.g. "postfix.example.com ESMTP Sendmail")
+                    mta_section = re.search(r'(?:ESMTP|SMTP)\s+(.*)', first_line, re.IGNORECASE)
+                    mta_str = mta_section.group(1) if mta_section else ''
+                    for keyword, prodname in mta_map:
+                        if keyword.lower() in mta_str.lower():
+                            ver_match = re.search(
+                                r'(?i)' + re.escape(keyword) + r'[^0-9]+([\d]+\.[\d]+[\.\d]*)',
+                                mta_str
+                            )
+                            prodstr = (prodname + ' ' + ver_match.group(1)) if ver_match else prodname
+                            if prodstr not in products:
+                                products.append(prodstr)
+                            break
             elif s.getAttribute('id') == 'smtp-ntlm-info':
                 wpout = s.getAttribute('output')
                 if wpout and 'Product_Version:' in wpout:
@@ -994,6 +1347,29 @@ def nmap_scan(args, host):
                         ('alertmanager', 'prometheus alertmanager'),
                         ('vault',        'hashicorp vault'),
                         ('consul',       'hashicorp consul'),
+                        ('mattermost',   'mattermost'),
+                        ('rocket.chat',  'rocket.chat'),
+                        ('cockroachdb',  'cockroachdb'),
+                        ('clickhouse',   'clickhouse'),
+                        ('minio',        'minio'),
+                        ('teamcity',     'jetbrains teamcity'),
+                        ('artifactory',  'jfrog artifactory'),
+                        ('victoria metrics', 'victoria metrics'),
+                        ('loki',         'grafana loki'),
+                        ('jaeger',       'jaeger'),
+                        ('zipkin',       'zipkin'),
+                        ('kong',         'kong gateway'),
+                        ('arangodb',     'arangodb'),
+                        ('drone',        'drone ci'),
+                        ('flower',       'celery flower'),
+                        ('haproxy',      'haproxy'),
+                        ('envoy',        'envoy proxy'),
+                        ('nats',         'nats'),
+                        ('bamboo',       'atlassian bamboo'),
+                        ('nextcloud',    'nextcloud'),
+                        ('nagios',       'nagios'),
+                        ('zabbix',       'zabbix'),
+                        ('pulsar',       'apache pulsar'),
                     ]
                     for keyword, prodname in title_map:
                         if keyword in title_lower:
@@ -1169,6 +1545,271 @@ def nmap_scan(args, host):
                             waf_name = line[4:].strip()
                             if waf_name and waf_name not in products:
                                 products.append(waf_name)
+            # --- previously-scanned-but-unhandled built-in scripts ---
+            elif s.getAttribute('id') == 'kubernetes-version':
+                elems = s.getElementsByTagName('elem')
+                ver = None
+                for e in elems:
+                    if e.getAttribute('key') == 'gitVersion' and e.firstChild:
+                        ver = e.firstChild.data.strip().lstrip('v')
+                        break
+                if not ver:
+                    wpout = s.getAttribute('output')
+                    if wpout:
+                        m = re.search(r'v?(\d+\.\d+\.\d+)', wpout)
+                        if m:
+                            ver = m.group(1)
+                if ver:
+                    prodstr = 'kubernetes ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                else:
+                    if 'kubernetes' not in products:
+                        products.append('kubernetes')
+            elif s.getAttribute('id') == 'cassandra-info':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    prodstr = 'apache cassandra'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'db2-das-info':
+                elems = s.getElementsByTagName('elem')
+                ver = None
+                for e in elems:
+                    if e.getAttribute('key') == 'server_level' and e.firstChild:
+                        ver = e.firstChild.data.strip()
+                        break
+                if not ver:
+                    wpout = s.getAttribute('output')
+                    if wpout:
+                        for line in wpout.splitlines():
+                            if 'server_level' in line and ':' in line:
+                                ver = line.split(':', 1)[1].strip()
+                                break
+                prodstr = ('ibm db2 ' + ver) if ver else 'ibm db2'
+                if prodstr not in products:
+                    products.append(prodstr)
+            elif s.getAttribute('id') == 'oracle-tns-version':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    m = re.search(r'Version\s+([\d\.]+)', wpout)
+                    prodstr = ('oracle database ' + m.group(1)) if m else 'oracle'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'postgresql-info':
+                wpout = s.getAttribute('output')
+                if wpout and 'postgresql' in wpout.lower():
+                    elems = s.getElementsByTagName('elem')
+                    ver = None
+                    for e in elems:
+                        if e.getAttribute('key') == 'version' and e.firstChild:
+                            ver = e.firstChild.data.strip()
+                            break
+                    prodstr = ('postgresql ' + ver) if ver else 'postgresql'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'ldap-rootdse':
+                elems = s.getElementsByTagName('elem')
+                is_ad = False
+                for e in elems:
+                    if e.getAttribute('key') in ('serverName', 'defaultNamingContext') and e.firstChild:
+                        val = e.firstChild.data.strip()
+                        if 'DC=' in val or 'CN=' in val:
+                            is_ad = True
+                            break
+                wpout = s.getAttribute('output')
+                if wpout or len(elems) > 0:
+                    prodstr = 'microsoft active directory' if is_ad else 'openldap'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'dnp3-info':
+                wpout = s.getAttribute('output')
+                if wpout:
+                    prodstr = 'dnp3'
+                    if prodstr not in products:
+                        products.append(prodstr)
+            # --- new service detection ---
+            elif s.getAttribute('id') == 'neo4j-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'neo4j version:' in wpout:
+                    ver = wpout.split('neo4j version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'neo4j ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                elif wpout and 'neo4j' not in [p.split()[0].lower() for p in products]:
+                    products.append('neo4j')
+            elif s.getAttribute('id') == 'nats-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'nats version:' in wpout:
+                    ver = wpout.split('nats version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'nats ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'alertmanager-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'alertmanager version:' in wpout:
+                    ver = wpout.split('alertmanager version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'prometheus alertmanager ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'loki-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'loki version:' in wpout:
+                    ver = wpout.split('loki version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'grafana loki ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'jaeger-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'jaeger version:' in wpout:
+                    ver = wpout.split('jaeger version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'jaeger ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                elif wpout and 'jaeger detected' in wpout:
+                    if 'jaeger' not in products:
+                        products.append('jaeger')
+            elif s.getAttribute('id') == 'zipkin-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'zipkin version:' in wpout:
+                    ver = wpout.split('zipkin version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'zipkin ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'mattermost-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'mattermost version:' in wpout:
+                    ver = wpout.split('mattermost version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'mattermost ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'rocketchat-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'rocketchat version:' in wpout:
+                    ver = wpout.split('rocketchat version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'rocket.chat ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'kong-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'kong version:' in wpout:
+                    ver = wpout.split('kong version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'kong gateway ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'artifactory-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'artifactory version:' in wpout:
+                    ver = wpout.split('artifactory version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'jfrog artifactory ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'flower-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'flower version:' in wpout:
+                    ver = wpout.split('flower version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'celery flower ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                elif wpout and 'flower detected' in wpout:
+                    if 'celery flower' not in products:
+                        products.append('celery flower')
+            elif s.getAttribute('id') == 'clickhouse-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'clickhouse version:' in wpout:
+                    ver = wpout.split('clickhouse version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'clickhouse ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'minio-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'minio version:' in wpout:
+                    ver = wpout.split('minio version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'minio ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                elif wpout and 'minio detected' in wpout:
+                    if 'minio' not in products:
+                        products.append('minio')
+            elif s.getAttribute('id') == 'teamcity-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'teamcity version:' in wpout:
+                    ver = wpout.split('teamcity version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'jetbrains teamcity ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'envoy-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'envoy version:' in wpout:
+                    ver = wpout.split('envoy version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'envoy proxy ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'haproxy-stats':
+                wpout = s.getAttribute('output')
+                if wpout and 'haproxy version:' in wpout:
+                    ver = wpout.split('haproxy version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'haproxy ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                elif wpout and 'haproxy detected' in wpout:
+                    if 'haproxy' not in products:
+                        products.append('haproxy')
+            elif s.getAttribute('id') == 'victoria-metrics-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'victoria metrics version:' in wpout:
+                    ver = wpout.split('victoria metrics version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'victoria metrics ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'bamboo-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'bamboo version:' in wpout:
+                    ver = wpout.split('bamboo version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'atlassian bamboo ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'cockroachdb-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'cockroachdb version:' in wpout:
+                    ver = wpout.split('cockroachdb version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'cockroachdb ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+                elif wpout and 'cockroachdb detected' in wpout:
+                    if 'cockroachdb' not in products:
+                        products.append('cockroachdb')
+            elif s.getAttribute('id') == 'nextcloud-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'nextcloud version:' in wpout:
+                    ver = wpout.split('nextcloud version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'nextcloud ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'arangodb-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'arangodb version:' in wpout:
+                    ver = wpout.split('arangodb version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'arangodb ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'pulsar-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'pulsar version:' in wpout:
+                    ver = wpout.split('pulsar version:')[1].strip().split('\n')[0].strip()
+                    prodstr = 'apache pulsar ' + ver
+                    if prodstr not in products:
+                        products.append(prodstr)
+            elif s.getAttribute('id') == 'kafka-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'kafka' in wpout.lower():
+                    if 'apache kafka' not in products:
+                        products.append('apache kafka')
+            elif s.getAttribute('id') == 'mosquitto-version':
+                wpout = s.getAttribute('output')
+                if wpout and 'mqtt broker' in wpout:
+                    if 'eclipse mosquitto' not in products:
+                        products.append('eclipse mosquitto')
 
         os_name_tag = None
         smb_os_name = get_smb_os(h)
