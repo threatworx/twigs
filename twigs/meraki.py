@@ -132,6 +132,8 @@ def get_all_devices(args, headers):
                     products = ['Samsung '+sm_device['osName']+'.0']
                 else:
                     products = [sm_device['osName']]
+                    if sm_device['osName'].startswith('iOS '):
+                        products.append(sm_device['osName'].replace('iOS','iPhone OS'))
                 softwares = get_sm_device_softwares(args, headers, net['id'], sm_device['id'])
                 for software in softwares:
                     js = json.dumps(software, indent=4)
