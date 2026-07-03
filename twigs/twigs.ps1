@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Windows Host discovery script (twigs equivalent)
 .DESCRIPTION
@@ -27,6 +27,8 @@
     Specify tags for the asset. Optional.
 .PARAMETER tag_critical
     Tag the asset as critical. Optional. Possible values (true or false). Default is false.
+.PARAMETER include_serial_number
+    Include the serial number in the asset name delimited by '|'. Optional. Possible values (true or false). Default is false.
 .PARAMETER no_scan
     Do not initiate a baseline assessment. Optional. Possible values (true or false). Default is false.
 .PARAMETER no_host_benchmark
@@ -35,11 +37,10 @@
     After impact refresh is complete, email scan report to self. Optional. Possible values (true or false). Default is false.
 .EXAMPLE
     .\twigs.ps1 -handle someuser@company.com -token XXXX -instance ACME.threatworx.io -out asset.json -assetid myassetid -assetname myassetname -tag_critical true -tags 'tag1','tag2' -email_report true
+.EXAMPLE
     .\twigs.ps1 -mode remote -remote_hosts_csv my_remote_hosts.csv -handle someuser@company.com -token XXXX -instance ACME.threatworx.io
-.NOTES
-    .    
 #>
-# Sample PowerShell based discovery script for Windows
+[CmdletBinding()]
 param(
     [parameter(Mandatory=$false, HelpMessage='Local or Remote Windows host discovery')]
     [ValidateSet('local','remote')]
@@ -90,7 +91,12 @@ param(
     [ValidateSet('true','false')]
     [String]
     $tag_critical='false',
-    
+
+    [parameter(Mandatory=$false, HelpMessage='Include the serial number in the asset name delimited by ''|''. Optional. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $include_serial_number='false',
+        
     [parameter(Mandatory=$false, HelpMessage='Do not initiate a baseline assessment. Possible values (true or false). Default is false')]
     [ValidateSet('true','false')]
     [String]
@@ -307,7 +313,7 @@ function Invoke-RemoteDiscovery {
                 $remotescript = ".\twigs.exe"
             }
             Invoke-Command -Session $remoteSession { Set-Location $using:remote_twigs_folder }
-            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report}
+            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report}
             Invoke-Command -Session $remoteSession { Set-Location "..\..\" }
             Invoke-Command -Session $remoteSession { Remove-Item $using:remote_folder -Recurse }
             Remove-PSSession $remoteSession
@@ -521,6 +527,13 @@ function Invoke-LocalDiscovery {
         $url = $tw_assets_url + $assetid + '/?handle=' + $handle + '&token=' + $token + '&format=json'
     }
 
+    if ($include_serial_number -eq "true") {
+        $serial_number = (Get-CimInstance Win32_BIOS).SerialNumber
+        if (-not [string]::IsNullOrWhiteSpace($serial_number)) {
+            $assetname = $assetname + '|' + $serial_number
+        }
+    }
+
     $current_ts = [long](Get-Date (Get-Date).ToUniversalTime() -UFormat %s)
 
     $payload = @{
@@ -633,11 +646,12 @@ else {
     Invoke-LocalDiscovery
 }
 
+
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUi7oiw2ilKlbMIpnSGTmp2SgY
-# uxCgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtYGXfJGvK+WXmv30yW92h3lI
+# mpagggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -664,11 +678,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFNTccAa0IK1MevLM
-# 4cv//yj2yYwFMA0GCSqGSIb3DQEBAQUABIIBAFsHhxj74whC6lMJd1LtwUC0lGGJ
-# F0JeH93zioExUFDqZ9dvhZHCCCRYPjViHSovHSCUbEcDMEpvcHYjBWZ2zUiq/IR2
-# 2Oetl/pEbKtMn4wtdEthL1XEsavN5htlr4stzaDK2X+HbKmfESMCIW7qcVoqLQUu
-# NNFIKzFqszomXd5boye1S2I6Y3Qksd+HeAtuXwgipCpEPZEwQGxWEDjEQQTBDtfR
-# uLyxYh8jhe1H48kRubywdYXg8E2plgpEh35wMkXLNMQ9Bguk8/9vAm/vEU5pOgn1
-# rULRuazV1+80dMkIbqnq5a3N7wOaJXMzd3Q1Y3FvaBv+UNdHndTESexvhtw=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFA78zo8fN7oDnf5b
+# Cu+uuOLsl+87MA0GCSqGSIb3DQEBAQUABIIBAC44YlAx97aiFeJRkjkAkS5PlGuK
+# lqDlBe2x8Osf6h2Pp5pojjq3F7/7kfkO1q3EV14XOuDQYcB1lsZeR5YdPfwPzcSB
+# ejWM0PB5fv5l4HX8uyfR90EEDK5SACbAsl9Uvcqb3dQwqu7O1H1xqLnfL+IAJHy6
+# Q5141yyDO1Fj6UQXs6/WbSj1n8Lr5vo8EcaZBALDt31hkhTNwRTiz3hlcALioyAO
+# 1mu2yM6Z5IPgL2R5g3APJAQHhnNdEuDATP7fqdq7/uwsXC/5W/Nix6JygmM8R000
+# niqDLLS9KBEFkbG+dXHYzPc9d8uqXX1tAGQcH2Nh/0YwVp+0wY6C0VOayMU=
 # SIG # End signature block
