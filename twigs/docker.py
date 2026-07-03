@@ -442,7 +442,7 @@ def discover_container_from_image(args, digest):
             return casset 
 
         plist = None
-        if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux' or atype == 'Rocky Linux':
+        if atype in ['CentOS', 'Red Hat', 'Amazon Linux', 'Oracle Linux', 'Rocky Linux', 'AlmaLinux']:
             if atype == 'Rocky Linux':
                 # Presence of rpm db lock files causes an issue on Rocky Linux
                 rpm_folder = container_fs + os.path.sep + os.path.sep.join(["var","lib","rpm"])
@@ -687,7 +687,7 @@ def discover_container_from_instance(args):
         return None
 
     plist = None
-    if atype == 'CentOS' or atype == 'Red Hat' or atype == 'Amazon Linux' or atype == 'Oracle Linux':
+    if atype in ['CentOS', 'Red Hat', 'Amazon Linux', 'Oracle Linux', 'Rocky Linux', 'AlmaLinux']:
         plist = discover_rh_from_container_instance(args, container_id)
     elif atype == 'Ubuntu' or atype == 'Debian':
         plist = discover_ubuntu_from_container_instance(args, container_id)
