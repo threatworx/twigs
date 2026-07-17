@@ -440,10 +440,10 @@ function Invoke-LocalDiscovery {
     Write-Host 'Number of products identified till now:', $product_json_array.Count
 
     Write-Host ''
-    Write-Host 'Extracting products (using WMI)...'
-    $temp_array = Get-WMIObject -ClassName Win32_Product
-    foreach ($row in $temp_array) { $product_details = $row.Name.Trim() + ' ' + $row.Version.Trim(); if  ($product_json_array -notcontains $product_details) { $product_json_array.Add($product_details)} }
-    Write-Host 'Number of products found (using wmic):', $temp_array.Count
+    Write-Host 'Extracting products (using PackageManagement)...'
+    $temp_array = Get-Package -ProviderName "Programs", "msi" | Select-Object Name, Version, ProviderName
+    foreach ($row in $temp_array) { if ($row.Name -and $row.Version) { $product_details = $row.Name.Trim() + ' ' + $row.Version.Trim(); if  ($product_json_array -notcontains $product_details) { $product_json_array.Add($product_details)} } }
+    Write-Host 'Number of products found (using PackageManagement):', $temp_array.Count
     Write-Host 'Total number of unique products found:', $product_json_array.Count
 
     $tags_json_array = New-Object System.Collections.Generic.List[string]
@@ -646,12 +646,11 @@ else {
     Invoke-LocalDiscovery
 }
 
-
 # SIG # Begin signature block
 # MIIG6AYJKoZIhvcNAQcCoIIG2TCCBtUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtYGXfJGvK+WXmv30yW92h3lI
-# mpagggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvGrVxT8wrfmgBCKrKWuffe+B
+# SkKgggQKMIIEBjCCAu6gAwIBAgIBATANBgkqhkiG9w0BAQsFADCBoDETMBEGA1UE
 # AwwKVGhyZWF0V29yeDEYMBYGA1UECgwPVGhyZWF0V2F0Y2ggSW5jMRQwEgYDVQQL
 # DAtFbmdpbmVlcmluZzETMBEGA1UECAwKQ2FsaWZvcm5pYTELMAkGA1UEBhMCVVMx
 # EjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFyZXNoQHRocmVh
@@ -678,11 +677,11 @@ else {
 # A1UEBhMCVVMxEjAQBgNVBAcMCUxvcyBHYXRvczEjMCEGCSqGSIb3DQEJARYUcGFy
 # ZXNoQHRocmVhdHdvcnguaW8CAQEwCQYFKw4DAhoFAKB4MBgGCisGAQQBgjcCAQwx
 # CjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGC
-# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFA78zo8fN7oDnf5b
-# Cu+uuOLsl+87MA0GCSqGSIb3DQEBAQUABIIBAC44YlAx97aiFeJRkjkAkS5PlGuK
-# lqDlBe2x8Osf6h2Pp5pojjq3F7/7kfkO1q3EV14XOuDQYcB1lsZeR5YdPfwPzcSB
-# ejWM0PB5fv5l4HX8uyfR90EEDK5SACbAsl9Uvcqb3dQwqu7O1H1xqLnfL+IAJHy6
-# Q5141yyDO1Fj6UQXs6/WbSj1n8Lr5vo8EcaZBALDt31hkhTNwRTiz3hlcALioyAO
-# 1mu2yM6Z5IPgL2R5g3APJAQHhnNdEuDATP7fqdq7/uwsXC/5W/Nix6JygmM8R000
-# niqDLLS9KBEFkbG+dXHYzPc9d8uqXX1tAGQcH2Nh/0YwVp+0wY6C0VOayMU=
+# NwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcNAQkEMRYEFLTUvFHeWws6Z0Mp
+# y6IlIjz2z3WMMA0GCSqGSIb3DQEBAQUABIIBAFXp5LUAp4t/A0JHQwZRxm/DZar6
+# vwUqhbzZzz14THbX9tJcQ9Smu11IkYqCM1iJHZUFyhHOyd8KTyPqBoaeVl2uYFr2
+# TYwnZp+cIPtvrjJBNBScunnCsRkQya1u3VsjAf6kczTAvBc94Oe2+mjqtqNEC94A
+# Js8gGwFDSSllc10YF+6N0Cd+b820fNcTINusPTUJfEvdKY0Zy131ZuHHkFgbKNLB
+# AYI7dgSbG+YM/GzyqagHG/3h+MqPpRnyD8apTKOJ3IYeS89FqJJ+ih7DObpZ2Yn+
+# 40wlt4hNWK0fxodJrSWfwPdW81M+Dz2OTWfcze2fooGtM4TpF/XJyqZYzAw=
 # SIG # End signature block
