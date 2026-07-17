@@ -8,6 +8,7 @@ import hashlib
 import tarfile
 import logging
 import json
+import traceback
 
 from twigs import utils
 
@@ -66,47 +67,55 @@ def process_report(report_file, asset_id):
     return config_issues
 
 def run_host_benchmark(host, asset_id, args):
-    logging.info("Running host benchmark for [%s]. This may take some time...", host['hostname'])
-    args_encoding = args.encoding if args is not None else 'latin-1'
     config_issues = []
-    bundled_tar_path = os.path.dirname(os.path.realpath(__file__)) + os.sep + 'lynis-3.1.1.tar.gz'
-    local_temp_dir = tempfile.mkdtemp()
+    try:
+        logging.info("Running host benchmark for [%s]. This may take some time...", host['hostname'])
+        args_encoding = args.encoding if args is not None else 'latin-1'
+        bundled_tar_path = os.path.dirname(os.path.realpath(__file__)) + os.sep + 'lynis-3.1.1.tar.gz'
+        local_temp_dir = tempfile.mkdtemp()
 
-    # Untar tar to tmp directory
-    with tarfile.open(bundled_tar_path, 'r', format=tarfile.PAX_FORMAT) as tf:
-        tf.extractall(path=local_temp_dir)
+        # Untar tar to tmp directory
+        with tarfile.open(bundled_tar_path, 'r', format=tarfile.PAX_FORMAT) as tf:
+            tf.extractall(path=local_temp_dir)
 
-    # Create local tmp directory
-    if host['remote'] == False:
-        extract_tar_path = local_temp_dir
-    else:
-        # SSH and create tmp directory on remote box
-        cmdarr = ['mktemp -d']
-        remote_temp_dir = utils.run_cmd_on_host(args, host, cmdarr)
+        # Create local tmp directory
+        if host['remote'] == False:
+            extract_tar_path = local_temp_dir
+        else:
+            # SSH and create tmp directory on remote box
+            cmdarr = ['mktemp -d']
+            remote_temp_dir = utils.run_cmd_on_host(args, host, cmdarr)
 
-        remote_temp_dir = remote_temp_dir.strip()
-        # SCP tar contents to remote box
-        utils.scp_put_file(host, local_temp_dir + os.sep + 'lynis-3.1.1', remote_temp_dir)
-        extract_tar_path = remote_temp_dir
+            remote_temp_dir = remote_temp_dir.strip()
+            # SCP tar contents to remote box
+            utils.scp_put_file(host, local_temp_dir + os.sep + 'lynis-3.1.1', remote_temp_dir)
+            extract_tar_path = remote_temp_dir
 
-    # Run host benchmark tool
-    cmdarr = ['cd ' + extract_tar_path + os.sep + 'lynis-3.1.1 && chmod 640 include/* && ./lynis audit system --quiet --logfile ../tw_lynis.log --report-file ../tw_lynis_report.dat && cd -']
-    utils.run_cmd_on_host(args, host, cmdarr)
-
-    if host['remote'] == True:
-        # SCP report back to local tmp directory
-        utils.scp_get_file(host, remote_temp_dir + os.sep + 'tw_lynis_report.dat', local_temp_dir)
-        # Remove remote tmp directory
-        cmdarr = ['rm -rf '+ remote_temp_dir]
+        # Run host benchmark tool
+        cmdarr = ['cd ' + extract_tar_path + os.sep + 'lynis-3.1.1 && chmod 640 include/* && ./lynis audit system --quiet --logfile ../tw_lynis.log --report-file ../tw_lynis_report.dat && cd -']
         utils.run_cmd_on_host(args, host, cmdarr)
 
-    # Process report from local tmp directory
-    config_issues = process_report(local_temp_dir + os.sep + 'tw_lynis_report.dat', asset_id)
+        if host['remote'] == True:
+            # SCP report back to local tmp directory
+            utils.scp_get_file(host, remote_temp_dir + os.sep + 'tw_lynis_report.dat', local_temp_dir)
+            # Remove remote tmp directory
+            cmdarr = ['rm -rf '+ remote_temp_dir]
+            utils.run_cmd_on_host(args, host, cmdarr)
 
-    # Remove local tmp directory
-    shutil.rmtree(local_temp_dir, onerror = on_rm_error)
+        # Process report from local tmp directory
+        config_issues = process_report(local_temp_dir + os.sep + 'tw_lynis_report.dat', asset_id)
 
-    logging.info("Completed host benchmark for [%s]", host['hostname'])
+        # Remove local tmp directory
+        shutil.rmtree(local_temp_dir, onerror = on_rm_error)
+
+        logging.info("Completed host benchmark for [%s]", host['hostname'])
+
+    except Exception as e:
+        logging.error("Something went wrong while running host benchmarks")
+        st = traceback.format_exc()
+        logging.error("Exception trace details: %s", st)
+    except:
+        logging.error("Unknown error running remote discovery for asset [%s], host [%s]: [%s]", asset_id, host['hostname'], sys.exc_info()[1])
 
     return config_issues
 
