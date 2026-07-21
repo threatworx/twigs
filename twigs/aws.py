@@ -126,7 +126,7 @@ class EC2Impl(AWS):
                             pname = data[i]['Name']
                             pversion = data[i]['Version']
                             products.append(pname+' '+pversion)
-                        elif host_type in ["Amazon Linux AMI", "Red Hat", "CentOS"]:
+                        elif host_type in ["Amazon Linux AMI", "Red Hat", "CentOS", "AlmaLinux"]:
                             pname = data[i]['Name']
                             pver = data[i]['Version']
                             prpm = data[i]['PackageId']
