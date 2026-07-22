@@ -191,6 +191,10 @@ class EC2Impl(AWS):
                     if data[0].get('InstanceStatus').lower() in ['stopped', 'terminated']:
                         # skip instances which are not running or terminated
                         continue
+                    if data[0].get('PlatformName') is None or data[0]['PlatformName'].strip() == "":
+                        logging.warn("Missing 'PlatformName' in JSON for EC2 instance [%s]" % splits[-1])
+                        # handle corner case wherein PlatformName key is missing
+                        continue
                     aws_account_id = splits[-4].split('=')[1]
                     asset = {}
                     asset['id'] = data[0]['resourceId']
