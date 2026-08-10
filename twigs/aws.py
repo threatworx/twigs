@@ -126,7 +126,7 @@ class EC2Impl(AWS):
                             pname = data[i]['Name']
                             pversion = data[i]['Version']
                             products.append(pname+' '+pversion)
-                        elif host_type in ["Amazon Linux AMI", "Red Hat", "CentOS"]:
+                        elif host_type in ["Amazon Linux AMI", "Red Hat", "CentOS", "AlmaLinux"]:
                             pname = data[i]['Name']
                             pver = data[i]['Version']
                             prpm = data[i]['PackageId']
@@ -190,6 +190,10 @@ class EC2Impl(AWS):
                         data.append(json.loads(s))
                     if data[0].get('InstanceStatus').lower() in ['stopped', 'terminated']:
                         # skip instances which are not running or terminated
+                        continue
+                    if data[0].get('PlatformName') is None or data[0]['PlatformName'].strip() == "":
+                        logging.warn("Missing 'PlatformName' in JSON for EC2 instance [%s]" % splits[-1])
+                        # handle corner case wherein PlatformName key is missing
                         continue
                     aws_account_id = splits[-4].split('=')[1]
                     asset = {}

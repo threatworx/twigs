@@ -1,5 +1,9 @@
 import os
 import logging
+import warnings
+with warnings.catch_warnings():
+   warnings.simplefilter("ignore", category=Warning)
+   import paramiko
 
 from . import utils
 from . import plugin_registry
@@ -135,6 +139,8 @@ def run_plugins(args, asset_dict, host, plugin_dir, root_folder):
 def process_plugins(asset_dict, host, args, root_folder):
     if args.mode not in ['host', 'docker', 'gcr', 'acr', 'ecr', 'ocr', 'k8s']:
         return
+    if args.check_vuln is None and not args.check_all_vulns:
+        return
 
     assetid = host['assetid'] if host.get('assetid') is not None else host['hostname']
     try:
@@ -145,7 +151,7 @@ def process_plugins(asset_dict, host, args, root_folder):
             cmd = 'mktemp -d'
             remote_plugin_dir, exit_code = utils.run_remote_ssh_command_helper(client, cmd, args)
             remote_plugin_dir = remote_plugin_dir.strip()
-            utils.scp_put_file(client, plugin_dir, remote_plugin_dir)
+            utils.scp_put_file(host, plugin_dir, remote_plugin_dir)
             cmd = 'chmod +x ' + remote_plugin_dir + '/*'
             utils.run_remote_ssh_command_helper(client, cmd, args)
             plugin_dir = remote_plugin_dir + os.sep + 'plugins'
