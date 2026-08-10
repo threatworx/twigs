@@ -1927,10 +1927,10 @@ def nmap_scan(args, host):
                         asset_data['tags'].append('SSH Audit')
                     asset_data['config_issues'] = asset_data['config_issues'] + ssh_issues if 'config_issues' in asset_data else ssh_issues
 
-            if asset_data['type'] == "Other" and len(asset_data['products']) == 0 and ('config_issues' not in asset_data or len(asset_data['config_issues'])==0):
+            #if asset_data['type'] == "Other" and len(asset_data['products']) == 0 and ('config_issues' not in asset_data or len(asset_data['config_issues'])==0):
                 # skip any discovered assets which have asset type as "Other" and no products and no config_issues
-                logging.info("Fingerprinting did not yield any results")
-                continue
+            #    logging.info("Fingerprinting did not yield any results")
+            #    continue
             asset_data_list.append(asset_data)
         except Exception as e:
             logging.error("Error processing host in nmap output: %s", e)

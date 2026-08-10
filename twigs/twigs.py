@@ -491,10 +491,24 @@ def add_attack_surface_label(args, assets):
                 as_label = "Corporate::Printer::Canon Printer"
             elif asset['type'] == 'Honeywell Printer':
                 as_label = "Corporate::Printer::Honeywell Printer"
-                logging.info("Setting attack surface label for Honeywell Printer [%s]", asset['id'])
             elif asset['type'] == 'Zebra Printer':
                 as_label = "Corporate::Printer::Zebra Printer"
-                logging.info("Setting attack surface label for Zebra Printer [%s]", asset['id'])
+            elif asset['type'] == 'Epson Printer':
+                as_label = "Corporate::Printer::Epson Printer"
+            elif asset['type'] == 'Brother Printer':
+                as_label = "Corporate::Printer::Brother Printer"
+            elif asset['type'] == 'Lexmark Printer':
+                as_label = "Corporate::Printer::Lexmark Printer"
+            elif asset['type'] == 'Kyocera Printer':
+                as_label = "Corporate::Printer::Kyocera Printer"
+            elif asset['type'] == 'Ricoh Printer':
+                as_label = "Corporate::Printer::Ricoh Printer"
+            elif asset['type'] == 'Xerox Printer':
+                as_label = "Corporate::Printer::Xerox Printer"
+            elif asset['type'] == 'Konica Minolta Printer':
+                as_label = "Corporate::Printer::Konica Minolta Printer"
+            elif asset['type'] == 'Sharp Printer':
+                as_label = "Corporate::Printer::Sharp Printer"
             elif asset['type'] == 'Hanwha Vision':
                 as_label = "Corporate::CCTV::Hanwha Vision"
             elif asset['type'] == 'Palo Alto Networks':
