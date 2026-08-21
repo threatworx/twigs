@@ -25,7 +25,7 @@ jobs:
       - name: checkout repo content
         run: |
           pip install twine
-          pip install packaging==24.2
+          pip install packaging
 
       - name: build and publish twigs
         run: python ${GITHUB_WORKSPACE}/setup.py sdist bdist_wheel
