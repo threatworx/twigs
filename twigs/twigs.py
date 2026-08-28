@@ -66,11 +66,12 @@ try:
     from . import oci_cis
     from . import gcloud_functions
     from . import vmware 
-    from . import website 
+    from . import website
     from . import meraki
     from . import dna_center
     from . import policy as policy_lib
     from . import trustmodel_eval
+    from . import easm
     from .__init__ import __version__
 except (ImportError,ValueError):
     from twigs import aws
@@ -80,7 +81,7 @@ except (ImportError,ValueError):
     from twigs import docker
     from twigs import kubernetes
     from twigs import azure
-    from twigs import o365
+    from twigs import o365 
     from twigs import acr
     from twigs import ecr
     from twigs import gcp
@@ -106,6 +107,7 @@ except (ImportError,ValueError):
     from twigs import utils
     from twigs import policy as policy_lib
     from twigs import trustmodel_eval
+    from twigs import easm
     from twigs.__init__ import __version__
 
 csv.field_size_limit(sys.maxsize)
@@ -491,8 +493,10 @@ def add_attack_surface_label(args, assets):
                 as_label = "Corporate::Printer::Canon Printer"
             elif asset['type'] == 'Honeywell Printer':
                 as_label = "Corporate::Printer::Honeywell Printer"
+                logging.info("Setting attack surface label for Honeywell Printer [%s]", asset['id'])
             elif asset['type'] == 'Zebra Printer':
                 as_label = "Corporate::Printer::Zebra Printer"
+                logging.info("Setting attack surface label for Zebra Printer [%s]", asset['id'])
             elif asset['type'] == 'Epson Printer':
                 as_label = "Corporate::Printer::Epson Printer"
             elif asset['type'] == 'Brother Printer':
@@ -555,6 +559,13 @@ def add_attack_surface_label(args, assets):
             as_label = get_code_as_label("Cloud::Azure::Serverless", asset)
         elif args.mode == 'gcloud_functions':
             as_label = get_code_as_label("Cloud::GCP::Serverless", asset)
+        elif args.mode == 'easm':
+            # Unlike other host_as_label callers, every EASM asset has the
+            # same 'Domain' type (it no longer reflects a detected OS
+            # family), so appending "::" + asset['type'] via
+            # get_host_as_label() would just double up on "Domain" for
+            # every asset with no differentiating value.
+            as_label = "Corporate::Domain"
         elif args.mode == 'meraki' or args.mode == 'dna_center':
             if asset['type'] == 'Android':
                 as_label = "Corporate::Mobile Device::Android"
@@ -1199,7 +1210,48 @@ def main(args=None):
         parser_website.add_argument('--discovery_port_list', help=argparse.SUPPRESS)
         parser_website.add_argument('--services', help=argparse.SUPPRESS)
         parser_website.add_argument('--extra_ports', help=argparse.SUPPRESS)
- 
+
+        # Arguments required for External Attack Surface Management (EASM) discovery
+        parser_easm = subparsers.add_parser ("easm", help = "Discover and assess external (internet-facing) attack surface for a hostname or domain")
+        parser_easm.add_argument('--fqdn', help='Fully qualified hostname or domain name to assess', required=True)
+        parser_easm.add_argument('--assetname', help='Optional name/label to be assigned to the primary discovered asset')
+        parser_easm.add_argument('--full_port_scan', action='store_true', help='Scan all 65535 ports instead of the top 1000 (slow)')
+        parser_easm.add_argument('--top_ports', help=argparse.SUPPRESS, default=1000, type=int)
+        parser_easm.add_argument('--extra_ports', help='List of comma separated ports to include in the scan in addition to the standard ports e.g. 444,9000-9100,...')
+        parser_easm.add_argument('--timing', help=argparse.SUPPRESS, default='4')
+        parser_easm.add_argument('--nmap_timeout', help=argparse.SUPPRESS, default=900, type=int)
+        parser_easm.add_argument('--no_ssl_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_ssl_audit', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--ssl_audit_timeout', help=argparse.SUPPRESS, default=120, type=int)
+        parser_easm.add_argument('--no_tech_stack', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_waf_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_security_headers_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_cookie_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_web_recon', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_open_redirect_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_http_methods_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_directory_listing_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_dnsbl_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_asn_lookup', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_exposed_panel_check', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_api_discovery', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_nuclei', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--nuclei_severity', help='Comma separated nuclei severities to scan for', default='critical,high,medium')
+        parser_easm.add_argument('--nuclei_timeout', help=argparse.SUPPRESS, default=600, type=int)
+        parser_easm.add_argument('--nuclei_all_hosts', action='store_true', help='Also run nuclei web application tests against discovered subdomains (default: primary host only)')
+        parser_easm.add_argument('--no_email_security', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_dns_checks', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_typosquatting', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--typosquat_limit', help='Limit the number of domain permutations checked for typosquatting (0 = no limit)', default=0, type=int)
+        parser_easm.add_argument('--typosquat_workers', help=argparse.SUPPRESS, default=30, type=int)
+        parser_easm.add_argument('--no_subdomain_enum', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--max_subdomains', help='Maximum number of live discovered subdomains to run host/service discovery against', default=25, type=int)
+        parser_easm.add_argument('--dns_workers', help=argparse.SUPPRESS, default=20, type=int)
+        parser_easm.add_argument('--no_whois', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--typosquat_whois_limit', help=argparse.SUPPRESS, default=15, type=int)
+        parser_easm.add_argument('--leakradar_api_key', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--ransomware_live_api_key', help=argparse.SUPPRESS)
+
         # Arguments required for AWS CIS benchmarks
         parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")
         parser_aws_cis.add_argument('--aws_access_key', help='AWS access key', required=True)
@@ -1497,6 +1549,8 @@ def main(args=None):
             assets = gcloud_functions.get_inventory(args)
         elif args.mode == 'webapp':
             assets = website.get_inventory(args)
+        elif args.mode == 'easm':
+            assets = easm.get_inventory(args)
         elif args.mode == 'trustmodel':
             assets = trustmodel_eval.get_inventory(args)
 
