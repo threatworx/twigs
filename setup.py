@@ -42,12 +42,12 @@ setup(
     include_package_data=True,
     keywords='twigs',
     name='twigs',
-    packages=find_packages(include=['twigs', 'twigs.dast_plugins', 'twigs.azure_cis_tool', 'twigs.gcp_cis_tool', 'twigs.oci_cis_tool']),
+    packages=find_packages(include=['twigs', 'twigs.dast_plugins', 'twigs.azure_cis_tool', 'twigs.gcp_cis_tool', 'twigs.oci_cis_tool', 'twigs.easm']),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatworx/twigs',
-    version='1.3.11',
+    version='1.3.12',
     zip_safe=False,
     entry_points={
         'console_scripts': [
