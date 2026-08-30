@@ -18,8 +18,10 @@ unauthenticated, internet-facing reconnaissance:
   - technology stack discovery (HTTP headers/HTML fingerprinting), including
     client-side JavaScript library detection by name+version (CDN URL
     conventions, self-hosted filenames, and a bounded content-banner fetch
-    fallback) - reported as products only, no vulnerability correlation of
-    its own since ThreatWorx's backend maps products to known CVEs
+    fallback) and WordPress core/plugin/theme detection by name+version
+    (wp-content/ URL slugs plus bounded readme.txt/style.css fetches) -
+    reported as products only, no vulnerability correlation of its own since
+    ThreatWorx's backend maps products to known CVEs
   - HTTP security headers audit (HSTS, Content-Security-Policy,
     X-Frame-Options, X-Content-Type-Options, Referrer-Policy) and cookie
     security flags (Secure/HttpOnly/SameSite) for every discovered host
@@ -110,7 +112,15 @@ from .typosquatting import check_typosquatting
 from .subdomains import enumerate_subdomains, COMMON_SUBDOMAINS
 
 
+def _stage(hostname, label):
+    """Emit a single info-level progress line naming the EASM check about to
+    run against `hostname`, so a long run's log shows where it currently is."""
+    logging.info("[EASM] %s: %s", hostname, label)
+
+
 def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
+    logging.info("[EASM] building host asset for [%s] (%s)",
+                 hostname, "primary" if is_primary else "subdomain")
     ips = resolve_ips(hostname)
     if not ips and not _is_ip_address(hostname):
         logging.warning("Unable to resolve [%s] - skipping", hostname)
@@ -118,13 +128,21 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
 
     ipv4_ips = [ip for ip in ips if not _is_ipv6(ip)]
     scan_target = (ipv4_ips[0] if ipv4_ips else ips[0]) if ips else hostname
+    # The asset is keyed by hostname; every discovered subdomain becomes its
+    # own separate asset and its findings are never merged into the parent
+    # domain's asset. scan_target (an IP) is only the nmap scan target and
+    # nmap_cache key, not the asset identity.
+    asset_id = hostname
     host_result = nmap_cache.get(scan_target)
     if host_result is None:
+        _stage(hostname, "host/service discovery (nmap)")
         host_result = run_nmap_scan(args, scan_target)
         nmap_cache[scan_target] = host_result
+    else:
+        logging.info("[EASM] %s: reusing cached nmap result for %s", hostname, scan_target)
 
     asset_data = {
-        'id': hostname,
+        'id': asset_id,
         'name': hostname,
         'type': 'Domain',
         'owner': owner,
@@ -140,52 +158,68 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
         asset_data['tags'].append('IP:' + ips[0])
 
     if host_result:
-        asset_data['config_issues'].extend(create_port_issues(host_result, hostname))
+        asset_data['config_issues'].extend(create_port_issues(host_result, asset_id))
 
     if not getattr(args, 'no_ssl_checks', False):
-        asset_data['config_issues'].extend(check_ssl(hostname, host_result, hostname))
+        _stage(hostname, "SSL/TLS certificate & protocol checks")
+        asset_data['config_issues'].extend(check_ssl(hostname, host_result, asset_id))
 
     if not getattr(args, 'no_ssl_audit', False):
+        _stage(hostname, "SSL/TLS named-vulnerability scan (testssl.sh)")
         asset_data['config_issues'].extend(check_ssl_vulnerabilities(
-            hostname, host_result, hostname, getattr(args, 'ssl_audit_timeout', 120)))
+            hostname, host_result, asset_id, getattr(args, 'ssl_audit_timeout', 120)))
 
     if not getattr(args, 'no_tech_stack', False):
-        asset_data['config_issues'].extend(check_tech_stack(hostname, asset_data['products'], asset_data['tags'], hostname))
+        _stage(hostname, "technology stack / JS library / WordPress detection")
+        asset_data['config_issues'].extend(check_tech_stack(hostname, asset_data['products'], asset_data['tags'], asset_id))
 
     if not getattr(args, 'no_waf_check', False):
-        asset_data['config_issues'].extend(check_waf(hostname, hostname))
+        _stage(hostname, "firewall / WAF discovery")
+        asset_data['config_issues'].extend(check_waf(hostname, asset_id))
 
     if not getattr(args, 'no_security_headers_check', False):
-        asset_data['config_issues'].extend(check_security_headers(hostname, hostname))
+        _stage(hostname, "HTTP security headers audit")
+        asset_data['config_issues'].extend(check_security_headers(hostname, asset_id))
 
     if not getattr(args, 'no_cookie_check', False):
-        asset_data['config_issues'].extend(check_cookie_security(hostname, hostname))
+        _stage(hostname, "cookie security flags check")
+        asset_data['config_issues'].extend(check_cookie_security(hostname, asset_id))
 
     if not getattr(args, 'no_exposed_panel_check', False):
-        asset_data['config_issues'].extend(check_exposed_panels(hostname, hostname))
+        _stage(hostname, "exposed admin panel / dev-tool probing")
+        asset_data['config_issues'].extend(check_exposed_panels(hostname, asset_id))
 
     if not getattr(args, 'no_api_discovery', False):
-        asset_data['config_issues'].extend(check_api_discovery(hostname, hostname))
+        _stage(hostname, "API discovery (OpenAPI/GraphQL/CORS/error disclosure)")
+        asset_data['config_issues'].extend(check_api_discovery(hostname, asset_id))
 
     if not getattr(args, 'no_web_recon', False):
-        asset_data['config_issues'].extend(check_security_txt(hostname, hostname))
-        asset_data['config_issues'].extend(check_robots_sitemap(hostname, hostname))
+        _stage(hostname, "web recon (security.txt, robots.txt, sitemap.xml)")
+        asset_data['config_issues'].extend(check_security_txt(hostname, asset_id))
+        asset_data['config_issues'].extend(check_robots_sitemap(hostname, asset_id))
 
     if not getattr(args, 'no_open_redirect_check', False):
-        asset_data['config_issues'].extend(check_open_redirect(hostname, hostname))
+        _stage(hostname, "open-redirect probing")
+        asset_data['config_issues'].extend(check_open_redirect(hostname, asset_id))
 
     if not getattr(args, 'no_http_methods_check', False):
-        asset_data['config_issues'].extend(check_http_methods(hostname, hostname))
+        _stage(hostname, "HTTP method enumeration")
+        asset_data['config_issues'].extend(check_http_methods(hostname, asset_id))
 
     if not getattr(args, 'no_directory_listing_check', False):
-        asset_data['config_issues'].extend(check_directory_listing(hostname, hostname))
+        _stage(hostname, "directory listing (autoindex) detection")
+        asset_data['config_issues'].extend(check_directory_listing(hostname, asset_id))
 
     if not getattr(args, 'no_asn_lookup', False):
-        asset_data['config_issues'].extend(check_asn_netblock(hostname, ips, hostname))
+        _stage(hostname, "ASN / netblock discovery")
+        asset_data['config_issues'].extend(check_asn_netblock(hostname, ips, asset_id))
 
     if not getattr(args, 'no_dnsbl_check', False):
-        asset_data['config_issues'].extend(check_dnsbl(hostname, ips, hostname))
+        _stage(hostname, "DNSBL / IP reputation lookup")
+        asset_data['config_issues'].extend(check_dnsbl(hostname, ips, asset_id))
 
+    logging.info("[EASM] %s: host asset complete - %d product(s), %d finding(s)",
+                 hostname, len(asset_data['products']), len(asset_data['config_issues']))
     return asset_data
 
 
@@ -201,6 +235,7 @@ def get_inventory(args):
     owner = args.handle
     nmap_cache = {}
 
+    logging.info("[EASM] starting external attack surface assessment for [%s]", host)
     primary_asset = build_host_asset(args, host, owner, True, nmap_cache)
     if primary_asset is None:
         primary_asset = {
@@ -210,6 +245,10 @@ def get_inventory(args):
     if args.assetname:
         primary_asset['name'] = args.assetname
 
+    # Domain/host-level findings below attach to the primary asset via its id
+    # (the primary hostname).
+    primary_id = primary_asset['id']
+
     assets = [primary_asset]
 
     is_ip_target = _is_ip_address(host)
@@ -218,58 +257,77 @@ def get_inventory(args):
         primary_asset['tags'].append('EASM_ROOT_DOMAIN:' + domain)
 
     if not getattr(args, 'no_nuclei', False) and nuclei_exists():
-        severity = getattr(args, 'nuclei_severity', 'critical,high,medium')
-        primary_asset['config_issues'].extend(run_nuclei(host, host, severity, getattr(args, 'nuclei_timeout', 600)))
+        _stage(host, "nuclei web application tests")
+        severity = getattr(args, 'nuclei_severity', 'info,low,medium,high,critical')
+        primary_asset['config_issues'].extend(run_nuclei(host, primary_id, severity, getattr(args, 'nuclei_timeout', 3600)))
     elif not getattr(args, 'no_nuclei', False):
-        logging.debug("nuclei CLI not found on PATH - skipping web application tests")
+        logging.info("[EASM] %s: nuclei CLI not found on PATH - skipping web application tests", host)
 
     if domain:
         if not getattr(args, 'no_whois', False):
-            primary_asset['config_issues'].extend(check_whois(domain, host))
+            _stage(host, "WHOIS registration lookup for %s" % domain)
+            primary_asset['config_issues'].extend(check_whois(domain, primary_id))
 
         leakradar_api_key = get_leakradar_api_key(args)
         if leakradar_api_key:
-            primary_asset['config_issues'].extend(check_leakradar(domain, host, leakradar_api_key))
+            _stage(host, "LeakRadar credential-leak lookup for %s" % domain)
+            primary_asset['config_issues'].extend(check_leakradar(domain, primary_id, leakradar_api_key))
 
         ransomware_live_api_key = get_ransomware_live_api_key(args)
         if ransomware_live_api_key:
-            primary_asset['config_issues'].extend(check_ransomware_live(domain, host, ransomware_live_api_key))
+            _stage(host, "ransomware.live victim lookup for %s" % domain)
+            primary_asset['config_issues'].extend(check_ransomware_live(domain, primary_id, ransomware_live_api_key))
 
         if not getattr(args, 'no_email_security', False):
-            primary_asset['config_issues'].extend(check_email_security(domain, host))
+            _stage(host, "email security checks (SPF/DMARC/DKIM/MX/MTA-STS/BIMI)")
+            primary_asset['config_issues'].extend(check_email_security(domain, primary_id))
 
         if not getattr(args, 'no_dns_checks', False):
-            primary_asset['config_issues'].extend(check_zone_transfer(domain, host))
-            primary_asset['config_issues'].extend(check_caa_records(domain, host))
-            primary_asset['config_issues'].extend(check_dnssec(domain, host))
-            primary_asset['config_issues'].extend(check_ns_consistency(domain, host))
+            _stage(host, "DNS hygiene checks (zone transfer, CAA, DNSSEC, NS consistency)")
+            primary_asset['config_issues'].extend(check_zone_transfer(domain, primary_id))
+            primary_asset['config_issues'].extend(check_caa_records(domain, primary_id))
+            primary_asset['config_issues'].extend(check_dnssec(domain, primary_id))
+            primary_asset['config_issues'].extend(check_ns_consistency(domain, primary_id))
 
         if not getattr(args, 'no_typosquatting', False):
-            primary_asset['config_issues'].extend(check_typosquatting(domain, host, args))
+            _stage(host, "typosquatting / lookalike domain checks")
+            primary_asset['config_issues'].extend(check_typosquatting(domain, primary_id, args))
 
         if not getattr(args, 'no_subdomain_enum', False):
+            _stage(host, "subdomain enumeration (certificate transparency + DNS brute force)")
             discovered, wildcard_dns = enumerate_subdomains(domain, args)
             discovered.discard(host)
+
+            sorted_subs = sorted(discovered)
+            primary_asset['tags'].append('EASM_SUBDOMAIN_COUNT:%d' % len(sorted_subs))
 
             if wildcard_dns:
                 primary_asset['config_issues'].append(_new_issue(
                     'dns-wildcard-detected', "Wildcard DNS detected - brute-force subdomain enumeration skipped",
                     "Domain [%s] resolves arbitrary, non-existent subdomain labels to an IP address (wildcard DNS). This makes DNS brute-force guessing unreliable - every guessed label would falsely appear to \"exist\" - so it was skipped for this domain; only subdomains found via certificate transparency (which reflect a real certificate actually issued for that name) are reported." % domain,
-                    RATING_INFO, host, ISSUE_TYPE_DNS, object_id=domain,
+                    RATING_INFO, primary_id, ISSUE_TYPE_DNS, object_id=domain,
                     remediation="No action required unless the wildcard itself is unintentional. Be aware wildcard DNS can also mask a genuinely dangling/unclaimed subdomain from external detection, since every name appears to resolve."))
                 summary_detail = "Discovered [%s] candidate subdomain(s) for [%s] via certificate transparency logs (DNS brute force was skipped - see the wildcard DNS finding above). This list reflects hostnames a certificate was actually issued for and may include subdomains no longer in active use." % (len(discovered), domain)
             else:
                 summary_detail = "Discovered [%s] candidate subdomain(s) for [%s] via certificate transparency logs and DNS brute force (a curated wordlist of %s common labels). This list reflects hostnames with historical or current DNS/certificate presence and may include subdomains that are no longer in active use." % (len(discovered), domain, len(COMMON_SUBDOMAINS))
 
+            if sorted_subs:
+                summary_detail += " Complete list of the %d discovered subdomain(s):\n%s" % (
+                    len(sorted_subs), '\n'.join(sorted_subs))
+            else:
+                summary_detail += " No subdomains were discovered."
+
             primary_asset['config_issues'].append(_new_issue(
                 'subdomain-enum-summary', "Subdomain enumeration summary",
                 summary_detail,
-                RATING_INFO, host, ISSUE_TYPE_SUBDOMAIN, object_id=domain,
+                RATING_INFO, primary_id, ISSUE_TYPE_SUBDOMAIN, object_id=domain,
+                object_meta=','.join(sorted_subs),
                 remediation="Review the discovered subdomains to confirm each is still in active, authorized use. Decommission unused subdomains and remove their DNS records to reduce the attack surface, and ensure inactive ones are not left pointing at services that could be claimed by an attacker (see subdomain takeover findings below, if any)."))
 
             takeover_found = False
             tested_dangling = 0
             if HAVE_DNSPYTHON and discovered:
+                _stage(host, "dangling CNAME / subdomain takeover check (%d candidate(s))" % min(len(discovered), 200))
                 resolver = _get_dns_resolver()
                 for sub in list(discovered)[:200]:
                     tested_dangling += 1
@@ -279,13 +337,13 @@ def get_inventory(args):
                         primary_asset['config_issues'].append(_new_issue(
                             'dns-dangling-cname-%s' % sub, "Possible subdomain takeover: %s" % sub,
                             "Subdomain [%s] has a CNAME record pointing to [%s], a third-party/cloud-hosted resource that does not currently resolve to any content. If that resource name is available to be claimed by anyone (e.g. an unclaimed S3 bucket, GitHub Pages site, Azure/Heroku app name), an attacker could register it and serve arbitrary content - including phishing pages or malware - under your trusted domain name." % (sub, takeover_target),
-                            RATING_HIGH, host, ISSUE_TYPE_DNS, object_id=sub,
+                            RATING_HIGH, primary_id, ISSUE_TYPE_DNS, object_id=sub,
                             remediation="Either remove the stale CNAME record if the third-party resource is no longer used, or (re)claim/re-provision the referenced resource under your account so it cannot be claimed by someone else. Verify by confirming the resource resolves to content you control before considering this resolved."))
                 if not takeover_found and tested_dangling > 0:
                     primary_asset['config_issues'].append(_new_issue(
                         'dns-dangling-cname-none-found', "No subdomain takeover risk found",
                         "Checked [%s] discovered subdomain(s) for CNAME records pointing at known-takeover-able third-party services (e.g. GitHub Pages, S3, Azure, Heroku) with a non-resolving target, and found none." % tested_dangling,
-                        RATING_INFO, host, ISSUE_TYPE_DNS, object_id=domain,
+                        RATING_INFO, primary_id, ISSUE_TYPE_DNS, object_id=domain,
                         remediation="No action required. Re-check periodically, especially after decommissioning any third-party integrations."))
 
             max_subdomains = getattr(args, 'max_subdomains', 25) or 25
@@ -296,20 +354,26 @@ def get_inventory(args):
                     live_subdomains.append(sub)
                 if len(live_subdomains) >= max_subdomains:
                     break
+            logging.info("[EASM] %s: %d live subdomain(s) to assess (cap %d)",
+                         host, len(live_subdomains), max_subdomains)
 
             scan_subdomain_web = getattr(args, 'nuclei_all_hosts', False)
-            for sub in live_subdomains:
+            for idx, sub in enumerate(live_subdomains, 1):
+                logging.info("[EASM] assessing subdomain %d/%d: [%s]", idx, len(live_subdomains), sub)
                 sub_asset = build_host_asset(args, sub, owner, False, nmap_cache)
                 if sub_asset is None:
                     continue
                 sub_asset['tags'].append('EASM_ROOT_DOMAIN:' + domain)
+                sub_id = sub_asset['id']  # the subdomain's own hostname
                 if scan_subdomain_web and not getattr(args, 'no_nuclei', False) and nuclei_exists():
-                    severity = getattr(args, 'nuclei_severity', 'critical,high,medium')
-                    sub_asset['config_issues'].extend(run_nuclei(sub, sub, severity, getattr(args, 'nuclei_timeout', 600)))
+                    _stage(sub, "nuclei web application tests")
+                    severity = getattr(args, 'nuclei_severity', 'info,low,medium,high,critical')
+                    sub_asset['config_issues'].extend(run_nuclei(sub, sub_id, severity, getattr(args, 'nuclei_timeout', 3600)))
                 if leakradar_api_key:
-                    sub_asset['config_issues'].extend(check_leakradar(sub, sub, leakradar_api_key))
+                    _stage(sub, "LeakRadar credential-leak lookup")
+                    sub_asset['config_issues'].extend(check_leakradar(sub, sub_id, leakradar_api_key))
                 if len(sub_asset['products']) == 0 and len(sub_asset['config_issues']) == 0:
-                    logging.debug("Nothing discovered for subdomain [%s] - skipping", sub)
+                    logging.info("[EASM] nothing discovered for subdomain [%s] - not reporting it", sub)
                     continue
                 assets.append(sub_asset)
 
@@ -317,4 +381,5 @@ def get_inventory(args):
         logging.warning("Nothing to report for: %s", host)
         return None
 
+    logging.info("[EASM] assessment complete for [%s] - %d asset(s) reported", host, len(assets))
     return assets

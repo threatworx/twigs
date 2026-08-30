@@ -1236,9 +1236,9 @@ def main(args=None):
         parser_easm.add_argument('--no_exposed_panel_check', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--no_api_discovery', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--no_nuclei', action='store_true', help=argparse.SUPPRESS)
-        parser_easm.add_argument('--nuclei_severity', help='Comma separated nuclei severities to scan for', default='critical,high,medium')
-        parser_easm.add_argument('--nuclei_timeout', help=argparse.SUPPRESS, default=600, type=int)
-        parser_easm.add_argument('--nuclei_all_hosts', action='store_true', help='Also run nuclei web application tests against discovered subdomains (default: primary host only)')
+        parser_easm.add_argument('--nuclei_severity', help=argparse.SUPPRESS, default='info,low,medium,high,critical')
+        parser_easm.add_argument('--nuclei_timeout', help=argparse.SUPPRESS, default=3600, type=int)
+        parser_easm.add_argument('--nuclei_all_hosts', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--no_email_security', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--no_dns_checks', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--no_typosquatting', action='store_true', help=argparse.SUPPRESS)
@@ -1251,6 +1251,7 @@ def main(args=None):
         parser_easm.add_argument('--typosquat_whois_limit', help=argparse.SUPPRESS, default=15, type=int)
         parser_easm.add_argument('--leakradar_api_key', help=argparse.SUPPRESS)
         parser_easm.add_argument('--ransomware_live_api_key', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--certspotter_api_key', help=argparse.SUPPRESS)
 
         # Arguments required for AWS CIS benchmarks
         parser_aws_cis = subparsers.add_parser ("aws_cis", help = "Run AWS CIS benchmarks")

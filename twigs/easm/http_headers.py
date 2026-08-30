@@ -4,9 +4,7 @@ Referrer-Policy.
 
 This deliberately overlaps with what nuclei's community templates can also
 cover, because nuclei is optional/binary-dependent (not guaranteed
-installed), our default --nuclei_severity filter (critical,high,medium)
-would exclude these low/info-severity findings even when nuclei is present,
-and community-template coverage/freshness isn't guaranteed."""
+installed) and community-template coverage/freshness isn't guaranteed."""
 import re
 
 from .constants import RATING_INFO, RATING_LOW, RATING_MEDIUM, ISSUE_TYPE_HTTP_HEADERS

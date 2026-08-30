@@ -1,7 +1,8 @@
-"""Technology stack discovery via HTTP headers, HTML fingerprinting, and
-client-side JavaScript library detection (name + version only - reported as
-products; ThreatWorx's backend handles mapping products to known CVEs, so
-this module doesn't attempt any vulnerability correlation of its own).
+"""Technology stack discovery via HTTP headers, HTML fingerprinting,
+client-side JavaScript library detection, and WordPress core/plugin/theme
+detection (name + version only - reported as products; ThreatWorx's backend
+handles mapping products to known CVEs, so this module doesn't attempt any
+vulnerability correlation of its own).
 
 Also covers two smaller checks that piggyback on the same page fetch/parse:
 mixed content (HTTP resources loaded from an HTTPS page) and favicon hash
@@ -95,11 +96,27 @@ JS_CONTENT_PATTERNS = [
 # request; this only covers the remainder (e.g. an app's own bundle).
 MAX_JS_CONTENT_FETCHES = 6
 
+# WordPress plugin/theme detection. Slugs are lifted from wp-content/ URLs in
+# the already-fetched homepage HTML (no extra request); a bounded number then
+# get one readme.txt / style.css fetch each to resolve a version. Reported as
+# products only ("wordpress plugin <slug> <version>" - matching the existing
+# convention in twigs.fingerprint) so the backend can map them to known CVEs;
+# no vulnerability correlation or issue is raised here.
+MAX_WP_ASSET_FETCHES = 12
+WP_PLUGIN_PATH_RE = re.compile(r'/wp-content/plugins/([a-z0-9][a-z0-9._-]*)/', re.I)
+WP_THEME_PATH_RE = re.compile(r'/wp-content/themes/([a-z0-9][a-z0-9._-]*)/', re.I)
+WP_ASSET_VER_RE = re.compile(
+    r'/wp-content/(?:plugins|themes)/([a-z0-9][a-z0-9._-]*)/[^"\'\s]*?[?&]ver=([0-9][0-9a-z.\-]*)', re.I)
+WP_GENERATOR_RE = re.compile(
+    r'name=["\']generator["\'][^>]*content=["\']WordPress\s+([0-9][0-9.]*)', re.I)
+WP_STABLE_TAG_RE = re.compile(r'^[ \t]*Stable tag:[ \t]*([0-9][0-9a-z.\-]*)', re.I | re.M)
+WP_VERSION_HDR_RE = re.compile(r'^[ \t]*Version:[ \t]*([0-9][0-9a-z.\-]*)', re.I | re.M)
 
-def _fetch_js_prefix(url, max_bytes=8192):
-    """Fetches only the first few KB of a script - enough to catch a version
-    banner comment - without downloading a potentially large minified bundle
-    in full."""
+
+def _fetch_text_prefix(url, max_bytes=8192):
+    """Fetches only the first few KB of a text resource - enough to catch a JS
+    version-banner comment or a WordPress readme.txt/style.css header - without
+    downloading a potentially large file in full."""
     try:
         resp = requests.get(url, timeout=HTTP_TIMEOUT, verify=False, stream=True,
                              headers={'User-Agent': USER_AGENT})
@@ -147,7 +164,7 @@ def _detect_js_libraries(html, base_url, products):
             unresolved.append(abs_url)
 
     for url in unresolved[:MAX_JS_CONTENT_FETCHES]:
-        content = _fetch_js_prefix(url)
+        content = _fetch_text_prefix(url)
         if not content:
             continue
         for name, pattern in JS_CONTENT_PATTERNS:
@@ -155,6 +172,60 @@ def _detect_js_libraries(html, base_url, products):
             if m:
                 _add_product(products, '%s %s' % (name, m.group(1)))
                 break
+
+
+def _detect_wordpress(resp, base_url, products):
+    """Detects WordPress core, plugins, and themes from the homepage response
+    and a bounded number of readme.txt/style.css fetches. Adds findings to
+    `products` (name + version where resolvable); raises no issues."""
+    html = resp.text or ''
+    link_hdr = resp.headers.get('Link', '') or ''
+    gen_match = WP_GENERATOR_RE.search(html)
+    is_wp = ('/wp-content/' in html or '/wp-includes/' in html
+             or 'api.w.org' in link_hdr or gen_match is not None)
+    if not is_wp:
+        return
+
+    _add_product(products, 'wordpress')
+    if gen_match:
+        _add_product(products, 'wordpress %s' % gen_match.group(1))
+
+    # Version hints from ?ver= query strings on enqueued plugin/theme assets,
+    # used as a fallback when readme.txt / style.css doesn't yield one.
+    ver_hint = {}
+    for slug, ver in WP_ASSET_VER_RE.findall(html):
+        ver_hint.setdefault(slug.lower(), ver)
+
+    def _ordered_unique(matches):
+        seen = []
+        for slug in matches:
+            s = slug.lower()
+            if s not in seen:
+                seen.append(s)
+        return seen
+
+    plugins = _ordered_unique(WP_PLUGIN_PATH_RE.findall(html))
+    themes = _ordered_unique(WP_THEME_PATH_RE.findall(html))
+
+    fetches = 0
+    for kind, slugs, rel_tmpl, version_res in (
+            ('plugin', plugins, '/wp-content/plugins/%s/readme.txt', (WP_STABLE_TAG_RE, WP_VERSION_HDR_RE)),
+            ('theme', themes, '/wp-content/themes/%s/style.css', (WP_VERSION_HDR_RE,))):
+        for slug in slugs:
+            version = None
+            if fetches < MAX_WP_ASSET_FETCHES:
+                fetches += 1
+                text = _fetch_text_prefix(urljoin(base_url, rel_tmpl % slug))
+                if text:
+                    for rx in version_res:
+                        m = rx.search(text)
+                        if m and m.group(1).lower() != 'trunk':
+                            version = m.group(1)
+                            break
+            if version is None:
+                version = ver_hint.get(slug)
+            _add_product(products, 'wordpress %s %s%s' % (
+                kind, slug, ' ' + version if version else ''))
 
 
 def _check_sri(html, base_url, host, asset_id):
@@ -317,6 +388,7 @@ def check_tech_stack(host, products, tags, asset_id):
             logging.debug("builtwith detection failed for [%s]: %s", used_url, str(e))
 
     _detect_js_libraries(resp.text, used_url, products)
+    _detect_wordpress(resp, used_url, products)
 
     favicon_hash = _get_favicon_hash(resp.text, used_url)
     if favicon_hash is not None:

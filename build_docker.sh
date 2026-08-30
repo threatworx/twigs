@@ -94,6 +94,32 @@ wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16.0_Lin
 tar -xvzf /tmp/ZAP_2.16.0_Linux.tar.gz -C /usr/share
 ln -s /usr/share/ZAP_2.16.0/zap.sh /usr/bin/zaproxy
 
+# install unzip (needed to unpack the nuclei release archive)
+apt-get install -y unzip
+
+# install Go (latest stable release, official linux-amd64 tarball)
+GO_VERSION=$(wget -qO- 'https://go.dev/VERSION?m=text' | head -n1)
+wget -q "https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
+rm -rf /usr/local/go
+tar -C /usr/local -xzf /tmp/go.tar.gz
+rm -f /tmp/go.tar.gz
+ln -fs /usr/local/go/bin/go /usr/local/bin/go
+ln -fs /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+if ! grep -q "/usr/local/go/bin" $HOME/.bashrc
+then
+    printf "\nexport PATH=\$PATH:/usr/local/go/bin\n" >> $HOME/.bashrc
+fi
+
+# install nuclei (latest release, official linux-amd64 zip) - used by twigs EASM web application testing
+NUCLEI_TAG=$(wget -qO- https://api.github.com/repos/projectdiscovery/nuclei/releases/latest | jq -r '.tag_name')
+NUCLEI_VERSION=${NUCLEI_TAG#v}
+wget -q "https://github.com/projectdiscovery/nuclei/releases/download/${NUCLEI_TAG}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -O /tmp/nuclei.zip
+unzip -o /tmp/nuclei.zip -d /tmp/nuclei
+install -m 0755 /tmp/nuclei/nuclei /usr/local/bin/nuclei
+rm -rf /tmp/nuclei /tmp/nuclei.zip
+# pre-fetch nuclei templates so the first EASM run does not have to
+/usr/local/bin/nuclei -update-templates || true
+
 # Install twigs and related packages
 pip install twigs
 rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
