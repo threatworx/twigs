@@ -40,6 +40,7 @@ setup(
     license="GNU General Public License v3",
     long_description=readme + '\n\n' + history,
     include_package_data=True,
+    package_data={'twigs.easm': ['data/*.txt']},
     keywords='twigs',
     name='twigs',
     packages=find_packages(include=['twigs', 'twigs.dast_plugins', 'twigs.azure_cis_tool', 'twigs.gcp_cis_tool', 'twigs.oci_cis_tool', 'twigs.easm']),

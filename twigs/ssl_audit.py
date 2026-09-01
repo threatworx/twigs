@@ -10,6 +10,9 @@ import json
 import tempfile
 import traceback
 
+_CVE_TOKEN_RE = re.compile(r'CVE-\d{4}-\d{4,7}', re.I)
+
+
 def get_rating(sev):
     if sev == 'INFO' or sev == 'OK':
         return '1'
@@ -155,13 +158,22 @@ VULNERABILITY_ENRICHMENT = {
 def _enrich_finding(p, section):
     """Builds a richer details string on top of testssl.sh's raw finding
     text/severity - this only post-processes testssl.sh's own JSON output
-    client-side and does not modify testssl.sh itself."""
+    client-side and does not modify testssl.sh itself.
+
+    Returns (details, cves). `cves` is the list of CVE IDs this finding should
+    be *attributed* to for downstream CVE-based enrichment (KEV/EPSS
+    re-rating), and is populated ONLY when the finding is an actual concern.
+    testssl.sh emits the CVE reference on "not vulnerable"/OK results too;
+    attributing it there previously caused those informational findings to be
+    scraped for their CVE and boosted to HIGH by KEV/EPSS enrichment."""
     rating = get_rating(p.get('severity'))
     is_concern = rating not in ('1', '2')
 
     parts = [p.get('finding', '')]
-    if p.get('cve'):
+    cves = []
+    if is_concern and p.get('cve'):
         parts.append(p['cve'])
+        cves = [c.upper() for c in re.split(r'\s+', p['cve'].strip()) if c]
     if p.get('cwe'):
         parts.append(p['cwe'])
     details = ' '.join(x for x in parts if x).strip()
@@ -179,7 +191,16 @@ def _enrich_finding(p, section):
 
     if remediation:
         details = details + ' Remediation: ' + remediation
-    return details
+
+    if not is_concern:
+        # testssl.sh reports the CVE reference (and our enrichment prose embeds
+        # CVE ids) even on "not vulnerable"/OK results. Strip every CVE token
+        # from a non-concern finding's text so downstream KEV/EPSS enrichment
+        # cannot scrape it and boost an informational finding to HIGH.
+        details = _CVE_TOKEN_RE.sub('', details)
+        details = re.sub(r'\(\s*[,;]?\s*\)', '', details)   # tidy "Foo ( ) is ..."
+        details = re.sub(r'\s{2,}', ' ', details).strip()
+    return details, cves
 
 def run_ssl_audit(url, assetid, timeout=None, vulnerable_only=False):
     findings = []
@@ -243,11 +264,13 @@ def run_ssl_audit(url, assetid, timeout=None, vulnerable_only=False):
                 issue = {}
                 issue['twc_id'] = 'ssl-audit-' + p['id']
                 issue['twc_title'] = title_prefix + p['id']
-                issue['details'] = _enrich_finding(p, section)
+                details, cves = _enrich_finding(p, section)
+                issue['details'] = details
                 issue['rating'] = get_rating(p['severity'])
                 issue['object_id'] = url
                 issue['asset_id'] = assetid
                 issue['object_meta'] = ''
                 issue['type'] = 'SSL'
+                issue['cve'] = cves
                 findings.append(issue)
     return findings

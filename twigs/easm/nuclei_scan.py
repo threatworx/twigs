@@ -94,6 +94,7 @@ def run_nuclei(host, asset_id, severity, timeout):
                 classification = info.get('classification') or {}
                 cve_id = classification.get('cve-id')
                 cwe_id = classification.get('cwe-id')
+                cve_list = cve_id if isinstance(cve_id, list) else ([cve_id] if cve_id else [])
                 extra_bits = []
                 if cve_id:
                     extra_bits.append('CVE(s): ' + ', '.join(cve_id) if isinstance(cve_id, list) else 'CVE: ' + str(cve_id))
@@ -133,7 +134,7 @@ def run_nuclei(host, asset_id, severity, timeout):
                     twc_id,
                     "%s" % info.get('name', template_id),
                     detail, rating, asset_id, ISSUE_TYPE_WEB_APPLICATION, object_id=matched_at,
-                    remediation=remediation))
+                    remediation=remediation, cve=cve_list))
     except FileNotFoundError:
         pass
     finally:

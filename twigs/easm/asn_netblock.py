@@ -4,6 +4,7 @@ import ipaddress
 
 from .constants import RATING_INFO, ISSUE_TYPE_ASN
 from .util import _is_ipv6, HAVE_DNSPYTHON, _get_dns_resolver, _resolve_record, _new_issue
+from . import cloud_ranges
 
 # Substrings matched (case-insensitive) against an AS org name to flag
 # well-known cloud/CDN/hosting providers vs. infrastructure that appears to
@@ -67,12 +68,25 @@ def check_asn_netblock(hostname, ips, asset_id):
         seen.add(key)
 
         as_name = info['as_name'] or 'unknown organization'
-        is_known_provider = any(tok in as_name.lower() for tok in KNOWN_HOSTING_PROVIDER_TOKENS)
-        hosting_note = (
-            "This ASN/netblock is registered to a well-known cloud/CDN/hosting provider, consistent with third-party-hosted infrastructure."
-            if is_known_provider else
-            "This ASN/netblock does not match a well-known cloud/CDN/hosting provider name pattern, which may indicate infrastructure directly owned/operated by the target organization (worth manually confirming via the registry's WHOIS/RDAP record)."
-        )
+
+        # Authoritative provider attribution from published prefix files /
+        # curated ASN map; falls back to the AS-name token heuristic.
+        cloud = cloud_ranges.lookup(ip, asn=info['asn'])
+        if cloud is not None:
+            where = cloud.provider
+            if cloud.region:
+                where += ' ' + cloud.region
+            if cloud.service:
+                where += ' / ' + cloud.service
+            hosting_note = (
+                "This IP is attributed (via %s) to %s - a known %s provider, i.e. third-party-hosted infrastructure, not a netblock owned by the target."
+                % (cloud.source, where, cloud.kind))
+        elif any(tok in as_name.lower() for tok in KNOWN_HOSTING_PROVIDER_TOKENS):
+            hosting_note = (
+                "This ASN/netblock is registered to a well-known cloud/CDN/hosting provider, consistent with third-party-hosted infrastructure.")
+        else:
+            hosting_note = (
+                "This IP is not in any known cloud/CDN provider prefix list and the ASN does not match a known provider name pattern, which may indicate infrastructure directly owned/operated by the target organization (worth manually confirming via the registry's WHOIS/RDAP record).")
 
         issues.append(_new_issue(
             'asn-netblock-%s-%s' % (info['asn'], info['prefix'].replace('/', '_').replace(':', '_')),

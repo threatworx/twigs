@@ -2,6 +2,8 @@
 takeover, CAA (Certificate Authority Authorization) records, DNSSEC
 chain-of-trust status, and nameserver delegation consistency (lame
 delegation)."""
+from collections import namedtuple
+
 try:
     import dns.resolver
     import dns.query
@@ -9,15 +11,19 @@ try:
     import dns.message
     import dns.flags
     import dns.rcode
+    import dns.exception
     HAVE_DNSPYTHON = True
 except ImportError:
     HAVE_DNSPYTHON = False
 
 from .constants import RATING_INFO, RATING_LOW, RATING_MEDIUM, RATING_HIGH, RATING_CRITICAL, ISSUE_TYPE_DNS, DNS_TIMEOUT
-from .util import resolve_ips, _get_dns_resolver, _resolve_record, _new_issue
+from .util import resolve_ips, _get_dns_resolver, _resolve_record, _new_issue, _http_get
+from . import takeover_fingerprints
 
-# CNAME target suffixes with a documented history of being takeover-able
-# when the referenced third-party resource is not claimed.
+# Kept for backwards compatibility with any external importer; the live
+# takeover check now uses the full can-i-take-over-xyz fingerprint set (see
+# takeover_fingerprints.py), matched by CNAME target + NXDOMAIN state + HTTP
+# response body/status fingerprint.
 DANGLING_CNAME_SERVICES = [
     '.github.io', '.herokuapp.com', '.herokudns.com', '.s3.amazonaws.com',
     '.s3-website', '.azurewebsites.net', '.cloudapp.net', '.cloudapp.azure.com',
@@ -28,6 +34,15 @@ DANGLING_CNAME_SERVICES = [
     '.bitbucket.io', '.ghost.io', '.desk.com', '.uservoice.com',
     '.tumblr.com', '.unbouncepages.com', '.webflow.io', '.cargocollective.com',
 ]
+
+# What check_dangling_cname returns on a hit.
+#   confidence : 'confirmed'  -> NXDOMAIN match, or a "Vulnerable"-rated body
+#                               fingerprint matched
+#                'potential'  -> "Edge case" service, or CNAME points at a
+#                               known service whose target is dead but whose
+#                               unclaimed-resource fingerprint wasn't seen
+TakeoverFinding = namedtuple('TakeoverFinding',
+                             'hostname cname service status confidence evidence documentation')
 
 
 def check_zone_transfer(domain, asset_id):
@@ -121,17 +136,100 @@ def check_caa_records(domain, asset_id):
     return issues
 
 
-def check_dangling_cname(hostname, resolver):
-    try:
-        answers = resolver.resolve(hostname, 'CNAME')
-    except Exception:
+def _cname_chain(resolver, hostname):
+    """Follow CNAMEs from `hostname`; return (final_target, [intermediate
+    names]) lowercased and dot-stripped, or (None, []) if there is no CNAME."""
+    seen = []
+    name = hostname
+    for _ in range(10):
+        try:
+            answers = resolver.resolve(name, 'CNAME')
+        except Exception:
+            break
+        target = None
+        for rr in answers:
+            target = str(rr.target).rstrip('.').lower()
+            break
+        if not target or target in seen:
+            break
+        seen.append(target)
+        name = target
+    if not seen:
+        return None, []
+    return seen[-1], seen[:-1]
+
+
+def _target_dns_state(resolver, name):
+    """('nxdomain' | 'noanswer' | 'resolves', [ips])."""
+    got = []
+    for rtype in ('A', 'AAAA'):
+        try:
+            answers = resolver.resolve(name, rtype)
+            got.extend(str(r) for r in answers)
+        except dns.resolver.NXDOMAIN:
+            return 'nxdomain', []
+        except (dns.resolver.NoAnswer, dns.resolver.NoNameservers, dns.exception.Timeout):
+            continue
+        except Exception:
+            continue
+    return ('resolves', got) if got else ('noanswer', [])
+
+
+def check_dangling_cname(hostname, resolver, ttl=takeover_fingerprints.DEFAULT_TTL):
+    """Detect a dangling CNAME / subdomain-takeover exposure for `hostname`
+    using the can-i-take-over-xyz fingerprint set. Returns a TakeoverFinding
+    or None."""
+    entries = takeover_fingerprints.load(ttl)
+    if not entries:
         return None
-    for rr in answers:
-        target = str(rr.target).rstrip('.')
-        for suffix in DANGLING_CNAME_SERVICES:
-            if target.endswith(suffix.lstrip('.')):
-                if not resolve_ips(target):
-                    return target
+
+    target, intermediates = _cname_chain(resolver, hostname)
+    if not target:
+        return None
+
+    state, target_ips = _target_dns_state(resolver, target)
+    cmatch = takeover_fingerprints.cname_candidates(
+        entries, target, list(intermediates) + list(target_ips))
+
+    # 1) NXDOMAIN-confirmed: the provider resource was deleted, the name is free.
+    if state == 'nxdomain':
+        nx = [fp for fp in cmatch if fp.nxdomain] or [fp for fp in entries if fp.nxdomain and not fp.cnames]
+        if nx:
+            fp = nx[0]
+            return TakeoverFinding(
+                hostname, target, fp.service, fp.status, 'confirmed',
+                "the CNAME target [%s] returns NXDOMAIN - the %s resource it referenced has been removed and the name can be re-registered by anyone" % (target, fp.service),
+                fp.documentation)
+
+    # 2) HTTP response fingerprint. The subdomain has a CNAME (checked above) -
+    #    the population that can be taken over - and many providers only reveal
+    #    an unclaimed resource in the HTTP body while the CNAME target still
+    #    resolves (github.io, shopify, heroku, ...), so probe regardless of the
+    #    DNS state.
+    resp = _http_get('https://%s/' % hostname) or _http_get('http://%s/' % hostname)
+    if resp is not None:
+        body = resp.text or ''
+        candidates = cmatch + takeover_fingerprints.fingerprint_only_entries(entries)
+        candidates.sort(key=lambda fp: (fp.status.lower().startswith('edge'), not bool(fp.cnames)))
+        for fp in candidates:
+            why = takeover_fingerprints.marker_hit(fp, resp.status_code, body)
+            if why:
+                confirmed = fp.status.lower().startswith('vulnerable')
+                return TakeoverFinding(
+                    hostname, target, fp.service, fp.status,
+                    'confirmed' if confirmed else 'potential',
+                    "the HTTP response served for [%s] matches %s's unclaimed-resource fingerprint (%s)" % (hostname, fp.service, why),
+                    fp.documentation)
+
+    # 3) Legacy heuristic: CNAME at a known provider, target dead, but the
+    #    unclaimed fingerprint could not be confirmed over HTTP.
+    if cmatch and state != 'resolves':
+        fp = cmatch[0]
+        return TakeoverFinding(
+            hostname, target, fp.service, fp.status, 'potential',
+            "the CNAME points at [%s] (%s) and the target does not currently resolve, though the provider's unclaimed-resource fingerprint was not confirmed over HTTP" % (target, fp.service),
+            fp.documentation)
+
     return None
 
 

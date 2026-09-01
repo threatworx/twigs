@@ -16,3 +16,5 @@ recursive-include twigs/kubernetes-cis-benchmark *
 recursive-include twigs/ssl_audit *
 recursive-include twigs/host_benchmark *
 recursive-include twigs/nse *
+recursive-include twigs/easm *
+recursive-include twigs/easm/data *.txt

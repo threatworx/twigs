@@ -26,7 +26,7 @@ except ImportError:
 from .constants import DNS_TIMEOUT, HTTP_TIMEOUT, USER_AGENT
 
 
-def _new_issue(twc_id, twc_title, details, rating, asset_id, itype, object_id='', remediation=None, object_meta=''):
+def _new_issue(twc_id, twc_title, details, rating, asset_id, itype, object_id='', remediation=None, object_meta='', cve=None):
     if remediation:
         details = details.rstrip() + ' Remediation: ' + remediation
     return {
@@ -38,6 +38,9 @@ def _new_issue(twc_id, twc_title, details, rating, asset_id, itype, object_id=''
         'asset_id': asset_id,
         'object_meta': object_meta,
         'type': itype,
+        # CVE id(s) this finding is about, if any - consumed by kev_epss for
+        # KEV/EPSS risk-ranking. Always a list (possibly empty).
+        'cve': [c.upper() for c in cve] if isinstance(cve, (list, tuple, set)) else ([cve.upper()] if cve else []),
     }
 
 
