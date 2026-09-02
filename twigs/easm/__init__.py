@@ -26,7 +26,10 @@ gets host-level assessment only:
   - SSL/TLS named-vulnerability scanning (Heartbleed, POODLE, FREAK, Logjam,
     DROWN, ROBOT, BEAST, CRIME, weak/NULL/export ciphers, etc.) against the
     primary host and every discovered subdomain, via the vendored testssl.sh
-    (twigs.ssl_audit)
+    (twigs.ssl_audit); checks the target passes are collapsed into one
+    informational "named-vulnerability checks passed" finding, while each
+    check the target is actually vulnerable to is reported individually and
+    still fed to KEV/EPSS re-rating
   - DNS hygiene checks (zone transfer, CAA certificate-authority-authorization
     records, DNSSEC chain-of-trust status, lame delegation)
   - dangling-CNAME / subdomain-takeover detection using the community
@@ -56,6 +59,17 @@ gets host-level assessment only:
   - cloud object-storage discovery: AWS S3 / GCS / Azure Blob names generated
     from the org label + discovered subdomains, probed for existence and
     public listability
+  - SaaS tenant discovery: derives the organisation's identity (TLS cert O=,
+    WHOIS registrant, homepage name, registrable-domain label) into candidate
+    tenant slugs, then confirms Okta / Microsoft Entra ID / Google Workspace /
+    GitHub org / Atlassian / Slack / AWS IAM Identity Center / Zendesk /
+    ServiceNow / Auth0 / Zoom / Cloudflare Access / PagerDuty / Statuspage
+    tenants by provider-specific response fingerprint (never bare DNS), then
+    runs unauthenticated read-only enrichment for real misconfiguration
+    (anonymous Confluence/Jira read, open Slack email-domain signup, exposed
+    AWS SSO portal, on-prem federation/AD FS endpoints, ServiceNow version
+    disclosure, internal-looking public GitHub repos, and - with
+    --github_repo_scan - secret scanning of the org's public repositories)
   - HTTP security headers audit (HSTS, Content-Security-Policy,
     X-Frame-Options, X-Content-Type-Options, Referrer-Policy) and cookie
     security flags (Secure/HttpOnly/SameSite) for every discovered host
@@ -166,6 +180,7 @@ from .reverse_ip import check_reverse_ip
 from .reverse_whois import check_reverse_whois
 from .js_analysis import check_js_analysis
 from .bucket_discovery import check_bucket_discovery
+from .saas_discovery import check_saas_discovery
 from . import netblock_sweep
 from . import portsweep
 from .waf import check_waf
@@ -385,6 +400,11 @@ def _assess_domain(args, domain, anchor_asset, anchor_host, owner, nmap_cache, r
     if not getattr(args, 'no_reverse_whois', False):
         _stage(anchor_host, "reverse-WHOIS related-domain pivot (crt.sh)")
         anchor_asset['config_issues'].extend(check_reverse_whois(domain, anchor_id, args))
+
+    if not getattr(args, 'no_saas_discovery', False):
+        _stage(anchor_host, "SaaS tenant discovery (Okta / Entra ID / GitHub / Atlassian / ...)")
+        anchor_asset['config_issues'].extend(
+            check_saas_discovery(domain, anchor_id, args, anchor_asset['tags']))
 
     if getattr(args, 'no_subdomain_enum', False):
         return

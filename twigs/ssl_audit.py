@@ -257,10 +257,20 @@ def run_ssl_audit(url, assetid, timeout=None, vulnerable_only=False):
 
     if 'scanResult' in odict:
         section_data = odict['scanResult'][0]
+        passed_vuln_checks = []   # named-vulnerability checks the target passed
         for section, title_prefix in SSL_AUDIT_SECTIONS:
             if section not in section_data:
                 continue
             for p in section_data[section]:
+                # For the named-vulnerability section, a check the target is
+                # NOT vulnerable to (testssl severity OK/INFO) is not reported
+                # as its own finding - it is collected into a single aggregate
+                # INFO finding below. Vulnerable results (LOW and above) are
+                # still reported individually and still get CVE-based KEV/EPSS
+                # boosting exactly as before.
+                if section == 'vulnerabilities' and (p.get('severity') or '').upper() in ('OK', 'INFO'):
+                    passed_vuln_checks.append(p)
+                    continue
                 issue = {}
                 issue['twc_id'] = 'ssl-audit-' + p['id']
                 issue['twc_title'] = title_prefix + p['id']
@@ -273,4 +283,40 @@ def run_ssl_audit(url, assetid, timeout=None, vulnerable_only=False):
                 issue['type'] = 'SSL'
                 issue['cve'] = cves
                 findings.append(issue)
+        if passed_vuln_checks:
+            findings.append(_not_vulnerable_summary(passed_vuln_checks, url, assetid))
     return findings
+
+
+def _not_vulnerable_summary(passed, url, assetid):
+    """Single INFO finding listing every named SSL/TLS vulnerability check that
+    was run and came back not-vulnerable/OK. Replaces the previous one
+    finding-per-passing-check. CVE tokens are stripped from the text so the
+    KEV/EPSS enrichment pass cannot scrape a CVE off this informational finding
+    and boost it."""
+    lines, ids = [], []
+    for p in passed:
+        cid = p.get('id', '')
+        text = (p.get('finding') or 'not vulnerable').strip()
+        text = _CVE_TOKEN_RE.sub('', text)
+        text = re.sub(r'\(\s*[,;]?\s*\)', '', text)
+        text = re.sub(r'\s{2,}', ' ', text).strip(' .')
+        ids.append(cid)
+        lines.append('  - %s: %s' % (cid, text or 'not vulnerable'))
+    details = (
+        "testssl.sh ran %d named SSL/TLS vulnerability check(s) against [%s] and "
+        "the target was not flagged as vulnerable by any of them (all results OK "
+        "or informational):\n%s\nRemediation: No action required for these checks; "
+        "re-test after any TLS library or server configuration change."
+        % (len(passed), url, '\n'.join(sorted(lines))))
+    return {
+        'twc_id': 'ssl-audit-not-vulnerable',
+        'twc_title': 'SSL/TLS named-vulnerability checks passed',
+        'details': details,
+        'rating': '1',
+        'object_id': url,
+        'asset_id': assetid,
+        'object_meta': ','.join(sorted(set(i for i in ids if i))),
+        'type': 'SSL',
+        'cve': [],
+    }
