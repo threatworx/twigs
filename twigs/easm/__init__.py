@@ -32,6 +32,10 @@ gets host-level assessment only:
     still fed to KEV/EPSS re-rating
   - DNS hygiene checks (zone transfer, CAA certificate-authority-authorization
     records, DNSSEC chain-of-trust status, lame delegation)
+  - DNSSEC NSEC / NSEC3 zone walking: on a signed zone that uses plain NSEC,
+    the next-name pointers are chained to enumerate the whole zone (recovered
+    hostnames feed back into subdomain assessment); on NSEC3 zones, iteration
+    count (RFC 9276) and opt-out are checked
   - dangling-CNAME / subdomain-takeover detection using the community
     can-i-take-over-xyz fingerprint set (~50 providers, auto-refreshed with a
     bundled offline fallback): each discovered subdomain's CNAME chain is
@@ -79,13 +83,21 @@ gets host-level assessment only:
   - security.txt (RFC 9116) and robots.txt/sitemap.xml reconnaissance
   - open-redirect probing of common query parameters
   - email security checks (SPF/DMARC/DKIM/MX)
-  - firewall / WAF discovery
+  - firewall / WAF discovery - known WAF/CDN header/cookie/Server signatures
+    plus a probe/baseline status-code differential; each recognized WAF/CDN is
+    added to the asset's product list (name only, except ModSecurity when the
+    Server header carries a version)
   - web application tests via the nuclei CLI (used only if present on PATH)
   - CISA KEV + FIRST.org EPSS enrichment of every CVE referenced by a finding:
     KEV-listed / high-EPSS CVEs raise the affected finding's rating (never
     lower it), each asset's issues are re-sorted worst-first, and an
     "exploitation-prioritized" summary finding is emitted per affected asset
-  - typosquatting checks (lookalike domain permutations)
+  - typosquatting checks: dnstwist lookalike-domain permutations, each
+    checked for registration status (A/AAAA, MX, or NS/SOA delegation) - not
+    just whether it resolves - so registered-but-dormant lookalikes are
+    caught, and a lookalike publishing MX records (email-capable, i.e. BEC /
+    phishing infrastructure) is rated HIGH; a bounded WHOIS lookup enriches
+    the MX-first-ordered hits (no live-content fetch or screenshot here)
   - permutation subdomain scanning: mutates the discovered subdomain set
     (affixes, number bumps, dev/staging/uat/... env-token swaps) and resolves
     the candidates, surfacing sibling environments like api-staging off a
@@ -135,11 +147,33 @@ gets host-level assessment only:
     discovery (with parsing for endpoint count and unauthenticated
     endpoints), GraphQL introspection, CORS misconfiguration (arbitrary
     origin reflection), and verbose error/stack-trace disclosure
+  - GraphQL deep enumeration: when introspection is on, the schema is dumped
+    and summarised (mutation root fields, sensitive-looking field names);
+    when it is off, field names are recovered via "Did you mean" suggestions
+    and a root-field wordlist, and an exposed GraphiQL/Playground console,
+    query batching and GET-based execution are flagged
+  - OpenAPI active probing: the documented operations that declare no
+    authentication are actually requested (GET/HEAD only, never a write
+    method, parameters filled only from spec examples) to confirm which are
+    truly reachable unauthenticated vs. really protected (401/403)
+  - calibrated content/directory brute force: a small curated high-signal
+    path list probed with soft-404 fingerprinting (random-path baseline), with
+    content verification of high-value hits (VCS metadata, .env, DB dumps,
+    private keys) before rating
   - mixed content (HTTP resources loaded on an HTTPS page) and favicon hash
     fingerprinting (an mmh3 hash reported as an asset tag, for infrastructure
     correlation - not a vulnerability finding on its own)
   - HTTP method enumeration (PUT/DELETE/TRACE/CONNECT advertised via Allow)
     and directory listing (autoindex) detection on common paths
+  - UDP top-port exposure scan: protocol-specific probes to a curated set of
+    reflection/amplification-prone UDP services (SNMP, NTP incl. monlist, DNS
+    incl. open-resolver test, IKE, mDNS, NetBIOS, SSDP, memcached, CLDAP,
+    chargen/echo) - response-only, so open is definitive and no root is needed
+  - active TLS-stack fingerprinting: a battery of varied ClientHellos hashed
+    into a stable per-server fingerprint (reported as the TLS_STACK asset tag,
+    alongside the leaf-cert SHA-256) for clustering shared TLS termination
+    infrastructure; also confirms any weak/legacy cipher the server will
+    actually negotiate
   - wildcard DNS fingerprinting ahead of subdomain brute force: guessed
     labels that resolve only to the wildcard address(es) are subtracted out,
     so brute force still contributes on wildcard domains instead of being
@@ -147,6 +181,13 @@ gets host-level assessment only:
   - DNSBL/IP reputation lookups (Spamhaus ZEN) for every discovered host's
     resolved IPv4 address(es)
   - nameserver delegation consistency (lame delegation) checking
+  - end-to-end IPv6 coverage: AAAA records are resolved and brute-forced
+    alongside A, every host records its IP stack (dualstack / ipv6-only /
+    ipv4-only) and per-address IPV6: tags, the IPv6 address is port-scanned
+    (nmap -6 on the primary, a fast TCP sweep elsewhere) with IPv6 cloud
+    attribution, and its open ports are diffed against IPv4 - a port open on
+    IPv6 but not IPv4 is reported as a firewall gap, and an IPv6-only host is
+    flagged as an IPv4-tooling blind spot
 
 This is the package's entry point - `twigs/twigs.py` does `from . import
 easm` and calls `easm.get_inventory(args)`, unchanged from when this module
@@ -181,6 +222,13 @@ from .reverse_whois import check_reverse_whois
 from .js_analysis import check_js_analysis
 from .bucket_discovery import check_bucket_discovery
 from .saas_discovery import check_saas_discovery
+from .zone_walk import check_zone_walk
+from .ipv6 import check_ipv6
+from .graphql_enum import check_graphql_enum
+from .openapi_probe import check_openapi_probe
+from .dir_brute import check_dir_brute
+from .tls_fingerprint import check_tls_fingerprint
+from .udp_scan import check_udp_scan
 from . import netblock_sweep
 from . import portsweep
 from .waf import check_waf
@@ -278,6 +326,12 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     if host_result:
         asset_data['config_issues'].extend(create_port_issues(host_result, asset_id))
 
+    if not getattr(args, 'no_ipv6', False):
+        _stage(hostname, "IPv6 coverage (stack, reachability, v4/v6 firewall delta)")
+        asset_data['config_issues'].extend(check_ipv6(
+            hostname, ips, host_result, asset_data['products'], asset_data['tags'],
+            asset_id, args, is_primary=is_primary, nmap_cache=nmap_cache))
+
     if not getattr(args, 'no_ssl_checks', False):
         _stage(hostname, "SSL/TLS certificate & protocol checks")
         asset_data['config_issues'].extend(check_ssl(hostname, host_result, asset_id))
@@ -286,6 +340,11 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
         _stage(hostname, "SSL/TLS named-vulnerability scan (testssl.sh)")
         asset_data['config_issues'].extend(check_ssl_vulnerabilities(
             hostname, host_result, asset_id, getattr(args, 'ssl_audit_timeout', 120)))
+
+    if not getattr(args, 'no_tls_fingerprint', False):
+        _stage(hostname, "TLS stack fingerprinting (infrastructure correlation)")
+        asset_data['config_issues'].extend(check_tls_fingerprint(
+            hostname, host_result, asset_data['tags'], asset_id, args))
 
     if not getattr(args, 'no_tech_stack', False):
         _stage(hostname, "technology stack / JS library / WordPress detection")
@@ -306,7 +365,7 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
 
     if not getattr(args, 'no_waf_check', False):
         _stage(hostname, "firewall / WAF discovery")
-        asset_data['config_issues'].extend(check_waf(hostname, asset_id))
+        asset_data['config_issues'].extend(check_waf(hostname, asset_id, asset_data['products']))
 
     if not getattr(args, 'no_security_headers_check', False):
         _stage(hostname, "HTTP security headers audit")
@@ -323,6 +382,14 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     if not getattr(args, 'no_api_discovery', False):
         _stage(hostname, "API discovery (OpenAPI/GraphQL/CORS/error disclosure)")
         asset_data['config_issues'].extend(check_api_discovery(hostname, asset_id))
+
+    if not getattr(args, 'no_graphql_enum', False):
+        _stage(hostname, "GraphQL deep enumeration (schema dump / field suggestion / console)")
+        asset_data['config_issues'].extend(check_graphql_enum(hostname, asset_id, args))
+
+    if not getattr(args, 'no_openapi_probe', False):
+        _stage(hostname, "OpenAPI active probing (documented no-auth endpoints)")
+        asset_data['config_issues'].extend(check_openapi_probe(hostname, asset_id, args))
 
     if not getattr(args, 'no_web_recon', False):
         _stage(hostname, "web recon (security.txt, robots.txt, sitemap.xml)")
@@ -341,6 +408,10 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
         _stage(hostname, "directory listing (autoindex) detection")
         asset_data['config_issues'].extend(check_directory_listing(hostname, asset_id))
 
+    if not getattr(args, 'no_dir_brute', False):
+        _stage(hostname, "calibrated content/dir brute force (soft-404 fingerprinted)")
+        asset_data['config_issues'].extend(check_dir_brute(hostname, asset_id, args))
+
     if not getattr(args, 'no_asn_lookup', False):
         _stage(hostname, "ASN / netblock discovery")
         asset_data['config_issues'].extend(check_asn_netblock(hostname, ips, asset_id))
@@ -352,6 +423,10 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     if not getattr(args, 'no_dnsbl_check', False):
         _stage(hostname, "DNSBL / IP reputation lookup")
         asset_data['config_issues'].extend(check_dnsbl(hostname, ips, asset_id))
+
+    if not getattr(args, 'no_udp_scan', False):
+        _stage(hostname, "UDP top-port exposure scan (SNMP/NTP/DNS/IKE/mDNS/memcached/...)")
+        asset_data['config_issues'].extend(check_udp_scan(hostname, ips, asset_id, args))
 
     logging.info("[EASM] %s: host asset complete - %d product(s), %d finding(s)",
                  hostname, len(asset_data['products']), len(asset_data['config_issues']))
@@ -418,6 +493,12 @@ def _assess_domain(args, domain, anchor_asset, anchor_host, owner, nmap_cache, r
         ct_issues, ct_new = check_ct_monitor(domain, anchor_id, args, discovered)
         anchor_asset['config_issues'].extend(ct_issues)
         discovered |= {n for n in ct_new if n != anchor_host}
+
+    if not getattr(args, 'no_dns_checks', False) and not getattr(args, 'no_zone_walk', False):
+        _stage(anchor_host, "DNSSEC NSEC/NSEC3 zone walking")
+        zw_issues, zw_names = check_zone_walk(domain, anchor_id, args)
+        anchor_asset['config_issues'].extend(zw_issues)
+        discovered |= {n for n in zw_names if n != anchor_host}
 
     sorted_subs = sorted(discovered)
     anchor_asset['tags'].append('EASM_SUBDOMAIN_COUNT:%d' % len(sorted_subs))

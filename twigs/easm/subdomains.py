@@ -467,11 +467,12 @@ def wildcard_fingerprint(domain, probes=WILDCARD_PROBES, resolver=None):
     for _ in range(probes):
         fqdn = ''.join(random.choices(string.ascii_lowercase + string.digits, k=20)) + '.' + domain
         a = _rr(resolver, fqdn, 'A')
+        aaaa = _rr(resolver, fqdn, 'AAAA')
         c = _rr(resolver, fqdn, 'CNAME')
-        if not a and not c:
+        if not a and not aaaa and not c:
             continue
         hits += 1
-        for rr in (a or []):
+        for rr in list(a or []) + list(aaaa or []):
             ips.add(getattr(rr, 'address', None) or str(rr))
         for rr in (c or []):
             cnames.add(str(getattr(rr, 'target', rr)).rstrip('.').lower())
@@ -503,12 +504,13 @@ def enumerate_subdomains_bruteforce(domain, workers=20, labels=None,
     def _try(label):
         candidate = label + '.' + domain
         a = _rr(resolver, candidate, 'A')
+        aaaa = _rr(resolver, candidate, 'AAAA')
         c = _rr(resolver, candidate, 'CNAME')
-        if not a and not c:
+        if not a and not aaaa and not c:
             return None
         if not filtering:
             return candidate
-        cand_ips = {getattr(rr, 'address', None) or str(rr) for rr in (a or [])}
+        cand_ips = {getattr(rr, 'address', None) or str(rr) for rr in list(a or []) + list(aaaa or [])}
         cand_cn = {str(getattr(rr, 'target', rr)).rstrip('.').lower() for rr in (c or [])}
         if cand_cn and not cand_cn <= wildcard_cnames:
             return candidate

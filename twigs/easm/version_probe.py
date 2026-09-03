@@ -1,9 +1,17 @@
-"""Best-effort version extraction for products that tech_stack detected
-without a version. Runs a small curated set of version-disclosure probes
-(well-known files / status endpoints per product) and folds any recovered
-version back into the product list, so the backend CVE mapping is
-version-accurate. Never removes a product; only enriches 'name' -> 'name
-X.Y.Z'.
+"""Best-effort version extraction for products that tech_stack (or the
+firewall/WAF check) detected without a version. Runs a small curated set of
+version-disclosure probes (well-known files / status endpoints per product)
+and folds any recovered version back into the product list, so the backend
+CVE mapping is version-accurate. Never removes a product; only enriches
+'name' -> 'name X.Y.Z'.
+
+Covers the common web stack (Tomcat, Jenkins, Drupal, Joomla, Grafana,
+GitLab, phpMyAdmin, Kibana, Elasticsearch, WordPress, nginx, Apache, OpenSSL,
+PHP) plus the WAF/CDN products where a version can leak (ModSecurity via the
+Server header, Wordfence via its WordPress-plugin readme, and - best effort -
+F5 BIG-IP ASM / Citrix NetScaler-ADC / Fortinet FortiWeb / Barracuda WAF via
+their appliance login pages). Managed cloud WAF/CDNs are versionless by
+design and are not probed.
 """
 import re
 import logging
@@ -30,6 +38,36 @@ _PROBES = [
     ('apache',        '/',                  re.compile(r'Apache/([\d.]+)', re.I)),
     ('openssl',       '/',                  re.compile(r'OpenSSL/([\w.]+)', re.I)),
     ('php',           '/',                  re.compile(r'PHP/([\w.]+)', re.I)),
+
+    # --- WAF / CDN -----------------------------------------------------------
+    # Managed cloud WAF/CDN products - Cloudflare, Akamai, AWS WAF/CloudFront,
+    # Imperva Incapsula (cloud), Sucuri, StackPath, DDoS-Guard, Azure Front
+    # Door/WAF - are continuously-deployed SaaS with no customer-visible
+    # version and no customer CVE surface, so there is deliberately nothing to
+    # probe for them. The entries below cover the WAF products where a version
+    # can actually leak:
+    #   * ModSecurity  - version token in the Server header (older/default cfg)
+    #   * Wordfence    - it is a WordPress plugin; exact version in its readme
+    #   * F5 BIG-IP ASM / Citrix NetScaler-ADC / Fortinet FortiWeb / Barracuda
+    #     WAF - best effort only: a build string on the appliance's own
+    #     login/admin page, if one is exposed. A probe that matches nothing
+    #     simply leaves the product name unchanged (no false positive).
+    ('modsecurity',   '/',
+     re.compile(r'mod[_ -]?security[/ ]v?(\d+\.\d+(?:\.\d+)?)', re.I)),
+    ('wordfence',     '/wp-content/plugins/wordfence/readme.txt',
+     re.compile(r'Stable tag:\s*(\d+\.\d+(?:\.\d+)*)', re.I)),
+    ('f5 big-ip',     '/tmui/login.jsp',
+     re.compile(r'BIG-?IP[^\d]{0,20}(\d+\.\d+(?:\.\d+){0,2})', re.I)),
+    ('netscaler',     '/logon/LogonPoint/index.html',
+     re.compile(r'(?:Citrix ADC|NetScaler(?:\s+Gateway)?|\bNS)[^\d]{0,15}(\d+\.\d+)', re.I)),
+    ('netscaler',     '/vpn/index.html',
+     re.compile(r'(?:Citrix ADC|NetScaler(?:\s+Gateway)?|\bNS)[^\d]{0,15}(\d+\.\d+)', re.I)),
+    ('fortiweb',      '/login',
+     re.compile(r'Forti(?:Web|Gate|OS)[^\d]{0,15}(\d+\.\d+(?:\.\d+)?)', re.I)),
+    ('fortiweb',      '/remote/login',
+     re.compile(r'Forti(?:Web|Gate|OS)[^\d]{0,15}(\d+\.\d+(?:\.\d+)?)', re.I)),
+    ('barracuda',     '/',
+     re.compile(r'Barracuda[^\n]{0,60}?(?:version|release|\bv)\s*(\d+\.\d+(?:\.\d+)*)', re.I)),
 ]
 
 

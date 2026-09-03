@@ -1,7 +1,17 @@
 """Firewall / WAF discovery: known WAF/CDN signatures plus a generic
-probe-response-differential heuristic for unrecognized security controls."""
+probe-response-differential heuristic for unrecognized security controls.
+Each recognized WAF/CDN is also added to the asset's product list (name only,
+no version) so ThreatWorx's backend can map it to any known CVEs - relevant
+for on-prem appliances (F5 BIG-IP, Citrix NetScaler, FortiWeb, Barracuda);
+harmless for managed cloud WAFs."""
+import re
+
 from .constants import RATING_INFO, RATING_LOW, ISSUE_TYPE_FIREWALL
-from .util import _new_issue, _http_get
+from .util import _new_issue, _http_get, _add_product
+
+# WAF/CDN products whose version is sometimes recoverable, and where from.
+# Managed cloud WAFs are versionless by design and are not listed.
+_MODSEC_VER_RE = re.compile(r'mod[_-]?security[/ ]v?(\d+\.\d+(?:\.\d+)?)', re.I)
 
 WAF_SIGNATURES = [
     ('Cloudflare', {'headers': ['cf-ray', 'cf-cache-status'], 'server': ['cloudflare'], 'cookies': ['__cfduid', '__cflb', 'cf_clearance']}),
@@ -23,8 +33,10 @@ WAF_SIGNATURES = [
 WAF_PROBE_PATH = "/?easm=1' OR '1'='1' UNION SELECT NULL-- <script>alert(1)</script>../../../etc/passwd"
 
 
-def check_waf(host, asset_id):
+def check_waf(host, asset_id, products=None):
     issues = []
+    if products is None:
+        products = []
     baseline = None
     probe = None
     for scheme in ('https', 'http'):
@@ -65,8 +77,21 @@ def check_waf(host, asset_id):
             detected.append(waf_name)
 
     if detected:
+        # Add each recognized WAF/CDN to the asset's product list. Managed
+        # cloud WAFs are versionless; for ModSecurity a version is sometimes
+        # exposed in the Server header, so fold it in when present.
+        modsec_ver = _MODSEC_VER_RE.search(server_hdr)
+        product_names = []
+        for name in detected:
+            if name == 'ModSecurity' and modsec_ver:
+                name = 'ModSecurity ' + modsec_ver.group(1)
+            product_names.append(name)
+            _add_product(products, name)
+
         issues.append(_new_issue('waf-detected', "Web Application Firewall detected",
-                                  "Detected the presence of the following WAF/CDN security control(s) in front of [%s]: %s. This provides a layer of protection against common web attacks (SQLi, XSS, bad bots, volumetric abuse)." % (host, ', '.join(detected)),
+                                  "Detected the presence of the following WAF/CDN security control(s) in front of [%s]: %s. This provides a layer of protection against common web attacks (SQLi, XSS, bad bots, volumetric abuse). Added to the asset's product list%s." % (
+                                      host, ', '.join(product_names),
+                                      " with a version parsed from the Server header" if (modsec_ver and 'ModSecurity' in detected) else " (name only - WAF/CDN products rarely expose a version)"),
                                   RATING_INFO, asset_id, ISSUE_TYPE_FIREWALL,
                                   remediation="This is a positive finding; no action required. Periodically verify the WAF ruleset/managed-rules are current and cover the OWASP Top 10."))
     elif probe is not None and baseline.status_code != probe.status_code and probe.status_code in (403, 406, 429, 501):
