@@ -5,6 +5,11 @@
 
 from setuptools import setup, find_packages
 import sys
+import re
+
+with open('twigs/__init__.py') as version_file:
+    version = re.search(r"^__version__ = ['\"]([^'\"]+)['\"]",
+                        version_file.read(), re.M).group(1)
 
 with open('README.rst') as readme_file:
     readme = readme_file.read()
@@ -48,7 +53,7 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/threatworx/twigs',
-    version='1.3.15',
+    version=version,
     zip_safe=False,
     entry_points={
         'console_scripts': [
