@@ -68,4 +68,9 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: threatworx/twigs:${{ env.TAG_NAME }}, ${{ env.LATEST_TAG }}
-          platforms: linux/amd64,linux/arm64
+          # amd64 only: the google-cloud-cli apt package bundles its own Python
+          # interpreter for amd64, but the arm64 package hard-depends on system
+          # python3 >= 3.10, which the Ubuntu 20.04 base image (python3 3.8)
+          # cannot satisfy. The Go and nuclei installs in build_docker.sh also
+          # only fetch linux-amd64 binaries.
+          platforms: linux/amd64
