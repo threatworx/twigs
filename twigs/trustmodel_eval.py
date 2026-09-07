@@ -10,6 +10,25 @@ import logging
 
 from . import utils
 
+# Status classification for the evaluation poll loop.
+#
+# These are deliberately local string literals rather than the SDK's
+# EvaluationStatus enum: twigs runs against whatever version of the trustmodel
+# SDK pip resolved, and that enum has lagged the statuses the server actually
+# emits. Comparing against our own sets keeps twigs working with a status no
+# released SDK knows about yet.
+_TERMINAL_SUCCESS_STATUSES = frozenset(["completed"])
+_TERMINAL_FAILURE_STATUSES = frozenset(["failed", "cancelled"])
+# Stuck states only the user can clear - nothing twigs does will advance them.
+_NEEDS_ACTION_STATUSES = frozenset(["payment_pending", "payment_failed"])
+# retryable_failure is in progress, not terminal: the server's retry queue moves it on.
+_IN_PROGRESS_STATUSES = frozenset(
+    ["processing", "running", "data_pull_pending", "retryable_failure"]
+)
+# Short grace so a user resolving payment in another tab is not kicked out, while
+# still failing long before the three-hour poll timeout.
+_NEEDS_ACTION_GRACE_SECONDS = 15 * 60
+
 
 def _init_client(args):
     try:
@@ -267,10 +286,85 @@ def _cmd_get_result(args):
     try:
         result = client.evaluations.get_result(args.evaluation_id)
     except TrustModelError as e:
+        if _is_unparseable_result_error(e):
+            _exit_on_unparseable_result(args.evaluation_id, e)
         logging.error("Failed to get result: %s", str(e))
         utils.tw_exit(1)
+    except Exception as e:
+        _exit_on_unparseable_result(args.evaluation_id, e)
 
     return result
+
+
+def _status_of(result):
+    """Return the result's status as a lowercase string.
+
+    The SDK may hand back a plain string or an EvaluationStatus member; str() on
+    the latter yields "EvaluationStatus.COMPLETED", so read .value when present.
+    """
+    status = getattr(result, "status", None)
+    status = getattr(status, "value", status)
+    return "" if status is None else str(status).strip().lower()
+
+
+def _exit_on_unparseable_result(eval_id, e, rerun_hint=False):
+    """Fail clearly when the installed SDK cannot parse the server's response.
+
+    Typically a run status the SDK's EvaluationStatus enum predates, which
+    surfaces as a pydantic error rather than a TrustModelError - so it escapes
+    every existing handler as a raw traceback. Deterministic for a given
+    evaluation, so it is never worth retrying.
+    """
+    message = (
+        "Failed to read the result for evaluation %s: %s. The installed trustmodel "
+        "SDK may be out of date - try 'pip install -U trustmodel'."
+    )
+    message_args = [eval_id, str(e)]
+    if rerun_hint:
+        message += " Then re-run with --get_result --evaluation_id %s."
+        message_args.append(eval_id)
+    logging.error(message, *message_args)
+    utils.tw_exit(1)
+
+
+def _is_unparseable_result_error(e):
+    """True for the SDK's own wrapper around a response it could not parse.
+
+    trustmodel 3.7.0 converts the pydantic error into ResponseParsingError,
+    which IS a TrustModelError - so on that SDK this failure no longer reaches
+    the `except Exception` arm that catches it on older ones. It is an APIError
+    carrying status_code 200 (the HTTP call succeeded), so the 404 test in
+    _is_fatal_poll_error does not catch it either, and a deterministic parse
+    failure would be retried until the three-hour timeout - the exact hang the
+    status classification above exists to prevent.
+
+    Looked up by name, like the classes below, so an older SDK without it simply
+    reports False and the `except Exception` arm keeps handling the raw error.
+    """
+    import trustmodel.exceptions as tm_exceptions
+
+    klass = getattr(tm_exceptions, "ResponseParsingError", None)
+    return klass is not None and isinstance(e, klass)
+
+
+def _is_fatal_poll_error(e):
+    """True when re-polling cannot help: bad key, no credits, or a 404.
+
+    Classes an older SDK may not define are looked up by name rather than
+    imported, so a missing one degrades to the previous retry-everything
+    behaviour instead of raising ImportError.
+    """
+    import trustmodel.exceptions as tm_exceptions
+
+    for name in ("AuthenticationError", "InsufficientCreditsError"):
+        klass = getattr(tm_exceptions, name, None)
+        if klass is not None and isinstance(e, klass):
+            return True
+    api_error = getattr(tm_exceptions, "APIError", None)
+    if api_error is not None and isinstance(e, api_error):
+        # A 404 is deterministic - the evaluation ID will not start existing later.
+        return getattr(e, "status_code", None) == 404
+    return False
 
 
 def _poll_and_print_result(client, eval_id, args):
@@ -280,6 +374,8 @@ def _poll_and_print_result(client, eval_id, args):
     timeout_seconds = 3 * 60 * 60
     start_time = time.time()
     last_percentage = -1
+    needs_action_since = None
+    warned_statuses = set()
 
     while True:
         if time.time() - start_time > timeout_seconds:
@@ -289,27 +385,70 @@ def _poll_and_print_result(client, eval_id, args):
         try:
             result = client.evaluations.get_result(eval_id)
         except TrustModelError as e:
+            if _is_unparseable_result_error(e):
+                _exit_on_unparseable_result(eval_id, e, rerun_hint=True)
+            if _is_fatal_poll_error(e):
+                logging.error("Cannot retrieve evaluation %s: %s", eval_id, str(e))
+                utils.tw_exit(1)
             logging.warning("Poll error: %s. Retrying...", str(e))
             time.sleep(poll_interval)
             continue
+        except Exception as e:
+            _exit_on_unparseable_result(eval_id, e, rerun_hint=True)
 
         # Use server-provided poll interval
-        if hasattr(result, "poll_interval") and result.poll_interval:
+        if getattr(result, "poll_interval", None):
             poll_interval = result.poll_interval
 
-        if result.completion_percentage != last_percentage:
-            print(
-                "Status: %s | Progress: %d%%"
-                % (result.status, result.completion_percentage)
-            )
-            last_percentage = result.completion_percentage
+        status = _status_of(result)
+        percentage = getattr(result, "completion_percentage", None) or 0
+        if percentage != last_percentage:
+            print("Status: %s | Progress: %d%%" % (status, percentage))
+            last_percentage = percentage
 
-        if result.status == "completed":
+        if status in _TERMINAL_SUCCESS_STATUSES:
             logging.debug("Evaluation %s completed successfully.", eval_id)
             return result
-        elif result.status == "failed":
-            logging.error("Evaluation failed.")
+
+        if status in _TERMINAL_FAILURE_STATUSES:
+            if status == "cancelled":
+                logging.error("Evaluation %s was cancelled.", eval_id)
+            else:
+                logging.error("Evaluation %s failed.", eval_id)
             utils.tw_exit(1)
+
+        if status in _NEEDS_ACTION_STATUSES:
+            if needs_action_since is None:
+                needs_action_since = time.time()
+                logging.warning(
+                    "Evaluation %s is '%s' and needs to be resolved in TrustModel "
+                    "billing; twigs cannot advance it. Waiting up to %d minutes.",
+                    eval_id,
+                    status,
+                    _NEEDS_ACTION_GRACE_SECONDS // 60,
+                )
+            elif time.time() - needs_action_since > _NEEDS_ACTION_GRACE_SECONDS:
+                logging.error(
+                    "Evaluation %s is still '%s' after %d minutes. Resolve the "
+                    "payment, then re-run with --get_result --evaluation_id %s.",
+                    eval_id,
+                    status,
+                    _NEEDS_ACTION_GRACE_SECONDS // 60,
+                    eval_id,
+                )
+                utils.tw_exit(1)
+        else:
+            needs_action_since = None
+            if status not in _IN_PROGRESS_STATUSES and status not in warned_statuses:
+                # An unknown status is more likely a new in-progress state than a new
+                # terminal one, so keep polling under the existing timeout.
+                logging.warning(
+                    "Evaluation %s reported unrecognized status '%s'; treating it as "
+                    "in progress.",
+                    eval_id,
+                    status,
+                )
+                warned_statuses.add(status)
 
         time.sleep(poll_interval)
 
@@ -411,6 +550,26 @@ def _build_asset_from_result(result, args):
     return asset
 
 
+def _build_asset_or_exit(result, args):
+    """Build the asset, turning an SDK shape mismatch into a clear failure.
+
+    EvaluationResult's field set sits outside the SDK's semver back-compat
+    guarantee - which covers client.* methods and the Decision/Framework
+    dataclasses - so a minor SDK bump can drop a field read below. One guard at
+    the call site covers every read without rewriting each as getattr.
+    """
+    try:
+        return _build_asset_from_result(result, args)
+    except (AttributeError, KeyError, TypeError) as e:
+        logging.error(
+            "Could not build an asset from the evaluation result: %s. The installed "
+            "trustmodel SDK appears to be out of sync with this version of twigs - "
+            "try 'pip install -U trustmodel'.",
+            str(e),
+        )
+        utils.tw_exit(1)
+
+
 def get_inventory(args):
     """Entry point called by twigs dispatcher."""
     if getattr(args, "ping", False):
@@ -422,12 +581,12 @@ def get_inventory(args):
     elif getattr(args, "evaluate", False):
         result = _cmd_evaluate(args)
         if result:
-            return [_build_asset_from_result(result, args)]
+            return [_build_asset_or_exit(result, args)]
     elif getattr(args, "list_evaluations", False):
         _cmd_list_evaluations(args)
     elif getattr(args, "get_result", False):
         result = _cmd_get_result(args)
         if result:
-            return [_build_asset_from_result(result, args)]
+            return [_build_asset_or_exit(result, args)]
 
     return []
