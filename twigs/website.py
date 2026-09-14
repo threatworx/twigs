@@ -33,17 +33,7 @@ def get_inventory(args):
 
     asset_id = args.url.replace('/','').replace(':','-')
 
-    asset_data_list = []
-    logging.info("Starting OS/Service detection for "+hostname)
-    args.services = ['web', 'os']
-    if v.port:
-        args.extra_ports = str(v.port)
-    asset_data_list = fingerprint.nmap_scan(args, hostname)
-    if len(asset_data_list) != 0:
-        asset_data = asset_data_list[0]
-    else:
-        asset_data = {}
-        asset_data['config_issues'] = [] 
+    asset_data = {}
     asset_data['id'] = asset_id
     asset_data['name'] = args.url if args.assetname is None else args.assetname
     asset_data['type'] = 'Web Application'
@@ -52,7 +42,7 @@ def get_inventory(args):
     asset_data['tags'] = asset_tags
 
     zap_issues = zap.run_zap(args, asset_id)
-    asset_data['config_issues'] = asset_data['config_issues'] + zap_issues
+    asset_data['config_issues'] = zap_issues
 
     if not args.no_ssl_audit:
         logging.info("Running SSL audit for "+args.url)

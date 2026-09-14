@@ -1203,13 +1203,7 @@ def main(args=None):
         parser_website.add_argument('--planfile', help='ZAP automation plan file')
         parser_website.add_argument('--assetname', help='Optional name/label to be assigned to the web URL asset')
         parser_website.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
-        parser_website.add_argument('--no_ssh_audit', action='store_true', help='Skip ssh audit')
         parser_website.add_argument('--no_ssl_audit', action='store_true', help='Skip ssl audit')
-        parser_website.add_argument('--timing', help=argparse.SUPPRESS, default='5')
-        parser_website.add_argument('--discovery_scan_type', help=argparse.SUPPRESS)
-        parser_website.add_argument('--discovery_port_list', help=argparse.SUPPRESS)
-        parser_website.add_argument('--services', help=argparse.SUPPRESS)
-        parser_website.add_argument('--extra_ports', help=argparse.SUPPRESS)
 
         # Arguments required for External Attack Surface Management (EASM) discovery
         parser_easm = subparsers.add_parser ("easm", help = "Discover and assess external (internet-facing) attack surface for one or more seeds (domain / hostname / IP / CIDR / ASN)")
