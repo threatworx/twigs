@@ -1171,6 +1171,13 @@ def main(args=None):
         parser_nmap.add_argument('--include_info', help=argparse.SUPPRESS, action='store_true')
         parser_nmap.add_argument('--snmp_community', help=argparse.SUPPRESS, default='public')
         parser_nmap.add_argument('--snmp_security_name', help=argparse.SUPPRESS)
+        parser_nmap.add_argument('--snmp_version', help=argparse.SUPPRESS, choices=['1', '2c', '3'])
+        parser_nmap.add_argument('--snmp_level', help=argparse.SUPPRESS, choices=['noAuthNoPriv', 'authNoPriv', 'authPriv'])
+        parser_nmap.add_argument('--snmp_auth_protocol', help=argparse.SUPPRESS, choices=['MD5', 'SHA', 'SHA-224', 'SHA-256', 'SHA-384', 'SHA-512'])
+        parser_nmap.add_argument('--snmp_auth_passphrase', help=argparse.SUPPRESS)
+        parser_nmap.add_argument('--snmp_priv_protocol', help=argparse.SUPPRESS, choices=['DES', 'AES', 'AES-192', 'AES-256'])
+        parser_nmap.add_argument('--snmp_priv_passphrase', help=argparse.SUPPRESS)
+        parser_nmap.add_argument('--snmp_context', help=argparse.SUPPRESS)
         
         # Arguments required for SBOM-based discovery
         parser_sbom = subparsers.add_parser("sbom", help = "Ingest asset inventory from SBOM (Software Bill Of Materials)")

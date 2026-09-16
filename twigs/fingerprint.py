@@ -75,23 +75,77 @@ NSE_OTHER_PATH = "+/"+os.path.dirname(os.path.realpath(__file__)) + '/nse/other/
 def nmap_exists():
     return NMAP and os.access(NMAP, os.X_OK)
 
-def build_snmp_walk_cmd(args, addr):
-    cmd = SNMPWALK
-    if args.snmp_security_name:
-        cmd = cmd + ' -v3 -u '+args.snmp_security_name
-    else:
-        cmd = cmd + ' -v1 '
-    # -t 3: 3-second timeout per retry; -r 1: 1 retry — fail fast on non-responsive hosts
-    cmd = cmd + ' -t 3 -r 1 -c '+args.snmp_community + ' ' + addr
-    return cmd
+def _mask_snmp_cmd(cmd):
+    # Return a copy of the snmpwalk argv with auth/priv passphrases masked for logging
+    masked = list(cmd)
+    for i, tok in enumerate(masked):
+        if tok in ('-A', '-X') and i + 1 < len(masked):
+            masked[i + 1] = '***'
+    return masked
 
-def get_snmp_oid_value(args, snmpwalk, oid):
+def build_snmp_walk_cmd(args, addr):
+    # -t 3: 3-second timeout per retry; -r 1: 1 retry — fail fast on non-responsive hosts
+    tail = ['-t', '3', '-r', '1', addr]
+
+    community = getattr(args, 'snmp_community', None) or 'public'
+    security_name = getattr(args, 'snmp_security_name', None)
+    version = getattr(args, 'snmp_version', None)
+    if not version:
+        version = '3' if security_name else '1'
+
+    if version != '3':
+        return [SNMPWALK, '-v' + version, '-c', community] + tail
+
+    # SNMP v3
+    if not security_name:
+        logging.error("SNMP v3 requires --snmp_security_name")
+        return None
+
+    auth_protocol = getattr(args, 'snmp_auth_protocol', None)
+    auth_passphrase = getattr(args, 'snmp_auth_passphrase', None) or os.environ.get('SNMP_AUTH_PASSPHRASE')
+    priv_protocol = getattr(args, 'snmp_priv_protocol', None)
+    priv_passphrase = getattr(args, 'snmp_priv_passphrase', None) or os.environ.get('SNMP_PRIV_PASSPHRASE')
+    context = getattr(args, 'snmp_context', None)
+
+    level = getattr(args, 'snmp_level', None)
+    if not level:
+        if auth_protocol and auth_passphrase and priv_protocol and priv_passphrase:
+            level = 'authPriv'
+        elif auth_protocol and auth_passphrase:
+            level = 'authNoPriv'
+        else:
+            level = 'noAuthNoPriv'
+
+    cmd = [SNMPWALK, '-v3', '-l', level, '-u', security_name]
+
+    if level in ('authNoPriv', 'authPriv'):
+        if not (auth_protocol and auth_passphrase):
+            logging.error("SNMP v3 level '%s' requires an authentication protocol and passphrase "
+                          "(--snmp_auth_protocol / --snmp_auth_passphrase)" % level)
+            return None
+        cmd += ['-a', auth_protocol, '-A', auth_passphrase]
+
+    if level == 'authPriv':
+        if not (priv_protocol and priv_passphrase):
+            logging.error("SNMP v3 level 'authPriv' requires a privacy protocol and passphrase "
+                          "(--snmp_priv_protocol / --snmp_priv_passphrase)")
+            return None
+        cmd += ['-x', priv_protocol, '-X', priv_passphrase]
+
+    if context:
+        cmd += ['-n', context]
+
+    return cmd + tail
+
+def get_snmp_oid_value(args, cmd, oid):
+    if not cmd:
+        return None
     out = None
+    argv = list(cmd) + [oid]
     try:
-        logging.debug("snmpwalk command: " + snmpwalk + ' ' + oid)
+        logging.debug("snmpwalk command: " + ' '.join(_mask_snmp_cmd(argv)))
         proc = subprocess.Popen(
-            snmpwalk + ' ' + oid,
-            shell=True,
+            argv,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
@@ -797,6 +851,8 @@ def _process_services(args, h, addr, products, ostype):
                 logging.warning("snmpwalk command not found")
                 continue
             cmd = build_snmp_walk_cmd(args, addr)
+            if not cmd:
+                continue
             sysdescr = get_snmp_oid_value(args, cmd, '1.3.6.1.2.1.1.1.0')
             if sysdescr:
                 logging.debug("SNMP sysDescr value:" + sysdescr)
