@@ -251,6 +251,7 @@ from .typosquatting import check_typosquatting
 from .subdomains import enumerate_subdomains
 from .ct_monitor import check_ct_monitor
 from . import seeds
+from . import quick as quick_mode
 
 
 def _stage(hostname, label):
@@ -281,6 +282,12 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
         logging.warning("Unable to resolve [%s] - skipping", hostname)
         return None
 
+    if getattr(args, 'quick', False):
+        bad = quick_mode.non_public(ips)
+        if bad:
+            logging.warning("[EASM] quick scan: [%s] resolves to non-public address(es) %s - skipping", hostname, ', '.join(bad))
+            return None
+
     ipv4_ips = [ip for ip in ips if not _is_ipv6(ip)]
     scan_target = (ipv4_ips[0] if ipv4_ips else ips[0]) if ips else hostname
     # The asset is keyed by hostname; every discovered subdomain becomes its
@@ -290,8 +297,12 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     asset_id = hostname
     host_result = nmap_cache.get(scan_target)
     if host_result is None:
-        _stage(hostname, "host/service discovery (nmap)")
-        host_result = run_nmap_scan(args, scan_target)
+        if getattr(args, 'quick', False):
+            _stage(hostname, "exposed service check (TCP connect)")
+            host_result = quick_mode.connect_scan(ips or [scan_target])
+        else:
+            _stage(hostname, "host/service discovery (nmap)")
+            host_result = run_nmap_scan(args, scan_target)
         nmap_cache[scan_target] = host_result
     else:
         logging.info("[EASM] %s: reusing cached nmap result for %s", hostname, scan_target)
@@ -622,7 +633,24 @@ def _harvest_related_domains(assets, exclude):
 
 
 def get_inventory(args):
-    if not nmap_exists():
+    if not getattr(args, 'quick', False):
+        return _get_inventory(args)
+
+    quick_mode.apply_profile(args)
+    sink = {}
+    try:
+        with quick_mode.deadline(getattr(args, 'quick_timeout', quick_mode.QUICK_DEFAULT_TIMEOUT)):
+            assets = _get_inventory(args, sink)
+    except quick_mode.QuickTimeout:
+        logging.warning("[EASM] quick scan time budget exceeded - reporting partial results")
+        assets = sink.get('assets') or None
+    for a in assets or []:
+        a['tags'].append(quick_mode.QUICK_TAG)
+    return assets
+
+
+def _get_inventory(args, sink=None):
+    if not getattr(args, 'quick', False) and not nmap_exists():
         logging.warning("nmap CLI not found - host/service discovery will be skipped")
 
     seed_list, seed_errors = seeds.load(args)
@@ -631,6 +659,11 @@ def get_inventory(args):
     if not seed_list:
         logging.error("No usable EASM seed supplied - give at least one of --fqdn, --seed or --seed_file")
         return None
+    if getattr(args, 'quick', False):
+        err = quick_mode.validate_seeds(seed_list)
+        if err:
+            logging.error(err)
+            return None
 
     owner = args.handle
     nmap_cache = {}
@@ -687,6 +720,14 @@ def get_inventory(args):
 
     assets = []
     assets_by_id = {}
+    if sink is not None:
+        sink['assets'] = assets
+
+    if getattr(args, 'quick', False):
+        bad = quick_mode.non_public(resolve_ips(primary_host))
+        if bad:
+            logging.error("[EASM] quick scan refused: [%s] resolves to non-public address(es) %s", primary_host, ', '.join(bad))
+            return None
 
     def _register(asset, skip_if_empty=False):
         if asset is None:

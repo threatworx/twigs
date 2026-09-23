@@ -614,29 +614,33 @@ def enumerate_subdomains(domain, args):
     address(es) are discarded) rather than skipping brute force altogether."""
     subdomains = enumerate_subdomains_passive(domain, args)
 
-    labels = load_wordlist(getattr(args, 'wordlist_tier', 'small'),
-                           getattr(args, 'wordlist_file', None))
+    wc_i = wc_c = None
+    wildcard = False
+    labels = []
     workers = getattr(args, 'dns_workers', 20) or 20
-
     resolver = None
-    if not getattr(args, 'no_resolver_pool', False):
-        try:
-            from . import resolver_pool
-            resolver = resolver_pool.get_pool(getattr(args, 'resolver_pool', None))
-        except Exception as e:
-            logging.debug("resolver pool unavailable: %s", e)
-        if resolver and len(resolver) >= 3:
-            workers = max(workers, 40)
-        else:
-            resolver = None
+    if not getattr(args, 'no_subdomain_bruteforce', False):
+        labels = load_wordlist(getattr(args, 'wordlist_tier', 'small'),
+                               getattr(args, 'wordlist_file', None))
 
-    wildcard, wc_ips, wc_cnames = wildcard_fingerprint(domain, resolver=resolver)
-    wc_i = wc_ips if wildcard else None
-    wc_c = wc_cnames if wildcard else None
-    if wildcard:
-        logging.info("[EASM] wildcard DNS for [%s] (wildcard target(s): %s) - brute-forcing %d label(s) with wildcard-response filtering",
-                     domain, ', '.join(sorted(wc_ips | wc_cnames)) or 'n/a', len(labels))
-    subdomains |= enumerate_subdomains_bruteforce(domain, workers, labels, wc_i, wc_c, resolver)
+        if not getattr(args, 'no_resolver_pool', False):
+            try:
+                from . import resolver_pool
+                resolver = resolver_pool.get_pool(getattr(args, 'resolver_pool', None))
+            except Exception as e:
+                logging.debug("resolver pool unavailable: %s", e)
+            if resolver and len(resolver) >= 3:
+                workers = max(workers, 40)
+            else:
+                resolver = None
+
+        wildcard, wc_ips, wc_cnames = wildcard_fingerprint(domain, resolver=resolver)
+        wc_i = wc_ips if wildcard else None
+        wc_c = wc_cnames if wildcard else None
+        if wildcard:
+            logging.info("[EASM] wildcard DNS for [%s] (wildcard target(s): %s) - brute-forcing %d label(s) with wildcard-response filtering",
+                         domain, ', '.join(sorted(wc_ips | wc_cnames)) or 'n/a', len(labels))
+        subdomains |= enumerate_subdomains_bruteforce(domain, workers, labels, wc_i, wc_c, resolver)
 
     if not getattr(args, 'no_subdomain_permutations', False):
         perm_hits = enumerate_subdomains_permutations(
