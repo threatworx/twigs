@@ -613,6 +613,10 @@ def add_asset_criticality_tag(assets, asset_criticality):
     asset_criticality_tag = 'CRITICALITY:'+str(asset_criticality)
     add_asset_tags(assets, [asset_criticality_tag])
 
+def add_asset_exposure_tag(assets, asset_exposure):
+    asset_exposure_tag = 'EXPOSURE:'+str(asset_exposure)
+    add_asset_tags(assets, [asset_exposure_tag])
+
 def authenticate_user(tw_user, tw_pwd, tw_instance):
     payload = { }
     payload["handle"] = tw_user
@@ -705,6 +709,7 @@ def main(args=None):
         parser.add_argument('--location', help='Specify location information for discovered asset(s).')
         parser.add_argument('--create_empty_asset', action='store_true', help='Create empty asset even if nothing is discovered. Applicable to source code (repo) assets.')
         parser.add_argument('--tag_critical', action='store_true', help='Tag the discovered asset(s) as critical')
+        parser.add_argument('--tag_public', action='store_true', help='Tag the discovered asset(s) as public facing')
         parser.add_argument('--tag', action='append', help='Add specified tag to discovered asset(s). You can specify this option multiple times to add multiple tags')
         parser.add_argument('--owner', action='append', help='Add additional owner(s) to discovered asset(s). You can specify this option multiple times to add multiple owners. Note user discovering the asset is added as owner by default')
         parser.add_argument('--no_auto_tags', action='store_true', help='Disable auto tagging of assets with standard classification tags. Only user specified tags will be applied')
@@ -1204,7 +1209,7 @@ def main(args=None):
         exclusive_group.add_argument('--snow_user_pwd', help='User password of ServiceNow account')
         parser_snow.add_argument('--enable_tracking_tags', action='store_true', help='Enable recording ServiceNow specific information (like ServiceNow instance name, etc.) as asset tags', required=False)
 
-        # Arguments required for ssl audit 
+        # Arguments required for web app discovery
         parser_website = subparsers.add_parser ("webapp", help = "Discover and test web application for vulnerabilities and misconfigurations. Includes OS/Service fingerprinting, SSL audit and DAST using zaproxy")
         parser_website.add_argument('--url', help='URL')
         parser_website.add_argument('--planfile', help='ZAP automation plan file')
@@ -1633,6 +1638,9 @@ def main(args=None):
 
                 if args.tag_critical:
                     add_asset_criticality_tag(assets, '5')
+
+                if args.tag_public:
+                    add_asset_exposure_tag(assets, '5')
 
                 if args.tag:
                     add_asset_tags(assets, args.tag)
