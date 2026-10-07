@@ -631,11 +631,21 @@ def _process_snmp_sysdescr(args, cmd, prod, products, ostype):
         prodstr = 'nokia sr os ' + ver if ver else 'nokia sr os'
         if prodstr not in products:
             products.append(prodstr)
-    elif 'Ruckus' in prod:
+    elif 'Ruckus' in prod and 'IronWare' in prod:
+        # e.g. "Ruckus Wireless, Inc. ICX7250-48, IronWare Version 08.0.95sT211 Compiled on ... labeled as SPS08095s"
         ostype = 'Ruckus'
-        m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
-        ver = m.group(1) if m else None
-        prodstr = 'ruckus ' + ver if ver else 'ruckus'
+        m = re.search(r'Ruckus Wireless,?\s+Inc\.?\s+([^,]+),', prod)
+        model = m.group(1).strip() if m else ''
+        # Prefer the image label (SPS08095s -> 08095s), else derive from IronWare version (08.0.95sT211 -> 08095s)
+        ver = None
+        m = re.search(r'labeled as\s+[A-Za-z]*(\d+[a-z]*)', prod)
+        if m:
+            ver = m.group(1)
+        else:
+            m = re.search(r'IronWare Version\s+([\d\.]+[a-z]*)', prod)
+            if m:
+                ver = m.group(1).replace('.', '')
+        prodstr = ' '.join(x for x in ['Ruckus Wireless', model, ver] if x)
         if prodstr not in products:
             products.append(prodstr)
     elif 'Ubiquiti' in prod or 'airOS' in prod or 'UniFi' in prod:
