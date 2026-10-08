@@ -89,11 +89,23 @@ def build_snmp_walk_cmd(args, addr):
 
     community = getattr(args, 'snmp_community', None) or 'public'
     security_name = getattr(args, 'snmp_security_name', None)
+    auth_protocol = getattr(args, 'snmp_auth_protocol', None)
+    auth_passphrase = getattr(args, 'snmp_auth_passphrase', None) or os.environ.get('SNMP_AUTH_PASSPHRASE')
+    priv_protocol = getattr(args, 'snmp_priv_protocol', None)
+    priv_passphrase = getattr(args, 'snmp_priv_passphrase', None) or os.environ.get('SNMP_PRIV_PASSPHRASE')
+    context = getattr(args, 'snmp_context', None)
+    level = getattr(args, 'snmp_level', None)
+
+    # Any v3-only option implies SNMP v3, not just the security name
+    v3_opts = [security_name, auth_protocol, getattr(args, 'snmp_auth_passphrase', None), priv_protocol,
+               getattr(args, 'snmp_priv_passphrase', None), context, level]
     version = getattr(args, 'snmp_version', None)
     if not version:
-        version = '3' if security_name else '1'
+        version = '3' if any(v3_opts) else '1'
 
     if version != '3':
+        if any(v3_opts):
+            logging.warning("SNMP v3 options are ignored with --snmp_version %s" % version)
         return [SNMPWALK, '-v' + version, '-c', community] + tail
 
     # SNMP v3
@@ -101,13 +113,10 @@ def build_snmp_walk_cmd(args, addr):
         logging.error("SNMP v3 requires --snmp_security_name")
         return None
 
-    auth_protocol = getattr(args, 'snmp_auth_protocol', None)
-    auth_passphrase = getattr(args, 'snmp_auth_passphrase', None) or os.environ.get('SNMP_AUTH_PASSPHRASE')
-    priv_protocol = getattr(args, 'snmp_priv_protocol', None)
-    priv_passphrase = getattr(args, 'snmp_priv_passphrase', None) or os.environ.get('SNMP_PRIV_PASSPHRASE')
-    context = getattr(args, 'snmp_context', None)
+    # net-snmp names the extended AES variants without a hyphen (AES192 / AES256)
+    if priv_protocol:
+        priv_protocol = priv_protocol.replace('-', '')
 
-    level = getattr(args, 'snmp_level', None)
     if not level:
         if auth_protocol and auth_passphrase and priv_protocol and priv_passphrase:
             level = 'authPriv'
@@ -147,11 +156,11 @@ def get_snmp_oid_value(args, cmd, oid):
         proc = subprocess.Popen(
             argv,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             start_new_session=True,
         )
         try:
-            stdout, _ = proc.communicate(timeout=15)
+            stdout, stderr = proc.communicate(timeout=15)
         except subprocess.TimeoutExpired:
             try:
                 os.killpg(proc.pid, signal.SIGKILL)
@@ -164,7 +173,8 @@ def get_snmp_oid_value(args, cmd, oid):
             logging.error("Timeout running snmpwalk command")
             return None
         if proc.returncode != 0:
-            logging.error("Error running snmpwalk command")
+            err = stderr.decode(errors='replace').strip().splitlines() if stderr else []
+            logging.error("Error running snmpwalk command" + (": " + err[0] if err else ""))
             return None
         out = stdout.decode(args.encoding)
     except Exception:
@@ -633,21 +643,24 @@ def _process_snmp_sysdescr(args, cmd, prod, products, ostype):
             products.append(prodstr)
     elif 'Ruckus' in prod and 'IronWare' in prod:
         # e.g. "Ruckus Wireless, Inc. ICX7250-48, IronWare Version 08.0.95sT211 Compiled on ... labeled as SPS08095s"
-        ostype = 'Ruckus'
+        ostype = 'Brocade'
         m = re.search(r'Ruckus Wireless,?\s+Inc\.?\s+([^,]+),', prod)
         model = m.group(1).strip() if m else ''
-        # Prefer the image label (SPS08095s -> 08095s), else derive from IronWare version (08.0.95sT211 -> 08095s)
+        # Prefer the IronWare version (08.0.95sT211 -> 08095s), else the image label (SPS08095s -> 08095s)
         ver = None
-        m = re.search(r'labeled as\s+[A-Za-z]*(\d+[a-z]*)', prod)
+        m = re.search(r'IronWare Version\s+([\d\.]+[a-z]*)', prod)
         if m:
-            ver = m.group(1)
+            ver = m.group(1).replace('.', '')
         else:
-            m = re.search(r'IronWare Version\s+([\d\.]+[a-z]*)', prod)
+            m = re.search(r'labeled as\s+(\S+)', prod)
             if m:
-                ver = m.group(1).replace('.', '')
-        prodstr = ' '.join(x for x in ['Ruckus Wireless', model, ver] if x)
-        if prodstr not in products:
-            products.append(prodstr)
+                ver = re.sub(r'^[A-Za-z]+', '', m.group(1))
+        # Model family without the port-count suffix (ICX7250-48 -> ICX 7250)
+        family = re.sub(r'^([A-Za-z]+)(\d)', r'\1 \2', model.split('-')[0])
+        for prodstr in [' '.join(x for x in ['Ruckus Wireless', family, ver] if x),
+                        ' '.join(x for x in [family, ver] if x) if family else None]:
+            if prodstr and prodstr not in products:
+                products.append(prodstr)
     elif 'Ubiquiti' in prod or 'airOS' in prod or 'UniFi' in prod:
         ostype = 'Ubiquiti'
         m = re.search(r'([\d]+\.[\d]+\.[\d]+[\.\d]*)', prod)
