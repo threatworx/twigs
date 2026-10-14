@@ -24,6 +24,7 @@ with warnings.catch_warnings():
    from cryptography.fernet import Fernet
 from . import utils
 from . import plugin_processor
+from . import shadow_ai
 from .host_benchmark import host_benchmark as host_benchmark
 
 def check_host_up(host):
@@ -390,6 +391,23 @@ def discover_hosts(args, hosts):
                         asset['config_issues'] = host_bm_issues
                     else:
                         asset['config_issues'].extend(host_bm_issues)
+
+            if getattr(args, 'shadow_ai', False):
+                try:
+                    sa_issues, sa_products, sa_tags = shadow_ai.run_scan(args, host, asset['id'], asset['type'])
+                except Exception as e:
+                    sa_issues, sa_products, sa_tags = [], [], []
+                    logging.error("Error running shadow AI scan: %s" % str(e))
+                    logging.error(traceback.format_exc())
+                if sa_products:
+                    asset['products'].extend(sa_products)
+                if sa_tags:
+                    asset['tags'].extend(sa_tags)
+                if sa_issues:
+                    if asset.get('config_issues') is None:
+                        asset['config_issues'] = sa_issues
+                    else:
+                        asset['config_issues'].extend(sa_issues)
 
             assets.append(asset)
     return assets

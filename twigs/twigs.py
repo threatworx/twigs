@@ -1146,12 +1146,18 @@ def main(args=None):
         parser_linux.add_argument('--no_host_benchmark', action='store_true', help='Skip host benchmark audit')
         parser_linux.add_argument('--check_vuln', action='append', help='Run plugin to detect impact of specified vulnerabilities. You can use this option multiple times to specify multiple vulnerabilities')
         parser_linux.add_argument('--check_all_vulns', action='store_true', help='Run plugins to detect impact of all vulnerabilities')
+        parser_linux.add_argument('--shadow_ai', action='store_true', help='Discover shadow AI on the host: AI desktop apps, CLI tools, local LLM runtimes/services, IDE and browser AI extensions, and locally stored AI models (public and custom/private)')
+        parser_linux.add_argument('--shadow_ai_check_credentials', action='store_true', help='As part of --shadow_ai, also check for the presence of AI provider credentials (env var names and known config file paths). Values are never read.')
+        parser_linux.add_argument('--shadow_ai_check_packages', action='store_true', help='As part of --shadow_ai, also scan pip/npm/gem package listings for installed AI SDKs. Slower than the base scan.')
 
         # Arguments required for Host discovery on Windows
         parser_win = subparsers.add_parser ("win_host", help = "Discover Windows host assets (requires WinRM / PS Remoting to be enabled)")
         parser_win.add_argument('--host_list', help='A file (currently in CSV format) containing details of remote hosts. CSV file column header [1st row] should be: hostname,userlogin,userpwd,privatekey,assetid,assetname. Note "hostname" column can contain hostname, IP address, CIDR range.')
         parser_win.add_argument('--secure', action='store_true', help='Use this option to encrypt clear text passwords in the host list file')
         parser_win.add_argument('--password', help='A password used to encrypt / decrypt login information from the host list file')
+        parser_win.add_argument('--shadow_ai', action='store_true', help='Discover shadow AI on the host: AI desktop apps, CLI tools, local LLM runtimes/services, IDE and browser AI extensions, and locally stored AI models (public and custom/private)')
+        parser_win.add_argument('--shadow_ai_check_credentials', action='store_true', help='As part of --shadow_ai, also check for the presence of AI provider credentials (env var names and known config file paths). Values are never read.')
+        parser_win.add_argument('--shadow_ai_check_packages', action='store_true', help='As part of --shadow_ai, also scan pip/npm package listings for installed AI SDKs. Slower than the base scan.')
 
         # Arguments required for vmware discovery
         parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMware vCenter/ESX assets")

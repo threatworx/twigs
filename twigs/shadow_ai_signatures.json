@@ -1,0 +1,307 @@
+{
+  "meta": {
+    "version": "1.0",
+    "description": "Signature catalog for shadow AI discovery. Consumed by twigs/shadow_ai.py (host mode), twigs/windows.py (win_host mode) and ShadowAI.psm1 (twigs.ps1). Extend this file as new AI tools/runtimes/model formats appear rather than hardcoding signatures in each implementation.",
+    "updated": "2026-09-24"
+  },
+  "public_model_families": [
+    {"vendor": "Meta", "match": ["llama", "codellama", "code-llama"]},
+    {"vendor": "Mistral AI", "match": ["mistral", "mixtral", "codestral"]},
+    {"vendor": "Google", "match": ["gemma"]},
+    {"vendor": "Microsoft", "match": ["phi-1", "phi-2", "phi-3", "phi-4", "phi1", "phi2", "phi3", "phi4"]},
+    {"vendor": "Alibaba", "match": ["qwen"]},
+    {"vendor": "DeepSeek", "match": ["deepseek"]},
+    {"vendor": "TII", "match": ["falcon"]},
+    {"vendor": "Stability AI", "match": ["stablelm", "stable-diffusion", "stablediffusion", "sdxl", "sd-"]},
+    {"vendor": "BigScience", "match": ["bloom"]},
+    {"vendor": "EleutherAI", "match": ["gpt-j", "gpt-neox", "pythia", "gptj", "gptneox"]},
+    {"vendor": "OpenAI", "match": ["whisper", "gpt-oss", "clip-vit"]},
+    {"vendor": "01.AI", "match": ["yi-6b", "yi-9b", "yi-34b", "01-ai"]},
+    {"vendor": "Databricks", "match": ["dbrx"]},
+    {"vendor": "Cohere", "match": ["command-r", "commandr"]},
+    {"vendor": "Nous Research", "match": ["hermes", "nous-hermes"]},
+    {"vendor": "Zhipu AI", "match": ["chatglm", "glm-4"]}
+  ],
+  "linux": {
+    "desktop_apps": [
+      {"product": "ChatGPT Desktop", "category": "Desktop AI App", "paths": ["~/.config/ChatGPT", "/opt/ChatGPT", "/usr/share/applications/chatgpt*.desktop"]},
+      {"product": "Cursor", "category": "AI IDE", "paths": ["~/.config/Cursor", "~/.cursor", "/opt/Cursor", "/usr/share/applications/cursor.desktop"]},
+      {"product": "Windsurf", "category": "AI IDE", "paths": ["~/.codeium/windsurf", "~/.config/Windsurf", "/opt/Windsurf"]},
+      {"product": "GPT4All", "category": "Local LLM Runtime", "paths": ["~/.local/share/nomic.ai/GPT4All", "~/.cache/gpt4all"]},
+      {"product": "Jan", "category": "Local LLM Runtime", "paths": ["~/.jan", "~/.config/Jan"]},
+      {"product": "AnythingLLM", "category": "Local LLM Runtime", "paths": ["~/.config/anythingllm-desktop", "/opt/AnythingLLM"]},
+      {"product": "Msty", "category": "Local LLM Runtime", "paths": ["~/.msty", "~/.config/Msty"]},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "paths": ["~/.cache/lm-studio", "~/.lmstudio", "/opt/lm-studio"]},
+      {"product": "text-generation-webui", "category": "Local LLM Runtime", "paths": ["~/text-generation-webui", "~/oobabooga"]}
+    ],
+    "cli_tools": [
+      {"product": "Ollama CLI", "category": "Local LLM Runtime", "bin": "ollama"},
+      {"product": "llm (Simon Willison)", "category": "CLI AI Tool", "bin": "llm"},
+      {"product": "aichat", "category": "CLI AI Tool", "bin": "aichat"},
+      {"product": "shell-gpt", "category": "CLI AI Tool", "bin": "sgpt"},
+      {"product": "aider", "category": "CLI AI Tool", "bin": "aider"},
+      {"product": "open-interpreter", "category": "CLI AI Tool", "bin": "interpreter"},
+      {"product": "GitHub Copilot CLI", "category": "CLI AI Tool", "bin": "github-copilot-cli"},
+      {"product": "llama.cpp server", "category": "Local LLM Runtime", "bin": "llama-server"},
+      {"product": "vLLM", "category": "Local LLM Runtime", "bin": "vllm"},
+      {"product": "Claude Code", "category": "AI Coding Agent CLI", "bin": "claude"},
+      {"product": "Gemini CLI", "category": "AI Coding Agent CLI", "bin": "gemini"},
+      {"product": "OpenAI Codex CLI", "category": "AI Coding Agent CLI", "bin": "codex"},
+      {"product": "Amazon Q Developer CLI", "category": "AI Coding Agent CLI", "bin": "q"},
+      {"product": "Cursor CLI", "category": "AI Coding Agent CLI", "bin": "cursor-agent"},
+      {"product": "OpenCode", "category": "AI Coding Agent CLI", "bin": "opencode"},
+      {"product": "Goose", "category": "AI Coding Agent CLI", "bin": "goose"},
+      {"product": "Amp", "category": "AI Coding Agent CLI", "bin": "amp"},
+      {"product": "Plandex", "category": "AI Coding Agent CLI", "bin": "plandex"},
+      {"product": "Augment Code CLI", "category": "AI Coding Agent CLI", "bin": "auggie"},
+      {"product": "Charm Crush", "category": "AI Coding Agent CLI", "bin": "crush"},
+      {"product": "Charm mods", "category": "AI Coding Agent CLI", "bin": "mods"}
+    ],
+    "processes": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "match": "ollama"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "match": "lm-studio|lmstudio"},
+      {"product": "llama.cpp server", "category": "Local LLM Runtime", "match": "llama-server|llama.cpp"},
+      {"product": "text-generation-webui", "category": "Local LLM Runtime", "match": "text-generation-webui|server.py.*--listen"},
+      {"product": "vLLM", "category": "Local LLM Runtime", "match": "vllm.entrypoints"}
+    ],
+    "services": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "unit": "ollama.service"}
+    ],
+    "ports": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "port": 11434, "process_match": "ollama"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "port": 1234, "process_match": "lm-studio|lmstudio"},
+      {"product": "text-generation-webui", "category": "Local LLM Runtime", "port": 7860, "process_match": "text-generation|python"},
+      {"product": "vLLM", "category": "Local LLM Runtime", "port": 8000, "process_match": "vllm|python"},
+      {"product": "llama.cpp server", "category": "Local LLM Runtime", "port": 8080, "process_match": "llama-server"}
+    ],
+    "ide_extensions": [
+      {"product": "GitHub Copilot", "category": "AI IDE Plugin", "vscode_id": "github.copilot"},
+      {"product": "GitHub Copilot Chat", "category": "AI IDE Plugin", "vscode_id": "github.copilot-chat"},
+      {"product": "Codeium", "category": "AI IDE Plugin", "vscode_id": "codeium.codeium"},
+      {"product": "Tabnine", "category": "AI IDE Plugin", "vscode_id": "tabnine.tabnine-vscode"},
+      {"product": "Continue", "category": "AI IDE Plugin", "vscode_id": "continue.continue"},
+      {"product": "Amazon Q / CodeWhisperer", "category": "AI IDE Plugin", "vscode_id": "amazonwebservices.amazon-q-vscode"},
+      {"product": "Cline", "category": "AI IDE Plugin", "vscode_id": "saoudrizwan.claude-dev"}
+    ],
+    "browser_extensions": {
+      "chrome": {
+        "cofdbpoegempjloogbagkncekinflcnj": "Merlin AI",
+        "bmnlcjabgnpnenekpadlanbbkooimhnj": "Sider AI",
+        "kdiafahodlkkiaknnpieocnbmokpcjjb": "Monica AI",
+        "gpaiobkfhnonedkhhfjpmhdalgeoebfa": "Grammarly",
+        "cimiefiiaegbelhefglklhhakcgmhkai": "ChatGPT Sidebar"
+      }
+    },
+    "packages": {
+      "pip": ["openai", "anthropic", "google-generativeai", "langchain", "llama-index", "transformers", "huggingface_hub", "cohere", "mistralai", "ollama"],
+      "npm": ["openai", "@anthropic-ai/sdk", "langchain", "@google/generative-ai"],
+      "gem": ["ruby-openai"]
+    },
+    "credential_markers": {
+      "env_vars": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "COHERE_API_KEY", "MISTRAL_API_KEY", "HUGGINGFACE_TOKEN", "HF_TOKEN", "AZURE_OPENAI_API_KEY", "GROQ_API_KEY"],
+      "paths": ["~/.openai", "~/.config/llm", "~/.continue/config.json", "~/.codeium/config.json", "~/.aider.conf.yml"]
+    },
+    "model_stores": [
+      {"runtime": "Ollama", "type": "ollama_manifest", "path": "~/.ollama/models/manifests"},
+      {"runtime": "Hugging Face Cache", "type": "hf_cache", "path": "~/.cache/huggingface/hub"},
+      {"runtime": "LM Studio", "type": "glob", "path": "~/.cache/lm-studio/models", "ext": [".gguf"]},
+      {"runtime": "GPT4All", "type": "glob", "path": "~/.local/share/nomic.ai/GPT4All", "ext": [".gguf", ".bin"]},
+      {"runtime": "Jan", "type": "glob", "path": "~/.jan/models", "ext": [".gguf"]},
+      {"runtime": "text-generation-webui", "type": "glob", "path": "~/text-generation-webui/models", "ext": [".gguf", ".safetensors", ".bin"]}
+    ]
+  },
+  "macos": {
+    "desktop_apps": [
+      {"product": "ChatGPT Desktop", "category": "Desktop AI App", "paths": ["/Applications/ChatGPT.app"]},
+      {"product": "Claude Desktop", "category": "Desktop AI App", "paths": ["/Applications/Claude.app"]},
+      {"product": "Microsoft Copilot", "category": "Desktop AI App", "paths": ["/Applications/Copilot.app"]},
+      {"product": "Perplexity", "category": "Desktop AI App", "paths": ["/Applications/Perplexity.app"]},
+      {"product": "Cursor", "category": "AI IDE", "paths": ["/Applications/Cursor.app", "~/.cursor"]},
+      {"product": "Windsurf", "category": "AI IDE", "paths": ["/Applications/Windsurf.app", "~/.codeium/windsurf"]},
+      {"product": "GPT4All", "category": "Local LLM Runtime", "paths": ["~/Library/Application Support/nomic.ai/GPT4All"]},
+      {"product": "Jan", "category": "Local LLM Runtime", "paths": ["/Applications/Jan.app", "~/Library/Application Support/Jan"]},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "paths": ["/Applications/LM Studio.app", "~/.cache/lm-studio", "~/.lmstudio"]},
+      {"product": "AnythingLLM", "category": "Local LLM Runtime", "paths": ["/Applications/AnythingLLM.app"]},
+      {"product": "Msty", "category": "Local LLM Runtime", "paths": ["/Applications/Msty.app"]},
+      {"product": "Raycast AI", "category": "Desktop AI App", "paths": ["/Applications/Raycast.app"]}
+    ],
+    "cli_tools": [
+      {"product": "Ollama CLI", "category": "Local LLM Runtime", "bin": "ollama"},
+      {"product": "llm (Simon Willison)", "category": "CLI AI Tool", "bin": "llm"},
+      {"product": "aichat", "category": "CLI AI Tool", "bin": "aichat"},
+      {"product": "shell-gpt", "category": "CLI AI Tool", "bin": "sgpt"},
+      {"product": "aider", "category": "CLI AI Tool", "bin": "aider"},
+      {"product": "llama.cpp server", "category": "Local LLM Runtime", "bin": "llama-server"},
+      {"product": "Claude Code", "category": "AI Coding Agent CLI", "bin": "claude"},
+      {"product": "Gemini CLI", "category": "AI Coding Agent CLI", "bin": "gemini"},
+      {"product": "OpenAI Codex CLI", "category": "AI Coding Agent CLI", "bin": "codex"},
+      {"product": "Amazon Q Developer CLI", "category": "AI Coding Agent CLI", "bin": "q"},
+      {"product": "Cursor CLI", "category": "AI Coding Agent CLI", "bin": "cursor-agent"},
+      {"product": "OpenCode", "category": "AI Coding Agent CLI", "bin": "opencode"},
+      {"product": "Goose", "category": "AI Coding Agent CLI", "bin": "goose"},
+      {"product": "Amp", "category": "AI Coding Agent CLI", "bin": "amp"},
+      {"product": "Plandex", "category": "AI Coding Agent CLI", "bin": "plandex"},
+      {"product": "Augment Code CLI", "category": "AI Coding Agent CLI", "bin": "auggie"},
+      {"product": "Charm Crush", "category": "AI Coding Agent CLI", "bin": "crush"},
+      {"product": "Charm mods", "category": "AI Coding Agent CLI", "bin": "mods"}
+    ],
+    "processes": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "match": "ollama"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "match": "LM Studio|lmstudio"},
+      {"product": "llama.cpp server", "category": "Local LLM Runtime", "match": "llama-server|llama.cpp"}
+    ],
+    "services": [],
+    "ports": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "port": 11434, "process_match": "ollama"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "port": 1234, "process_match": "LM Studio|lmstudio"}
+    ],
+    "ide_extensions": [
+      {"product": "GitHub Copilot", "category": "AI IDE Plugin", "vscode_id": "github.copilot"},
+      {"product": "GitHub Copilot Chat", "category": "AI IDE Plugin", "vscode_id": "github.copilot-chat"},
+      {"product": "Codeium", "category": "AI IDE Plugin", "vscode_id": "codeium.codeium"},
+      {"product": "Tabnine", "category": "AI IDE Plugin", "vscode_id": "tabnine.tabnine-vscode"},
+      {"product": "Continue", "category": "AI IDE Plugin", "vscode_id": "continue.continue"},
+      {"product": "Cline", "category": "AI IDE Plugin", "vscode_id": "saoudrizwan.claude-dev"}
+    ],
+    "browser_extensions": {
+      "chrome": {
+        "cofdbpoegempjloogbagkncekinflcnj": "Merlin AI",
+        "bmnlcjabgnpnenekpadlanbbkooimhnj": "Sider AI",
+        "kdiafahodlkkiaknnpieocnbmokpcjjb": "Monica AI",
+        "gpaiobkfhnonedkhhfjpmhdalgeoebfa": "Grammarly",
+        "cimiefiiaegbelhefglklhhakcgmhkai": "ChatGPT Sidebar"
+      }
+    },
+    "packages": {
+      "pip": ["openai", "anthropic", "google-generativeai", "langchain", "llama-index", "transformers", "huggingface_hub", "cohere", "mistralai", "ollama"],
+      "npm": ["openai", "@anthropic-ai/sdk", "langchain", "@google/generative-ai"],
+      "gem": ["ruby-openai"]
+    },
+    "credential_markers": {
+      "env_vars": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "COHERE_API_KEY", "MISTRAL_API_KEY", "HUGGINGFACE_TOKEN", "HF_TOKEN", "AZURE_OPENAI_API_KEY", "GROQ_API_KEY"],
+      "paths": ["~/.openai", "~/.config/llm", "~/.continue/config.json", "~/.codeium/config.json", "~/.aider.conf.yml"]
+    },
+    "model_stores": [
+      {"runtime": "Ollama", "type": "ollama_manifest", "path": "~/.ollama/models/manifests"},
+      {"runtime": "Hugging Face Cache", "type": "hf_cache", "path": "~/.cache/huggingface/hub"},
+      {"runtime": "LM Studio", "type": "glob", "path": "~/.cache/lm-studio/models", "ext": [".gguf"]},
+      {"runtime": "GPT4All", "type": "glob", "path": "~/Library/Application Support/nomic.ai/GPT4All", "ext": [".gguf", ".bin"]},
+      {"runtime": "Jan", "type": "glob", "path": "~/Library/Application Support/Jan/data/models", "ext": [".gguf"]}
+    ]
+  },
+  "windows": {
+    "desktop_apps": [
+      {"product": "ChatGPT Desktop", "category": "Desktop AI App", "match": ["ChatGPT"]},
+      {"product": "Claude Desktop", "category": "Desktop AI App", "match": ["Claude"]},
+      {"product": "Microsoft Copilot", "category": "Desktop AI App", "match": ["Copilot"]},
+      {"product": "Perplexity", "category": "Desktop AI App", "match": ["Perplexity"]},
+      {"product": "Cursor", "category": "AI IDE", "match": ["Cursor"]},
+      {"product": "Windsurf", "category": "AI IDE", "match": ["Windsurf"]},
+      {"product": "GPT4All", "category": "Local LLM Runtime", "match": ["GPT4All"]},
+      {"product": "Jan", "category": "Local LLM Runtime", "match": ["^Jan$", "Jan AI"]},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "match": ["LM Studio"]},
+      {"product": "AnythingLLM", "category": "Local LLM Runtime", "match": ["AnythingLLM"]},
+      {"product": "Msty", "category": "Local LLM Runtime", "match": ["Msty"]},
+      {"product": "Ollama", "category": "Local LLM Runtime", "match": ["Ollama"]},
+      {"product": "Poe", "category": "Desktop AI App", "match": ["Poe by Quora", "Poe.com"]},
+      {"product": "Pi (Inflection AI)", "category": "Desktop AI App", "match": ["Pi by Inflection", "Inflection AI"]},
+      {"product": "DeepSeek", "category": "Desktop AI App", "match": ["DeepSeek"]},
+      {"product": "Grok", "category": "Desktop AI App", "match": ["Grok"]},
+      {"product": "Le Chat (Mistral)", "category": "Desktop AI App", "match": ["Le Chat", "Mistral AI"]},
+      {"product": "Otter.ai", "category": "AI Meeting/Transcription", "match": ["Otter.ai", "Otter Voice Meeting Notes"]},
+      {"product": "Fireflies.ai", "category": "AI Meeting/Transcription", "match": ["Fireflies"]},
+      {"product": "Read.ai", "category": "AI Meeting/Transcription", "match": ["Read.ai", "Read AI"]},
+      {"product": "Fathom", "category": "AI Meeting/Transcription", "match": ["Fathom"]},
+      {"product": "Grain", "category": "AI Meeting/Transcription", "match": ["Grain"]},
+      {"product": "Descript", "category": "AI Meeting/Transcription", "match": ["Descript"]},
+      {"product": "Krisp", "category": "AI Meeting/Transcription", "match": ["Krisp"]}
+    ],
+    "paths": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "path": "$env:LOCALAPPDATA\\Programs\\Ollama"},
+      {"product": "Cursor", "category": "AI IDE", "path": "$env:LOCALAPPDATA\\Programs\\cursor"},
+      {"product": "Cursor", "category": "AI IDE", "path": "$env:USERPROFILE\\.cursor"},
+      {"product": "Windsurf", "category": "AI IDE", "path": "$env:USERPROFILE\\.codeium\\windsurf"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "path": "$env:USERPROFILE\\.cache\\lm-studio"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "path": "$env:USERPROFILE\\.lmstudio"},
+      {"product": "Jan", "category": "Local LLM Runtime", "path": "$env:USERPROFILE\\.jan"},
+      {"product": "GPT4All", "category": "Local LLM Runtime", "path": "$env:LOCALAPPDATA\\nomic.ai\\GPT4All"}
+    ],
+    "appx_packages": [
+      {"product": "Windows Copilot", "category": "Desktop AI App", "match": "*Copilot*"},
+      {"product": "Microsoft 365 Copilot", "category": "Desktop AI App", "match": "*365Copilot*"},
+      {"product": "Claude Desktop", "category": "Desktop AI App", "match": "*Claude*"}
+    ],
+    "registry_run_keys": [
+      "HKCU:\\Software\\Microsoft\\Windows\\Shell\\Copilot"
+    ],
+    "cli_tools": [
+      {"product": "Ollama CLI", "category": "Local LLM Runtime", "bin": "ollama"},
+      {"product": "Claude Code", "category": "AI Coding Agent CLI", "bin": "claude"},
+      {"product": "Gemini CLI", "category": "AI Coding Agent CLI", "bin": "gemini"},
+      {"product": "OpenAI Codex CLI", "category": "AI Coding Agent CLI", "bin": "codex"},
+      {"product": "Amazon Q Developer CLI", "category": "AI Coding Agent CLI", "bin": "q", "skip_freetext_match": true},
+      {"product": "Cursor CLI", "category": "AI Coding Agent CLI", "bin": "cursor-agent"},
+      {"product": "OpenCode", "category": "AI Coding Agent CLI", "bin": "opencode"},
+      {"product": "Goose", "category": "AI Coding Agent CLI", "bin": "goose", "skip_freetext_match": true},
+      {"product": "Amp", "category": "AI Coding Agent CLI", "bin": "amp", "skip_freetext_match": true},
+      {"product": "Plandex", "category": "AI Coding Agent CLI", "bin": "plandex"},
+      {"product": "Augment Code CLI", "category": "AI Coding Agent CLI", "bin": "auggie"},
+      {"product": "Charm Crush", "category": "AI Coding Agent CLI", "bin": "crush", "skip_freetext_match": true},
+      {"product": "Charm mods", "category": "AI Coding Agent CLI", "bin": "mods", "skip_freetext_match": true},
+      {"product": "aider", "category": "CLI AI Tool", "bin": "aider"}
+    ],
+    "processes": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "match": "ollama"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "match": "LM Studio|lm-studio"},
+      {"product": "llama.cpp server", "category": "Local LLM Runtime", "match": "llama-server|llama"},
+      {"product": "text-generation-webui", "category": "Local LLM Runtime", "match": "text-generation-webui"},
+      {"product": "Krisp", "category": "AI Meeting/Transcription", "match": "Krisp"}
+    ],
+    "services": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "match": "Ollama"}
+    ],
+    "ports": [
+      {"product": "Ollama", "category": "Local LLM Runtime", "port": 11434, "process_match": "ollama"},
+      {"product": "LM Studio", "category": "Local LLM Runtime", "port": 1234, "process_match": "LM Studio|lm-studio"},
+      {"product": "text-generation-webui", "category": "Local LLM Runtime", "port": 7860, "process_match": "python"},
+      {"product": "vLLM", "category": "Local LLM Runtime", "port": 8000, "process_match": "python"}
+    ],
+    "ide_extensions": [
+      {"product": "GitHub Copilot", "category": "AI IDE Plugin", "vscode_id": "github.copilot"},
+      {"product": "GitHub Copilot Chat", "category": "AI IDE Plugin", "vscode_id": "github.copilot-chat"},
+      {"product": "Codeium", "category": "AI IDE Plugin", "vscode_id": "codeium.codeium"},
+      {"product": "Tabnine", "category": "AI IDE Plugin", "vscode_id": "tabnine.tabnine-vscode"},
+      {"product": "Continue", "category": "AI IDE Plugin", "vscode_id": "continue.continue"},
+      {"product": "Amazon Q / CodeWhisperer", "category": "AI IDE Plugin", "vscode_id": "amazonwebservices.amazon-q-vscode"},
+      {"product": "Cline", "category": "AI IDE Plugin", "vscode_id": "saoudrizwan.claude-dev"}
+    ],
+    "browser_extensions": {
+      "chrome": {
+        "cofdbpoegempjloogbagkncekinflcnj": "Merlin AI",
+        "bmnlcjabgnpnenekpadlanbbkooimhnj": "Sider AI",
+        "kdiafahodlkkiaknnpieocnbmokpcjjb": "Monica AI",
+        "gpaiobkfhnonedkhhfjpmhdalgeoebfa": "Grammarly",
+        "cimiefiiaegbelhefglklhhakcgmhkai": "ChatGPT Sidebar"
+      },
+      "edge": {
+        "cofdbpoegempjloogbagkncekinflcnj": "Merlin AI",
+        "gpaiobkfhnonedkhhfjpmhdalgeoebfa": "Grammarly"
+      }
+    },
+    "packages": {
+      "pip": ["openai", "anthropic", "google-generativeai", "langchain", "llama-index", "transformers", "huggingface_hub", "cohere", "mistralai", "ollama"],
+      "npm": ["openai", "@anthropic-ai/sdk", "langchain", "@google/generative-ai"]
+    },
+    "credential_markers": {
+      "env_vars": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "COHERE_API_KEY", "MISTRAL_API_KEY", "HUGGINGFACE_TOKEN", "HF_TOKEN", "AZURE_OPENAI_API_KEY", "GROQ_API_KEY"],
+      "paths": ["$env:USERPROFILE\\.continue\\config.json", "$env:USERPROFILE\\.codeium\\config.json", "$env:APPDATA\\Cursor"]
+    },
+    "model_stores": [
+      {"runtime": "Ollama", "type": "ollama_manifest", "path": "$env:USERPROFILE\\.ollama\\models\\manifests"},
+      {"runtime": "Hugging Face Cache", "type": "hf_cache", "path": "$env:USERPROFILE\\.cache\\huggingface\\hub"},
+      {"runtime": "LM Studio", "type": "glob", "path": "$env:USERPROFILE\\.cache\\lm-studio\\models", "ext": [".gguf"]},
+      {"runtime": "GPT4All", "type": "glob", "path": "$env:LOCALAPPDATA\\nomic.ai\\GPT4All", "ext": [".gguf", ".bin"]},
+      {"runtime": "Jan", "type": "glob", "path": "$env:USERPROFILE\\.jan\\models", "ext": [".gguf"]}
+    ]
+  }
+}

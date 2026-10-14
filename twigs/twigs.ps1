@@ -110,7 +110,22 @@ param(
     [parameter(Mandatory=$false, HelpMessage='After impact refresh is complete email scan report to self. Possible values (true or false). Default is false')]
     [ValidateSet('true','false')]
     [String]
-    $email_report='false'
+    $email_report='false',
+
+    [parameter(Mandatory=$false, HelpMessage='Discover shadow AI on the host: AI desktop apps, CLI tools, local LLM runtimes/services, IDE and browser AI extensions, and locally stored AI models (public and custom/private). Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $shadow_ai_scan='false',
+
+    [parameter(Mandatory=$false, HelpMessage='As part of shadow_ai_scan, also check for the presence of AI provider credentials (env var names and known config file paths). Values are never read. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $shadow_ai_check_credentials='false',
+
+    [parameter(Mandatory=$false, HelpMessage='As part of shadow_ai_scan, also scan pip/npm package listings for installed AI SDKs. Slower than the base scan. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $shadow_ai_check_packages='false'
 )
 
 function ql { $Args }
@@ -313,7 +328,7 @@ function Invoke-RemoteDiscovery {
                 $remotescript = ".\twigs.exe"
             }
             Invoke-Command -Session $remoteSession { Set-Location $using:remote_twigs_folder }
-            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report}
+            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report -shadow_ai_scan $using:shadow_ai_scan -shadow_ai_check_credentials $using:shadow_ai_check_credentials -shadow_ai_check_packages $using:shadow_ai_check_packages}
             Invoke-Command -Session $remoteSession { Set-Location "..\..\" }
             Invoke-Command -Session $remoteSession { Remove-Item $using:remote_folder -Recurse }
             Remove-PSSession $remoteSession
@@ -512,6 +527,30 @@ function Invoke-LocalDiscovery {
             }
         }
         if (Test-Path $hbm_csv_rpt) { Remove-Item $hbm_csv_rpt }
+    }
+
+    # Run shadow AI discovery if specified
+    if ($shadow_ai_scan -eq "true") {
+        $FileLocation =
+            if ($PSScriptRoot) { # running as .ps1 file
+                $PSScriptRoot
+            }
+            else {               # running as .exe
+                Split-Path (Convert-Path -LiteralPath ([Environment]::GetCommandLineArgs()[0]))
+            }
+        Write-Host "Running shadow AI discovery. This may take some time..."
+        $sa_module = $FileLocation + '\ShadowAI.psm1'
+        Unblock-File $sa_module
+        Import-Module $sa_module -Force
+        $sa_sig_file = $FileLocation + '\shadow_ai_signatures.json'
+        $sa_sig = (Get-Content -Path $sa_sig_file -Raw -Encoding UTF8) | ConvertFrom-Json
+        $sa_check_credentials = ($shadow_ai_check_credentials -eq "true")
+        $sa_check_packages = ($shadow_ai_check_packages -eq "true")
+        $sa_result = Invoke-ShadowAIScan -Signatures $sa_sig -InstalledProducts $product_json_array -AssetId $assetid -CheckCredentials $sa_check_credentials -CheckPackages $sa_check_packages
+        foreach ($sa_issue in $sa_result.config_issues) { $misconfigs_json_array.Add($sa_issue) }
+        foreach ($sa_product in $sa_result.products) { $product_json_array.Add($sa_product) }
+        foreach ($sa_tag in $sa_result.tags) { $tags_json_array.Add($sa_tag) }
+        Write-Host "Shadow AI findings:", $sa_result.config_issues.Count
     }
 
     $url = ''

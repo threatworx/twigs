@@ -162,6 +162,75 @@ def get_inventory(args):
         else:
             return discover_windows_hosts(args, remote_hosts)
 
+def _ps_single_quote(s):
+    return "'" + s.replace("'", "''") + "'"
+
+
+def _ps_string_array(values):
+    return '@(' + ','.join(_ps_single_quote(v) for v in values) + ')'
+
+
+def _load_shadow_ai_module_source():
+    module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ShadowAI.psm1')
+    with open(module_path, 'r') as f:
+        lines = f.readlines()
+    # Export-ModuleMember is only valid when the file is loaded via
+    # Import-Module. Here we inline the function definitions directly into
+    # an ad hoc remote script (win_host/WinRM has no file-copy step), so
+    # strip that line rather than ship it as a broken remote command.
+    lines = [l for l in lines if not l.strip().startswith('Export-ModuleMember')]
+    return ''.join(lines)
+
+
+def _load_shadow_ai_signatures_json():
+    sig_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shadow_ai_signatures.json')
+    with open(sig_path, 'r') as f:
+        return f.read()
+
+
+def _normalize_json_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def run_shadow_ai_scan(args, winrm_session, asset_id, products):
+    logging.info("Running shadow AI discovery for [%s]. This may take some time...", asset_id)
+    module_source = _load_shadow_ai_module_source()
+    signatures_json = _load_shadow_ai_signatures_json()
+    check_credentials = 'true' if getattr(args, 'shadow_ai_check_credentials', False) else 'false'
+    check_packages = 'true' if getattr(args, 'shadow_ai_check_packages', False) else 'false'
+
+    script = module_source
+    script += "\n$__sa_sig_json = @'\n" + signatures_json + "\n'@\n"
+    script += "$__sa_sig = $__sa_sig_json | ConvertFrom-Json\n"
+    script += "$__sa_products = " + _ps_string_array(products) + "\n"
+    script += (
+        "$__sa_result = Invoke-ShadowAIScan -Signatures $__sa_sig -InstalledProducts $__sa_products "
+        "-AssetId " + _ps_single_quote(asset_id) +
+        " -CheckCredentials $" + check_credentials + " -CheckPackages $" + check_packages + "\n"
+    )
+    script += "Write-Host ($__sa_result | ConvertTo-Json -Depth 10 -Compress)"
+
+    temp_out = run_ps_command(args, winrm_session, script)
+    if temp_out is None or temp_out.strip() == '':
+        logging.error("Shadow AI scan returned no output")
+        return [], [], []
+    try:
+        result = json.loads(temp_out)
+    except Exception as e:
+        logging.error("Error parsing shadow AI scan JSON: %s", str(e))
+        return [], [], []
+
+    config_issues = _normalize_json_list(result.get('config_issues'))
+    sa_products = _normalize_json_list(result.get('products'))
+    tags = _normalize_json_list(result.get('tags'))
+    logging.info("Completed shadow AI discovery for [%s]. Found %d finding(s)", asset_id, len(config_issues))
+    return config_issues, sa_products, tags
+
+
 def discover_windows_hosts(args, hosts):
     assets = []
     for host in hosts:
@@ -267,7 +336,21 @@ def discover_windows_host(args, host):
         asset_tags.append('OS_ARCH:' + os_arch)
     asset_tags.append('Windows')
     asset_data['tags'] = asset_tags
-    
+
+    if getattr(args, 'shadow_ai', False):
+        installed_products = products if isinstance(products, list) else [products]
+        try:
+            sa_issues, sa_products, sa_tags = run_shadow_ai_scan(args, winrm_session, asset_id, installed_products)
+        except Exception as e:
+            sa_issues, sa_products, sa_tags = [], [], []
+            logging.error("Error running shadow AI scan: %s", str(e))
+        if sa_products:
+            asset_data['products'].extend(sa_products)
+        if sa_tags:
+            asset_data['tags'].extend(sa_tags)
+        if sa_issues:
+            asset_data['config_issues'] = sa_issues
+
     return asset_data
 
 def open_winrm_session(host, args):
