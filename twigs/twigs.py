@@ -1154,6 +1154,7 @@ def main(args=None):
         parser_linux.add_argument('--shadow_ai', action='store_true', help='Discover shadow AI on the host: AI desktop apps, CLI tools, local LLM runtimes/services, IDE and browser AI extensions, and locally stored AI models (public and custom/private)')
         parser_linux.add_argument('--shadow_ai_check_credentials', action='store_true', help='As part of --shadow_ai, also check for the presence of AI provider credentials (env var names and known config file paths). Values are never read.')
         parser_linux.add_argument('--shadow_ai_check_packages', action='store_true', help='As part of --shadow_ai, also scan pip/npm/gem package listings for installed AI SDKs. Slower than the base scan.')
+        parser_linux.add_argument('--shadow_ai_check_browsing', action='store_true', help='As part of --shadow_ai, also check browser history for visits to known AI chat websites (ChatGPT, Gemini, Claude.ai, Perplexity, etc.). Only the domain, visit count and last-visit date are recorded - never URLs, search queries, or page content.')
 
         # Arguments required for Host discovery on Windows
         parser_win = subparsers.add_parser ("win_host", help = "Discover Windows host assets (requires WinRM / PS Remoting to be enabled)")
@@ -1163,6 +1164,7 @@ def main(args=None):
         parser_win.add_argument('--shadow_ai', action='store_true', help='Discover shadow AI on the host: AI desktop apps, CLI tools, local LLM runtimes/services, IDE and browser AI extensions, and locally stored AI models (public and custom/private)')
         parser_win.add_argument('--shadow_ai_check_credentials', action='store_true', help='As part of --shadow_ai, also check for the presence of AI provider credentials (env var names and known config file paths). Values are never read.')
         parser_win.add_argument('--shadow_ai_check_packages', action='store_true', help='As part of --shadow_ai, also scan pip/npm package listings for installed AI SDKs. Slower than the base scan.')
+        parser_win.add_argument('--shadow_ai_check_browsing', action='store_true', help='As part of --shadow_ai, also check browser history for visits to known AI chat websites (ChatGPT, Gemini, Claude.ai, Perplexity, etc.). Only the domain, visit count and last-visit date are recorded - never URLs, search queries, or page content.')
 
         # Arguments required for vmware discovery
         parser_vmware = subparsers.add_parser ("vmware", help = "Discover VMware vCenter/ESX assets")

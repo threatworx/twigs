@@ -125,7 +125,12 @@ param(
     [parameter(Mandatory=$false, HelpMessage='As part of shadow_ai_scan, also scan pip/npm package listings for installed AI SDKs. Slower than the base scan. Possible values (true or false). Default is false')]
     [ValidateSet('true','false')]
     [String]
-    $shadow_ai_check_packages='false'
+    $shadow_ai_check_packages='false',
+
+    [parameter(Mandatory=$false, HelpMessage='As part of shadow_ai_scan, also check browser history for visits to known AI chat websites (ChatGPT, Gemini, Claude.ai, Perplexity, etc.). Only the domain, visit count and last-visit date are recorded - never URLs, search queries, or page content. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $shadow_ai_check_browsing='false'
 )
 
 function ql { $Args }
@@ -328,7 +333,7 @@ function Invoke-RemoteDiscovery {
                 $remotescript = ".\twigs.exe"
             }
             Invoke-Command -Session $remoteSession { Set-Location $using:remote_twigs_folder }
-            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report -shadow_ai_scan $using:shadow_ai_scan -shadow_ai_check_credentials $using:shadow_ai_check_credentials -shadow_ai_check_packages $using:shadow_ai_check_packages}
+            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report -shadow_ai_scan $using:shadow_ai_scan -shadow_ai_check_credentials $using:shadow_ai_check_credentials -shadow_ai_check_packages $using:shadow_ai_check_packages -shadow_ai_check_browsing $using:shadow_ai_check_browsing}
             Invoke-Command -Session $remoteSession { Set-Location "..\..\" }
             Invoke-Command -Session $remoteSession { Remove-Item $using:remote_folder -Recurse }
             Remove-PSSession $remoteSession
@@ -538,19 +543,72 @@ function Invoke-LocalDiscovery {
             else {               # running as .exe
                 Split-Path (Convert-Path -LiteralPath ([Environment]::GetCommandLineArgs()[0]))
             }
-        Write-Host "Running shadow AI discovery. This may take some time..."
-        $sa_module = $FileLocation + '\ShadowAI.psm1'
-        Unblock-File $sa_module
-        Import-Module $sa_module -Force
-        $sa_sig_file = $FileLocation + '\shadow_ai_signatures.json'
-        $sa_sig = (Get-Content -Path $sa_sig_file -Raw -Encoding UTF8) | ConvertFrom-Json
-        $sa_check_credentials = ($shadow_ai_check_credentials -eq "true")
-        $sa_check_packages = ($shadow_ai_check_packages -eq "true")
-        $sa_result = Invoke-ShadowAIScan -Signatures $sa_sig -InstalledProducts $product_json_array -AssetId $assetid -CheckCredentials $sa_check_credentials -CheckPackages $sa_check_packages
-        foreach ($sa_issue in $sa_result.config_issues) { $misconfigs_json_array.Add($sa_issue) }
-        foreach ($sa_product in $sa_result.products) { $product_json_array.Add($sa_product) }
-        foreach ($sa_tag in $sa_result.tags) { $tags_json_array.Add($sa_tag) }
-        Write-Host "Shadow AI findings:", $sa_result.config_issues.Count
+
+        # exe-safe module load: if a future twigs.exe build ever merges
+        # ShadowAI.psm1's source in directly (the same way HardeningKitty's
+        # is "already included" below), Invoke-ShadowAIScan is already a
+        # defined function and nothing further needs loading. Otherwise fall
+        # back to loading the standalone file - required today, since this
+        # is new code no exe-build pipeline has been taught to merge yet.
+        #
+        # Checked by parameter, not just by function name: a stale version
+        # of Invoke-ShadowAIScan loaded earlier in this same session (e.g.
+        # from repeated interactive testing, or an older module cached from
+        # a previous run) would otherwise satisfy a bare "does the function
+        # exist" check while still lacking newer parameters like
+        # -CheckBrowsing, causing "A parameter cannot be found that matches
+        # parameter name 'CheckBrowsing'" even though the current
+        # ShadowAI.psm1 on disk has it - the stale copy never gets
+        # re-imported because something with the right name already "exists".
+        $sa_cmd = Get-Command Invoke-ShadowAIScan -ErrorAction SilentlyContinue
+        if (-not $sa_cmd -or -not $sa_cmd.Parameters.ContainsKey('CheckBrowsing')) {
+            $sa_module = $FileLocation + '\ShadowAI.psm1'
+            if (Test-Path $sa_module) {
+                Unblock-File $sa_module -ErrorAction SilentlyContinue
+                Import-Module $sa_module -Force
+            }
+            $sa_cmd = Get-Command Invoke-ShadowAIScan -ErrorAction SilentlyContinue
+        }
+
+        if (-not $sa_cmd -or -not $sa_cmd.Parameters.ContainsKey('CheckBrowsing')) {
+            Write-Host "Shadow AI discovery requested but ShadowAI.psm1 could not be found or loaded (or an incompatible version is already loaded in this session) - skipping."
+        }
+        else {
+            Write-Host "Running shadow AI discovery. This may take some time..."
+            $sa_sig_file = $FileLocation + '\shadow_ai_signatures.json'
+            if (-not (Test-Path $sa_sig_file)) {
+                Write-Host "Shadow AI discovery requested but shadow_ai_signatures.json could not be found - skipping."
+            }
+            else {
+                $sa_sig = (Get-Content -Path $sa_sig_file -Raw -Encoding UTF8) | ConvertFrom-Json
+                $sa_check_credentials = ($shadow_ai_check_credentials -eq "true")
+                $sa_check_packages = ($shadow_ai_check_packages -eq "true")
+                $sa_check_browsing = ($shadow_ai_check_browsing -eq "true")
+                if ($sa_check_browsing) {
+                    # Makes a vendored sqlite3.exe sitting next to this script
+                    # discoverable via Get-Command, the same way the module already
+                    # looks up every other optional tool (pip/npm/winget/...). If
+                    # sqlite3 is already on PATH (or no vendored copy is present),
+                    # this is a harmless no-op/duplicate entry. sqlite3.exe is a
+                    # native binary, not PowerShell source, so it can never be
+                    # "baked into" a compiled twigs.exe the way ShadowAI.psm1's
+                    # functions can - it must always be a separate file sitting
+                    # next to whichever of twigs.ps1/twigs.exe is running.
+                    $env:Path = "$FileLocation;$env:Path"
+                    # A vendored exe that arrived via a network copy/zip/email can be
+                    # marked-of-the-web and blocked from running; same precaution
+                    # already taken for ShadowAI.psm1 above. Harmless if the file
+                    # isn't present or isn't blocked.
+                    $sa_sqlite_exe = $FileLocation + '\sqlite3.exe'
+                    if (Test-Path $sa_sqlite_exe) { Unblock-File $sa_sqlite_exe -ErrorAction SilentlyContinue }
+                }
+                $sa_result = Invoke-ShadowAIScan -Signatures $sa_sig -InstalledProducts $product_json_array -AssetId $assetid -CheckCredentials $sa_check_credentials -CheckPackages $sa_check_packages -CheckBrowsing $sa_check_browsing
+                foreach ($sa_issue in $sa_result.config_issues) { $misconfigs_json_array.Add($sa_issue) }
+                foreach ($sa_product in $sa_result.products) { $product_json_array.Add($sa_product) }
+                foreach ($sa_tag in $sa_result.tags) { $tags_json_array.Add($sa_tag) }
+                Write-Host "Shadow AI findings:", $sa_result.config_issues.Count
+            }
+        }
     }
 
     $url = ''

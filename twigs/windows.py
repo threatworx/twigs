@@ -202,6 +202,7 @@ def run_shadow_ai_scan(args, winrm_session, asset_id, products):
     signatures_json = _load_shadow_ai_signatures_json()
     check_credentials = 'true' if getattr(args, 'shadow_ai_check_credentials', False) else 'false'
     check_packages = 'true' if getattr(args, 'shadow_ai_check_packages', False) else 'false'
+    check_browsing = 'true' if getattr(args, 'shadow_ai_check_browsing', False) else 'false'
 
     script = module_source
     script += "\n$__sa_sig_json = @'\n" + signatures_json + "\n'@\n"
@@ -210,7 +211,8 @@ def run_shadow_ai_scan(args, winrm_session, asset_id, products):
     script += (
         "$__sa_result = Invoke-ShadowAIScan -Signatures $__sa_sig -InstalledProducts $__sa_products "
         "-AssetId " + _ps_single_quote(asset_id) +
-        " -CheckCredentials $" + check_credentials + " -CheckPackages $" + check_packages + "\n"
+        " -CheckCredentials $" + check_credentials + " -CheckPackages $" + check_packages +
+        " -CheckBrowsing $" + check_browsing + "\n"
     )
     script += "Write-Host ($__sa_result | ConvertTo-Json -Depth 10 -Compress)"
 

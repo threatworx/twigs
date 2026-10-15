@@ -22,6 +22,20 @@
     {"vendor": "Nous Research", "match": ["hermes", "nous-hermes"]},
     {"vendor": "Zhipu AI", "match": ["chatglm", "glm-4"]}
   ],
+  "ai_chat_domains": [
+    {"name": "ChatGPT (web)", "domains": ["chatgpt.com", "chat.openai.com"]},
+    {"name": "Gemini (web)", "domains": ["gemini.google.com", "bard.google.com"]},
+    {"name": "Claude.ai (web)", "domains": ["claude.ai"]},
+    {"name": "Perplexity (web)", "domains": ["perplexity.ai"]},
+    {"name": "Poe (web)", "domains": ["poe.com"]},
+    {"name": "Character.AI (web)", "domains": ["character.ai"]},
+    {"name": "Mistral Le Chat (web)", "domains": ["chat.mistral.ai"]},
+    {"name": "DeepSeek Chat (web)", "domains": ["chat.deepseek.com"]},
+    {"name": "Grok (web)", "domains": ["grok.com"]},
+    {"name": "Microsoft Copilot (web)", "domains": ["copilot.microsoft.com"]},
+    {"name": "Pi (web)", "domains": ["pi.ai"]},
+    {"name": "You.com (web)", "domains": ["you.com"]}
+  ],
   "linux": {
     "desktop_apps": [
       {"product": "ChatGPT Desktop", "category": "Desktop AI App", "paths": ["~/.config/ChatGPT", "/opt/ChatGPT", "/usr/share/applications/chatgpt*.desktop"]},
@@ -108,6 +122,13 @@
       {"runtime": "GPT4All", "type": "glob", "path": "~/.local/share/nomic.ai/GPT4All", "ext": [".gguf", ".bin"]},
       {"runtime": "Jan", "type": "glob", "path": "~/.jan/models", "ext": [".gguf"]},
       {"runtime": "text-generation-webui", "type": "glob", "path": "~/text-generation-webui/models", "ext": [".gguf", ".safetensors", ".bin"]}
+    ],
+    "browser_profiles": [
+      {"browser": "Chrome", "family": "chromium", "base": "~/.config/google-chrome", "profile_pattern": "*", "file": "History"},
+      {"browser": "Chromium", "family": "chromium", "base": "~/.config/chromium", "profile_pattern": "*", "file": "History"},
+      {"browser": "Edge", "family": "chromium", "base": "~/.config/microsoft-edge", "profile_pattern": "*", "file": "History"},
+      {"browser": "Brave", "family": "chromium", "base": "~/.config/BraveSoftware/Brave-Browser", "profile_pattern": "*", "file": "History"},
+      {"browser": "Firefox", "family": "firefox", "base": "~/.mozilla/firefox", "profile_pattern": "*.default*", "file": "places.sqlite"}
     ]
   },
   "macos": {
@@ -187,6 +208,13 @@
       {"runtime": "LM Studio", "type": "glob", "path": "~/.cache/lm-studio/models", "ext": [".gguf"]},
       {"runtime": "GPT4All", "type": "glob", "path": "~/Library/Application Support/nomic.ai/GPT4All", "ext": [".gguf", ".bin"]},
       {"runtime": "Jan", "type": "glob", "path": "~/Library/Application Support/Jan/data/models", "ext": [".gguf"]}
+    ],
+    "browser_profiles": [
+      {"browser": "Chrome", "family": "chromium", "base": "~/Library/Application Support/Google/Chrome", "profile_pattern": "*", "file": "History"},
+      {"browser": "Edge", "family": "chromium", "base": "~/Library/Application Support/Microsoft Edge", "profile_pattern": "*", "file": "History"},
+      {"browser": "Brave", "family": "chromium", "base": "~/Library/Application Support/BraveSoftware/Brave-Browser", "profile_pattern": "*", "file": "History"},
+      {"browser": "Firefox", "family": "firefox", "base": "~/Library/Application Support/Firefox/Profiles", "profile_pattern": "*.default*", "file": "places.sqlite"},
+      {"browser": "Safari", "family": "safari", "base": "~/Library", "profile_pattern": "Safari", "file": "History.db"}
     ]
   },
   "windows": {
@@ -302,6 +330,12 @@
       {"runtime": "LM Studio", "type": "glob", "path": "$env:USERPROFILE\\.cache\\lm-studio\\models", "ext": [".gguf"]},
       {"runtime": "GPT4All", "type": "glob", "path": "$env:LOCALAPPDATA\\nomic.ai\\GPT4All", "ext": [".gguf", ".bin"]},
       {"runtime": "Jan", "type": "glob", "path": "$env:USERPROFILE\\.jan\\models", "ext": [".gguf"]}
+    ],
+    "browser_profiles": [
+      {"browser": "Chrome", "family": "chromium", "base": "$env:LOCALAPPDATA\\Google\\Chrome\\User Data", "profile_pattern": "*", "file": "History"},
+      {"browser": "Edge", "family": "chromium", "base": "$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data", "profile_pattern": "*", "file": "History"},
+      {"browser": "Brave", "family": "chromium", "base": "$env:LOCALAPPDATA\\BraveSoftware\\Brave-Browser\\User Data", "profile_pattern": "*", "file": "History"},
+      {"browser": "Firefox", "family": "firefox", "base": "$env:APPDATA\\Mozilla\\Firefox\\Profiles", "profile_pattern": "*.default*", "file": "places.sqlite"}
     ]
   }
 }

@@ -3,6 +3,7 @@ import re
 import json
 import logging
 import hashlib
+import datetime
 
 from . import utils
 
@@ -365,6 +366,180 @@ def _model_name_from_hf_dirname(dirname):
 
 
 # ---------------------------------------------------------------------------
+# Browser history (opt-in, --shadow_ai_check_browsing). Domain + visit count
+# + last-visit date only - never full URLs, search queries, or page titles.
+# ---------------------------------------------------------------------------
+
+CHROMIUM_EPOCH = datetime.datetime(1601, 1, 1)
+SAFARI_EPOCH = datetime.datetime(2001, 1, 1)
+
+
+def _chromium_case_sql(ai_chat_domains):
+    parts = []
+    for entry in ai_chat_domains:
+        name = entry['name'].replace("'", "''")
+        conds = ' OR '.join(
+            "url LIKE '%%" + d.replace("'", "''") + "%%'" for d in entry['domains']
+        )
+        parts.append("WHEN " + conds + " THEN '" + name + "'")
+    return "CASE " + " ".join(parts) + " ELSE '' END"
+
+
+def _browsing_sql(family, case_expr):
+    # Per-row (per-URL) tag/cnt/ts in the inner query, regardless of family's
+    # native schema; a single aggregation (SUM/MAX grouped by tag) in the
+    # outer query. This uniform shape is what lets Safari slot in: unlike
+    # Chromium/Firefox (one flat table with both a running visit_count and
+    # a last-visit timestamp column), Safari splits a URL's aggregate visit
+    # count (history_items.visit_count) from its individual visit timestamps
+    # (history_visits.visit_time, one row per visit) across two tables. A
+    # plain JOIN between them would multiply visit_count once per matching
+    # visit row and wildly overcount, so the per-visit max is instead pulled
+    # via an uncorrelated-looking but per-row-correlated subquery, keeping
+    # history_items.visit_count (already correct per URL) as the only count
+    # source.
+    if family == 'chromium':
+        inner = "SELECT " + case_expr + " AS tag, visit_count AS cnt, last_visit_time AS ts FROM urls"
+    elif family == 'firefox':
+        inner = "SELECT " + case_expr + " AS tag, visit_count AS cnt, last_visit_date AS ts FROM moz_places"
+    else:  # safari
+        inner = (
+            "SELECT " + case_expr + " AS tag, hi.visit_count AS cnt, "
+            "(SELECT MAX(hv.visit_time) FROM history_visits hv WHERE hv.history_item = hi.id) AS ts "
+            "FROM history_items hi"
+        )
+    # Dropping the no-match ('') bucket in SQL itself (rather than relying
+    # solely on the shell/Python side to skip it) means a genuinely empty
+    # leading field is never on the wire in the first place.
+    return "SELECT tag, SUM(cnt), MAX(ts) FROM (" + inner + ") WHERE tag <> '' GROUP BY tag;"
+
+
+def _build_browsing_probe_script(sig_all, sig):
+    domains = sig_all.get('ai_chat_domains', [])
+    profiles = sig.get('browser_profiles', [])
+    if not domains or not profiles:
+        return 'true'
+
+    case_expr = _chromium_case_sql(domains)
+    sql_by_family = {
+        'chromium': _browsing_sql('chromium', case_expr).replace('"', '\\"'),
+        'firefox': _browsing_sql('firefox', case_expr).replace('"', '\\"'),
+        'safari': _browsing_sql('safari', case_expr).replace('"', '\\"'),
+    }
+
+    lines = [
+        'export LC_ALL=C 2>/dev/null',
+        # A non-whitespace separator for the sqlite3 output specifically:
+        # POSIX `read` treats tab/space/newline as "IFS whitespace" even
+        # when explicitly assigned, which collapses/strips leading empty
+        # fields - breaking field alignment whenever a column is empty.
+        '__sa_sep="|"',
+        '__sa_has_sqlite3=0',
+        'command -v sqlite3 >/dev/null 2>&1 && __sa_has_sqlite3=1',
+        '__sa_has_timeout=0',
+        'command -v timeout >/dev/null 2>&1 && __sa_has_timeout=1',
+        '__sa_tmpdir=$(mktemp -d 2>/dev/null)',
+        '[ -d "$__sa_tmpdir" ] || __sa_tmpdir="/tmp/.sa_browse_$$"',
+        'mkdir -p "$__sa_tmpdir" 2>/dev/null',
+    ]
+
+    # If sqlite3 isn't available at all, skip the whole check - no
+    # presence-only fallback is generated. A bare "this domain's text
+    # appears somewhere in the file" signal with no count or date was
+    # assessed as noise rather than a useful finding (same decision already
+    # made for the Windows/ShadowAI.psm1 implementation).
+    lines.append('if [ "$__sa_has_sqlite3" = "1" ]; then')
+
+    for bp in profiles:
+        base = _shell_path(bp['base'])
+        pattern = bp['profile_pattern']
+        fname = bp['file']
+        browser = bp['browser']
+        family = bp['family']
+        sql = sql_by_family[family]
+
+        lines.append('  if [ -d "' + base + '" ]; then')
+        lines.append(
+            '    find "' + base + '" -mindepth 1 -maxdepth 1 -type d -iname "' + pattern + '" 2>/dev/null'
+            ' | while IFS= read -r __pd; do'
+        )
+        lines.append('      __bf="$__pd/' + fname + '"')
+        lines.append('      [ -e "$__bf" ] || continue')
+        lines.append('      __bc="$__sa_tmpdir/sa_$$_$(basename "$__pd" | tr -c "A-Za-z0-9" "_")"')
+        lines.append('      cp "$__bf" "$__bc" 2>/dev/null || continue')
+        lines.append('      [ -e "$__bf-wal" ] && cp "$__bf-wal" "$__bc-wal" 2>/dev/null')
+        lines.append('      __sa_out="$__sa_tmpdir/out_$$_$(basename "$__pd" | tr -c "A-Za-z0-9" "_")"')
+        # Query failure for ANY reason (missing/corrupted copy, schema
+        # mismatch, still locked despite the copy, or a hang bounded by
+        # `timeout` when available) must result in nothing being read back -
+        # output is written to a file and only consumed if the exit code is
+        # exactly 0, rather than trusting whatever happens to be on stdout.
+        lines.append('      if [ "$__sa_has_timeout" = "1" ]; then __sa_sqlite_cmd="timeout 8 sqlite3"; else __sa_sqlite_cmd="sqlite3"; fi')
+        lines.append('      $__sa_sqlite_cmd -separator "$__sa_sep" "$__bc" "' + sql + '" >"$__sa_out" 2>/dev/null')
+        lines.append('      __sa_rc=$?')
+        lines.append('      if [ "$__sa_rc" = "0" ]; then')
+        lines.append('        while IFS="$__sa_sep" read -r __tag __cnt __ts; do')
+        lines.append(
+            '          [ -n "$__tag" ] && printf "BROWSE\\t' + browser + '\\t%s\\t%s\\t%s\\t' + family + '\\n"'
+            ' "$__tag" "$__cnt" "$__ts"'
+        )
+        lines.append('        done <"$__sa_out"')
+        lines.append('      fi')
+        lines.append('      rm -f "$__bc" "$__bc-wal" "$__sa_out" 2>/dev/null')
+        lines.append('    done')
+        lines.append('  fi')
+
+    lines.append('fi')
+    lines.append('rm -rf "$__sa_tmpdir" 2>/dev/null')
+    lines.append('true')
+    return '\n'.join(lines)
+
+
+def _parse_browsing_probe(output):
+    precise = {}
+    if not output:
+        return precise
+    for line in output.splitlines():
+        if line.startswith('BROWSE\t'):
+            parts = line.split('\t')
+            if len(parts) >= 6:
+                browser, name, cnt, ts, family = parts[1], parts[2], parts[3], parts[4], parts[5]
+                try:
+                    cnt_i = int(float(cnt))
+                except ValueError:
+                    cnt_i = 0
+                try:
+                    # float() first: Safari's visit_time is a REAL column
+                    # (fractional seconds), unlike Chromium/Firefox's integer
+                    # microsecond columns. Sub-second precision doesn't
+                    # matter for the day-level date string this feeds into.
+                    ts_i = int(float(ts))
+                except ValueError:
+                    ts_i = 0
+                key = (browser, name)
+                if key not in precise:
+                    precise[key] = [0, 0, family]
+                precise[key][0] += cnt_i
+                if ts_i > precise[key][1]:
+                    precise[key][1] = ts_i
+    return precise
+
+
+def _timestamp_to_date_str(ts_micro, family):
+    try:
+        if family == 'chromium':
+            dt = CHROMIUM_EPOCH + datetime.timedelta(microseconds=ts_micro)
+        elif family == 'safari':
+            # Mac absolute time: seconds (not microseconds) since 2001-01-01 UTC.
+            dt = SAFARI_EPOCH + datetime.timedelta(seconds=ts_micro)
+        else:
+            dt = datetime.datetime.utcfromtimestamp(ts_micro / 1000000.0)
+        return dt.strftime('%Y-%m-%d')
+    except (OverflowError, ValueError, OSError):
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 
@@ -601,6 +776,30 @@ def run_scan(args, host, asset_id, atype):
                 'Shadow AI: AI SDK dependency installed [%s]' % display,
                 'Found via %s package listing.' % pkg['ecosystem'],
                 RATING_INFO, object_id=display,
+            ))
+
+    # Browser history (opt-in, separate from credentials/packages given its
+    # sensitivity). Domain + visit count + last-visit date only.
+    if getattr(args, 'shadow_ai_check_browsing', False):
+        logging.info(
+            "Scanning browser history on [%s] for visits to known AI chat sites "
+            "(domain-level only - no URLs or page content are read)", host['hostname']
+        )
+        sig_all = _load_signatures()
+        browse_out = utils.run_cmd_on_host(args, host, [_build_browsing_probe_script(sig_all, sig)], False)
+        precise = _parse_browsing_probe(browse_out)
+        for (browser, name), (total_cnt, max_ts, family) in precise.items():
+            found_any = True
+            tags.append('SHADOW_AI:' + name)
+            date_str = _timestamp_to_date_str(max_ts, family)
+            details = 'Detected via %s browsing history: %d visit(s)' % (browser, total_cnt)
+            if date_str:
+                details += ', last visit %s' % date_str
+            details += '. Only the domain and visit metadata were read - no URLs, search queries, or page content.'
+            config_issues.append(_issue(
+                asset_id, _slug('browse', browser, name),
+                'Shadow AI: browsing activity to %s detected (%s)' % (name, browser),
+                details, RATING_MEDIUM, object_id=name,
             ))
 
     if found_any:

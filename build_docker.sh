@@ -130,6 +130,11 @@ apt_install dnsutils
 # install bsdutils for hexdump required by ssl audit
 apt_install bsdmainutils
 
+# install sqlite3 CLI for shadow AI browser-history detection (host mode,
+# --shadow_ai_check_browsing). Without it that check is skipped entirely
+# (no lower-fidelity fallback is reported) rather than failing the scan.
+apt_install sqlite3
+
 # install jdk
 apt_install openjdk-17-jdk
 
@@ -199,6 +204,7 @@ require_bin jq
 require_bin trufflehog
 require_bin dig
 require_bin hexdump
+require_bin sqlite3
 require_bin java
 require_bin zaproxy
 require_bin go
