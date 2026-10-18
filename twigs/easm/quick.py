@@ -31,7 +31,7 @@ QUICK_TAG = 'EASM_QUICK'
 # Checks that are slow, intrusive or reserved for the full scan.
 QUICK_DISABLED = [
     'nuclei', 'content_discovery', 'dir_brute', 'js_analysis', 'api_discovery',
-    'graphql_enum', 'openapi_probe', 'exposed_panel_check', 'web_recon',
+    'graphql_enum', 'openapi_probe', 'exposed_panel_check', 'self_hosted_ai_check', 'web_recon',
     'open_redirect_check', 'http_methods_check', 'directory_listing_check',
     'version_probe', 'udp_scan', 'reverse_ip', 'reverse_whois', 'saas_discovery',
     'bucket_discovery', 'zone_walk', 'netblock_sweep', 'portsweep',

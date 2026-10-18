@@ -7,9 +7,12 @@ distinctive header or body signature is required - to avoid false positives
 on sites that return 200 for any path (custom error pages, SPA catch-all
 routing, etc.)."""
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .constants import RATING_INFO, RATING_LOW, RATING_MEDIUM, RATING_HIGH, RATING_CRITICAL, ISSUE_TYPE_EXPOSED_PANEL
 from .util import _new_issue, _http_get
+
+PANEL_PROBE_WORKERS = 16
 
 # Known exposed admin panels / dev tools / misconfigurations. Each entry is
 # matched on more than just "path returns 200" - a distinctive header or body
@@ -279,8 +282,19 @@ def check_exposed_panels(host, asset_id):
         return issues
 
     found = []
+    # The base host/port is already confirmed live (above), so this is just
+    # fanning out many independent path probes against it concurrently - not
+    # a "will anything answer at all" question like ai_services.py's per-port
+    # probing, so the standard HTTP_TIMEOUT (not the short one) still applies
+    # to each individual request.
+    responses = {}
+    with ThreadPoolExecutor(max_workers=PANEL_PROBE_WORKERS) as pool:
+        future_to_check = {pool.submit(_http_get, base + check['path']): check for check in EXPOSED_PANEL_CHECKS}
+        for fut in as_completed(future_to_check):
+            responses[id(future_to_check[fut])] = fut.result()
+
     for check in EXPOSED_PANEL_CHECKS:
-        resp = _http_get(base + check['path'])
+        resp = responses.get(id(check))
         if resp is None or resp.status_code not in check.get('status_codes', [200]):
             continue
         if not _panel_signature_matches(resp, check):

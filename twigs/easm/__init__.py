@@ -143,6 +143,14 @@ gets host-level assessment only:
     Apache Tomcat Manager, Webmin, Spring Boot Actuator, and information
     disclosure (phpinfo(), mod_status, exposed .git/.svn/.env and backup
     config files)
+  - shadow AI probing for every discovered host: self-hosted LLM inference
+    servers (Ollama, Hugging Face TGI, OpenAI-API-compatible servers such as
+    vLLM/LocalAI/LM Studio, text-generation-webui, Triton, TensorFlow
+    Serving), the Open WebUI chat front-end, low-code LLM/agent app builders
+    (Flowise, Langflow), the LiteLLM gateway, the MLflow model-registry
+    server, and the vector databases commonly paired with all of the above
+    for RAG (ChromaDB, Qdrant, Weaviate, Milvus) - each reachable from the
+    internet with no authentication by default on its common port
   - API discovery/testing for every discovered host: OpenAPI/Swagger spec
     discovery (with parsing for endpoint count and unauthenticated
     endpoints), GraphQL introspection, CORS misconfiguration (arbitrary
@@ -235,6 +243,7 @@ from .waf import check_waf
 from .http_headers import check_security_headers, check_cookie_security
 from .web_recon import check_security_txt, check_robots_sitemap, check_open_redirect, check_http_methods, check_directory_listing
 from .exposed_panels import check_exposed_panels
+from .ai_services import check_self_hosted_ai
 from .api_discovery import check_api_discovery
 from .asn_netblock import check_asn_netblock
 from . import cloud_ranges
@@ -269,7 +278,7 @@ def _maybe_nuclei_extra(args, hostname, asset):
     if getattr(args, 'no_nuclei', False) or not nuclei_exists():
         return
     _stage(hostname, "nuclei web application tests")
-    severity = getattr(args, 'nuclei_severity', 'info,low,medium,high,critical')
+    severity = getattr(args, 'nuclei_severity', 'low,medium,high,critical')
     asset['config_issues'].extend(run_nuclei(
         hostname, asset['id'], severity, getattr(args, 'nuclei_timeout', 3600)))
 
@@ -350,7 +359,7 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     if not getattr(args, 'no_ssl_audit', False):
         _stage(hostname, "SSL/TLS named-vulnerability scan (testssl.sh)")
         asset_data['config_issues'].extend(check_ssl_vulnerabilities(
-            hostname, host_result, asset_id, getattr(args, 'ssl_audit_timeout', 120)))
+            hostname, host_result, asset_id, getattr(args, 'ssl_audit_timeout', 60)))
 
     if not getattr(args, 'no_tls_fingerprint', False):
         _stage(hostname, "TLS stack fingerprinting (infrastructure correlation)")
@@ -389,6 +398,10 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     if not getattr(args, 'no_exposed_panel_check', False):
         _stage(hostname, "exposed admin panel / dev-tool probing")
         asset_data['config_issues'].extend(check_exposed_panels(hostname, asset_id))
+
+    if not getattr(args, 'no_self_hosted_ai_check', False):
+        _stage(hostname, "shadow AI: exposed self-hosted LLM/vector-DB infrastructure probing")
+        asset_data['config_issues'].extend(check_self_hosted_ai(hostname, asset_id))
 
     if not getattr(args, 'no_api_discovery', False):
         _stage(hostname, "API discovery (OpenAPI/GraphQL/CORS/error disclosure)")
@@ -767,7 +780,7 @@ def _get_inventory(args, sink=None):
 
     if not getattr(args, 'no_nuclei', False) and nuclei_exists():
         _stage(primary_host, "nuclei web application tests")
-        severity = getattr(args, 'nuclei_severity', 'info,low,medium,high,critical')
+        severity = getattr(args, 'nuclei_severity', 'low,medium,high,critical')
         primary_asset['config_issues'].extend(run_nuclei(primary_host, primary_id, severity, getattr(args, 'nuclei_timeout', 3600)))
     elif not getattr(args, 'no_nuclei', False):
         logging.info("[EASM] %s: nuclei CLI not found on PATH - skipping web application tests", primary_host)

@@ -8,6 +8,16 @@ uses it.
 """
 
 HTTP_TIMEOUT = 10
+# A short, aggressive timeout for speculative probes against uncommon /
+# non-default-web ports that are closed or silently filtered on the
+# overwhelming majority of targets (e.g. ai_services.py's per-port LLM/vector-DB
+# signature checks). A real service on one of these ports responds almost
+# instantly, so this does not risk missing a genuine match - it just avoids
+# waiting out the full HTTP_TIMEOUT for every port that goes nowhere. Not used
+# for checks against an already-confirmed-live base host/port (e.g.
+# exposed_panels.py's path probes), where the connection itself is not in
+# question.
+PROBE_TIMEOUT_SHORT = 3
 DNS_TIMEOUT = 4
 
 USER_AGENT = 'Mozilla/5.0 (compatible; twigs-easm/1.0; +https://threatwatch.io)'
@@ -30,6 +40,7 @@ ISSUE_TYPE_RANSOMWARE = 'Ransomware'
 ISSUE_TYPE_ASN = 'ASN/Netblock'
 ISSUE_TYPE_HTTP_HEADERS = 'HTTP Security Headers'
 ISSUE_TYPE_CREDENTIAL_LEAK = 'Credential Leak'
+ISSUE_TYPE_SHADOW_AI = 'Shadow AI'
 
 RATING_INFO = '1'
 RATING_LOW = '2'

@@ -140,9 +140,9 @@ def _resolve_record(resolver, name, rtype):
 
 
 
-def _http_get(url):
+def _http_get(url, timeout=None):
     try:
-        return requests.get(url, timeout=HTTP_TIMEOUT, verify=False, allow_redirects=True,
+        return requests.get(url, timeout=timeout or HTTP_TIMEOUT, verify=False, allow_redirects=True,
                              headers={'User-Agent': USER_AGENT})
     except requests.exceptions.RequestException as e:
         logging.debug("HTTP GET failed for [%s]: %s", url, str(e))
