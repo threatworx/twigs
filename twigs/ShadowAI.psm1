@@ -128,6 +128,39 @@ function Invoke-ShadowAISqliteQuery {
     }
 }
 
+function Invoke-ShadowAIBoundedProcess {
+    # Generic bounded external-process invocation: returns stdout lines on a
+    # clean (exit code 0) run, or $null on ANY failure - launch failure,
+    # timeout, non-zero exit, or an unexpected exception. Same hard-failure-
+    # safety convention as Invoke-ShadowAISqliteQuery, generalized to an
+    # arbitrary FileName/Arguments pair (used by the WSL CLI-tool probe).
+    param([string]$FileName, [string]$Arguments, [int]$TimeoutMs = 8000)
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $FileName
+        $psi.Arguments = $Arguments
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.RedirectStandardInput = $true
+        $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $proc.StandardInput.Close()
+        $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+        $stderrTask = $proc.StandardError.ReadToEndAsync()
+        if (-not $proc.WaitForExit($TimeoutMs)) {
+            try { $proc.Kill() } catch {}
+            return $null
+        }
+        if ($proc.ExitCode -ne 0) { return $null }
+        $out = $stdoutTask.Result
+        if (-not $out) { return @() }
+        return @($out -split "`r?`n" | Where-Object { $_ -ne '' })
+    } catch {
+        return $null
+    }
+}
+
 function Get-ShadowAIHfModelName {
     param([string]$DirName)
     if ($DirName.StartsWith('models--')) {
@@ -204,7 +237,8 @@ function Invoke-ShadowAIScan {
         [Parameter(Mandatory=$true)] [string]$AssetId,
         [bool]$CheckCredentials = $false,
         [bool]$CheckPackages = $false,
-        [bool]$CheckBrowsing = $false
+        [bool]$CheckBrowsing = $false,
+        [bool]$CheckWsl = $false
     )
 
     $sig = $Signatures.windows
@@ -360,7 +394,7 @@ function Invoke-ShadowAIScan {
             $extId = $extDir.ToLower()
             $extVersion = $null
         }
-        $ideMatch = $sig.ide_extensions | Where-Object { $_.vscode_id.ToLower() -eq $extId } | Select-Object -First 1
+        $ideMatch = $sig.ide_extensions | Where-Object { $_.vscode_id -and $_.vscode_id.ToLower() -eq $extId } | Select-Object -First 1
         if ($ideMatch -and -not $seenExt.ContainsKey($extId)) {
             $seenExt[$extId] = $true
             $foundAny = $true
@@ -372,6 +406,60 @@ function Invoke-ShadowAIScan {
             $tagsList.Add("SHADOW_AI:$($ideMatch.product)")
             $slug = ConvertTo-ShadowAISlug @('ideext', $ideMatch.product)
             $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: $($ideMatch.product) ($($ideMatch.category)) installed" "VS Code extension directory [$extDir] found." '2' $extDir $AssetId))
+        }
+    }
+
+    # --- JetBrains IDE plugins (IntelliJ/PyCharm/Rider/WebStorm/...) ---
+    # The VS Code check above only looks at .vscode/extensions - a real blind
+    # spot for anyone using a JetBrains IDE instead. Matched by plugin
+    # directory name (JetBrains keeps these human-readable, unlike VS Code's
+    # "publisher.id-version" convention), not a deep plugin.xml/jar read -
+    # same pragmatic name-pattern approach used for desktop_apps/appx_packages
+    # elsewhere in this module.
+    $jbPluginDirs = Get-ChildItem -Path "$env:APPDATA\JetBrains\*\plugins\*" -Directory -ErrorAction SilentlyContinue
+    $seenJb = @{}
+    foreach ($pd in $jbPluginDirs) {
+        foreach ($ide in $sig.ide_extensions) {
+            if (-not $ide.jetbrains_match) { continue }
+            if ($seenJb.ContainsKey($ide.product)) { continue }
+            $hit = $false
+            foreach ($pat in $ide.jetbrains_match) {
+                if ($pd.Name -match [regex]::Escape($pat)) { $hit = $true; break }
+            }
+            if ($hit) {
+                $seenJb[$ide.product] = $true
+                $foundAny = $true
+                $products.Add("$($ide.product) (detected, JetBrains)")
+                $tagsList.Add("SHADOW_AI:$($ide.product)")
+                $slug = ConvertTo-ShadowAISlug @('jbplugin', $ide.product)
+                $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: $($ide.product) ($($ide.category)) installed (JetBrains)" "JetBrains plugin directory [$($pd.FullName)] found." '2' $pd.FullName $AssetId))
+            }
+        }
+    }
+
+    # --- Visual Studio (VSIX) extensions ---
+    # Separate from the VS Code check above - "Visual Studio" (devenv.exe) and
+    # "Visual Studio Code" use entirely different extension mechanisms despite
+    # the similar name. Extensions live under Publisher\Name\Version, hence
+    # -Recurse; -Depth bounds it in case of unexpectedly deep nesting.
+    $vsExtDirs = Get-ChildItem -Path "$env:LOCALAPPDATA\Microsoft\VisualStudio\*\Extensions" -Recurse -Depth 3 -Directory -ErrorAction SilentlyContinue
+    $seenVs = @{}
+    foreach ($pd in $vsExtDirs) {
+        foreach ($ide in $sig.ide_extensions) {
+            if (-not $ide.vs_match) { continue }
+            if ($seenVs.ContainsKey($ide.product)) { continue }
+            $hit = $false
+            foreach ($pat in $ide.vs_match) {
+                if ($pd.Name -match [regex]::Escape($pat)) { $hit = $true; break }
+            }
+            if ($hit) {
+                $seenVs[$ide.product] = $true
+                $foundAny = $true
+                $products.Add("$($ide.product) (detected, Visual Studio)")
+                $tagsList.Add("SHADOW_AI:$($ide.product)")
+                $slug = ConvertTo-ShadowAISlug @('vsext', $ide.product)
+                $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: $($ide.product) ($($ide.category)) installed (Visual Studio)" "Visual Studio extension directory [$($pd.FullName)] found." '2' $pd.FullName $AssetId))
+            }
         }
     }
 
@@ -395,6 +483,101 @@ function Invoke-ShadowAIScan {
                 $tagsList.Add("SHADOW_AI:$extName")
                 $slug = ConvertTo-ShadowAISlug @('browserext', $extName, $d.Name)
                 $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: browser extension $extName detected" "Extension ID [$($d.Name)] found in a browser profile." '2' $d.Name $AssetId))
+            }
+        }
+    }
+
+    # --- Browser "installed as app" (PWA) shortcuts for AI chat sites ---
+    # Chrome/Edge's "Install <site> as app" creates a Start Menu/Desktop
+    # shortcut that launches the browser in app mode for that one site -
+    # a lightweight way to get a "desktop app" for e.g. ChatGPT/Claude/Gemini
+    # that leaves no trace in the Uninstall registry or AppX packages, so it
+    # is otherwise invisible to every check above. Requires both a name match
+    # (the shortcut is normally named after the site) AND a browser-app-mode
+    # target/arguments, to avoid false-positives on an unrelated shortcut that
+    # happens to share a name.
+    if ($Signatures.ai_chat_domains) {
+        $shortcutDirs = @(
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs",
+            "$env:ProgramData\Microsoft\Windows\Start Menu\Programs",
+            "$env:USERPROFILE\Desktop"
+        )
+        $shortcuts = @()
+        foreach ($dir in $shortcutDirs) {
+            if (Test-Path $dir -ErrorAction SilentlyContinue) {
+                $shortcuts += Get-ChildItem -Path $dir -Filter '*.lnk' -Recurse -ErrorAction SilentlyContinue
+            }
+        }
+        if ($shortcuts.Count -gt 0) {
+            $seenPwa = @{}
+            $wsh = $null
+            try { $wsh = New-Object -ComObject WScript.Shell } catch {}
+            if ($wsh) {
+                foreach ($lnk in $shortcuts) {
+                    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($lnk.Name)
+                    # Catalog names carry a "(web)" disambiguator (vs. e.g.
+                    # a desktop-app entry of the same product) that a real
+                    # PWA shortcut's filename - named after the page title at
+                    # install time - would never include, so compare against
+                    # the stripped form too.
+                    $aiMatch = $Signatures.ai_chat_domains | Where-Object {
+                        $baseName -eq $_.name -or $baseName -eq ($_.name -replace '\s*\(web\)$', '').Trim()
+                    } | Select-Object -First 1
+                    if (-not $aiMatch -or $seenPwa.ContainsKey($aiMatch.name)) { continue }
+                    $isBrowserApp = $false
+                    try {
+                        $shortcut = $wsh.CreateShortcut($lnk.FullName)
+                        $targetName = [System.IO.Path]::GetFileName($shortcut.TargetPath)
+                        $isBrowserApp = ($targetName -match '^(chrome|msedge|msedgewebview2|brave|chromium)\.exe$') -and ($shortcut.Arguments -match '--app(-id)?=')
+                    } catch {}
+                    if ($isBrowserApp) {
+                        $seenPwa[$aiMatch.name] = $true
+                        $foundAny = $true
+                        $tagsList.Add("SHADOW_AI:$($aiMatch.name)")
+                        $slug = ConvertTo-ShadowAISlug @('pwa', $aiMatch.name)
+                        $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: $($aiMatch.name) installed as a browser app (PWA)" "Shortcut [$($lnk.FullName)] launches a browser in app mode for this AI chat site - installed outside any managed software deployment, and would not appear in the Uninstall registry or AppX packages." '2' $lnk.FullName $AssetId))
+                    }
+                }
+            }
+        }
+    }
+
+    # --- Windows Firewall rules referencing local-LLM-server binaries ---
+    # A persistence signal that survives even when the process/service isn't
+    # currently running: Ollama/LM Studio/text-generation-webui/vLLM commonly
+    # create an inbound allow rule the first time they bind a port, and that
+    # rule remains after the app is closed. Bulk-fetch rules and application
+    # filters once and join in memory (both expose the same InstanceID) rather
+    # than querying per rule, which would be far slower against the hundreds
+    # of built-in Windows Firewall rules a typical host already has.
+    try {
+        $fwRules = Get-NetFirewallRule -Direction Inbound -Action Allow -ErrorAction SilentlyContinue
+    } catch { $fwRules = $null }
+    if ($fwRules) {
+        try { $fwFilters = Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue } catch { $fwFilters = $null }
+        $fwFilterByInstance = @{}
+        if ($fwFilters) {
+            foreach ($f in $fwFilters) { $fwFilterByInstance[$f.InstanceID] = $f }
+        }
+        $seenFw = @{}
+        foreach ($rule in $fwRules) {
+            if ($rule.Enabled -ne 'True' -and $rule.Enabled -ne $true) { continue }
+            $appFilter = $fwFilterByInstance[$rule.InstanceID]
+            $progPath = if ($appFilter -and $appFilter.Program -and $appFilter.Program -ne 'Any') { $appFilter.Program } else { $null }
+            $haystack = "$($rule.DisplayName) $progPath"
+            foreach ($proc in $sig.processes) {
+                if ($seenFw.ContainsKey($proc.product)) { continue }
+                # Word-boundary wrapped: a bare substring match would let
+                # e.g. the "llama" alternative in llama.cpp server's pattern
+                # match inside "Ollama"'s own rule/program-path text.
+                if ($haystack -match ('\b(?:' + $proc.match + ')\b')) {
+                    $seenFw[$proc.product] = $true
+                    $foundAny = $true
+                    $tagsList.Add("SHADOW_AI:$($proc.product)")
+                    $slug = ConvertTo-ShadowAISlug @('firewall', $proc.product)
+                    $detailProg = if ($progPath) { " Program [$progPath]." } else { '' }
+                    $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: inbound firewall rule for $($proc.product) ($($proc.category))" "Firewall rule [$($rule.DisplayName)] allows inbound traffic.$detailProg This persists even when the application is not currently running, unlike the process/port/service checks above." '2' $rule.Name $AssetId))
+                }
             }
         }
     }
@@ -656,6 +839,51 @@ function Invoke-ShadowAIScan {
                 if ($dateStr) { $details += ", last visit $dateStr" }
                 $details += '. Only the domain and visit metadata were read - no URLs, search queries, or page content.'
                 $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: browsing activity to $($entry.Name) detected ($($entry.Browser))" $details '3' $entry.Name $AssetId))
+            }
+        }
+    }
+
+    # --- WSL (Windows Subsystem for Linux) ---
+    # AI tooling installed/run inside a WSL distro (ollama, aider, pip/npm
+    # SDKs, local models) is invisible to every check above, which only looks
+    # at native Windows paths/registry/processes - a real blind spot on
+    # developer machines. Detecting WSL itself is cheap and always-on;
+    # peeking inside a distro for specific CLI tools is opt-in (-CheckWsl)
+    # since it spawns a real process inside the distro per distro checked.
+    $wslCmd = Get-Command wsl.exe -ErrorAction SilentlyContinue
+    if ($wslCmd) {
+        $wslListOut = Invoke-ShadowAIBoundedProcess -FileName $wslCmd.Source -Arguments '--list --quiet' -TimeoutMs 5000
+        if ($null -ne $wslListOut) {
+            # wsl.exe can emit UTF-16 with stray control characters when its
+            # output is captured this way rather than shown in a console.
+            $distros = $wslListOut | ForEach-Object { ($_ -replace '[\x00-\x08\x0B\x0C\x0E-\x1F]', '').Trim() } | Where-Object { $_ -ne '' }
+            if ($distros.Count -gt 0) {
+                $foundAny = $true
+                $tagsList.Add('SHADOW_AI:WSL')
+                $slug = ConvertTo-ShadowAISlug @('wsl', 'present')
+                $details = "WSL distro(s) present: $($distros -join ', '). AI tooling installed or run inside WSL (CLI tools, pip/npm SDKs, local models) is not visible to this native-Windows scan - run twigs host mode against the distro directly for full coverage."
+                if (-not $CheckWsl) { $details += ' Re-run with -CheckWsl for a bounded CLI-tool presence check inside each distro.' }
+                $configIssues.Add((New-ShadowAIIssue $slug 'Shadow AI: WSL (Windows Subsystem for Linux) present' $details '2' ($distros -join ',') $AssetId))
+
+                if ($CheckWsl) {
+                    $wslBins = @($sig.cli_tools | ForEach-Object { $_.bin } | Where-Object { $_ } | Select-Object -Unique)
+                    if ($wslBins.Count -gt 0) {
+                        $probeScript = 'for b in ' + ($wslBins -join ' ') + '; do command -v "$b" >/dev/null 2>&1 && echo "$b"; done'
+                        foreach ($distro in $distros) {
+                            $wslArgs = '-d ' + (ConvertTo-ShadowAIWin32Arg $distro) + ' -- sh -lc ' + (ConvertTo-ShadowAIWin32Arg $probeScript)
+                            $hits = Invoke-ShadowAIBoundedProcess -FileName $wslCmd.Source -Arguments $wslArgs -TimeoutMs 15000
+                            if ($null -eq $hits) { continue }
+                            foreach ($bin in $hits) {
+                                $cliMatch = $sig.cli_tools | Where-Object { $_.bin -eq $bin } | Select-Object -First 1
+                                if (-not $cliMatch) { continue }
+                                $foundAny = $true
+                                $tagsList.Add("SHADOW_AI:$($cliMatch.product)")
+                                $slug2 = ConvertTo-ShadowAISlug @('wslcli', $distro, $cliMatch.product)
+                                $configIssues.Add((New-ShadowAIIssue $slug2 "Shadow AI: $($cliMatch.product) ($($cliMatch.category)) CLI available inside WSL" "Binary [$bin] found on PATH inside WSL distro [$distro]." '2' "$($distro):$bin" $AssetId))
+                            }
+                        }
+                    }
+                }
             }
         }
     }

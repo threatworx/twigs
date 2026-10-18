@@ -295,13 +295,14 @@
       {"product": "vLLM", "category": "Local LLM Runtime", "port": 8000, "process_match": "python"}
     ],
     "ide_extensions": [
-      {"product": "GitHub Copilot", "category": "AI IDE Plugin", "vscode_id": "github.copilot"},
+      {"product": "GitHub Copilot", "category": "AI IDE Plugin", "vscode_id": "github.copilot", "jetbrains_match": ["copilot"], "vs_match": ["copilot"]},
       {"product": "GitHub Copilot Chat", "category": "AI IDE Plugin", "vscode_id": "github.copilot-chat"},
-      {"product": "Codeium", "category": "AI IDE Plugin", "vscode_id": "codeium.codeium"},
-      {"product": "Tabnine", "category": "AI IDE Plugin", "vscode_id": "tabnine.tabnine-vscode"},
-      {"product": "Continue", "category": "AI IDE Plugin", "vscode_id": "continue.continue"},
-      {"product": "Amazon Q / CodeWhisperer", "category": "AI IDE Plugin", "vscode_id": "amazonwebservices.amazon-q-vscode"},
-      {"product": "Cline", "category": "AI IDE Plugin", "vscode_id": "saoudrizwan.claude-dev"}
+      {"product": "Codeium", "category": "AI IDE Plugin", "vscode_id": "codeium.codeium", "jetbrains_match": ["codeium"], "vs_match": ["codeium"]},
+      {"product": "Tabnine", "category": "AI IDE Plugin", "vscode_id": "tabnine.tabnine-vscode", "jetbrains_match": ["tabnine"], "vs_match": ["tabnine"]},
+      {"product": "Continue", "category": "AI IDE Plugin", "vscode_id": "continue.continue", "jetbrains_match": ["continue"]},
+      {"product": "Amazon Q / CodeWhisperer", "category": "AI IDE Plugin", "vscode_id": "amazonwebservices.amazon-q-vscode", "jetbrains_match": ["aws toolkit", "codewhisperer", "amazon q"]},
+      {"product": "Cline", "category": "AI IDE Plugin", "vscode_id": "saoudrizwan.claude-dev"},
+      {"product": "JetBrains AI Assistant", "category": "AI IDE Plugin", "jetbrains_match": ["ai assistant", "ai-assistant"]}
     ],
     "browser_extensions": {
       "chrome": {

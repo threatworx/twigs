@@ -130,7 +130,12 @@ param(
     [parameter(Mandatory=$false, HelpMessage='As part of shadow_ai_scan, also check browser history for visits to known AI chat websites (ChatGPT, Gemini, Claude.ai, Perplexity, etc.). Only the domain, visit count and last-visit date are recorded - never URLs, search queries, or page content. Possible values (true or false). Default is false')]
     [ValidateSet('true','false')]
     [String]
-    $shadow_ai_check_browsing='false'
+    $shadow_ai_check_browsing='false',
+
+    [parameter(Mandatory=$false, HelpMessage='As part of shadow_ai_scan, also run a bounded CLI-tool presence check inside each detected WSL (Windows Subsystem for Linux) distro. WSL presence itself is always reported when shadow_ai_scan is on; this only controls the deeper per-distro peek. Possible values (true or false). Default is false')]
+    [ValidateSet('true','false')]
+    [String]
+    $shadow_ai_check_wsl='false'
 )
 
 function ql { $Args }
@@ -333,7 +338,7 @@ function Invoke-RemoteDiscovery {
                 $remotescript = ".\twigs.exe"
             }
             Invoke-Command -Session $remoteSession { Set-Location $using:remote_twigs_folder }
-            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report -shadow_ai_scan $using:shadow_ai_scan -shadow_ai_check_credentials $using:shadow_ai_check_credentials -shadow_ai_check_packages $using:shadow_ai_check_packages -shadow_ai_check_browsing $using:shadow_ai_check_browsing}
+            Invoke-Command -Session $remoteSession -ScriptBlock { & $using:remotescript -mode 'local' -handle $using:handle -token $using:token -instance $using:instance -tags $using:tags -tag_critical $using:tag_critical -include_serial_number $using:include_serial_number -no_scan $using:no_scan -no_host_benchmark $using:no_host_benchmark -email_report $using:email_report -shadow_ai_scan $using:shadow_ai_scan -shadow_ai_check_credentials $using:shadow_ai_check_credentials -shadow_ai_check_packages $using:shadow_ai_check_packages -shadow_ai_check_browsing $using:shadow_ai_check_browsing -shadow_ai_check_wsl $using:shadow_ai_check_wsl}
             Invoke-Command -Session $remoteSession { Set-Location "..\..\" }
             Invoke-Command -Session $remoteSession { Remove-Item $using:remote_folder -Recurse }
             Remove-PSSession $remoteSession
@@ -556,12 +561,12 @@ function Invoke-LocalDiscovery {
         # from repeated interactive testing, or an older module cached from
         # a previous run) would otherwise satisfy a bare "does the function
         # exist" check while still lacking newer parameters like
-        # -CheckBrowsing, causing "A parameter cannot be found that matches
-        # parameter name 'CheckBrowsing'" even though the current
+        # -CheckBrowsing/-CheckWsl, causing "A parameter cannot be found that
+        # matches parameter name '...'" even though the current
         # ShadowAI.psm1 on disk has it - the stale copy never gets
         # re-imported because something with the right name already "exists".
         $sa_cmd = Get-Command Invoke-ShadowAIScan -ErrorAction SilentlyContinue
-        if (-not $sa_cmd -or -not $sa_cmd.Parameters.ContainsKey('CheckBrowsing')) {
+        if (-not $sa_cmd -or -not $sa_cmd.Parameters.ContainsKey('CheckBrowsing') -or -not $sa_cmd.Parameters.ContainsKey('CheckWsl')) {
             $sa_module = $FileLocation + '\ShadowAI.psm1'
             if (Test-Path $sa_module) {
                 Unblock-File $sa_module -ErrorAction SilentlyContinue
@@ -570,7 +575,7 @@ function Invoke-LocalDiscovery {
             $sa_cmd = Get-Command Invoke-ShadowAIScan -ErrorAction SilentlyContinue
         }
 
-        if (-not $sa_cmd -or -not $sa_cmd.Parameters.ContainsKey('CheckBrowsing')) {
+        if (-not $sa_cmd -or -not $sa_cmd.Parameters.ContainsKey('CheckBrowsing') -or -not $sa_cmd.Parameters.ContainsKey('CheckWsl')) {
             Write-Host "Shadow AI discovery requested but ShadowAI.psm1 could not be found or loaded (or an incompatible version is already loaded in this session) - skipping."
         }
         else {
@@ -584,6 +589,7 @@ function Invoke-LocalDiscovery {
                 $sa_check_credentials = ($shadow_ai_check_credentials -eq "true")
                 $sa_check_packages = ($shadow_ai_check_packages -eq "true")
                 $sa_check_browsing = ($shadow_ai_check_browsing -eq "true")
+                $sa_check_wsl = ($shadow_ai_check_wsl -eq "true")
                 if ($sa_check_browsing) {
                     # Makes a vendored sqlite3.exe sitting next to this script
                     # discoverable via Get-Command, the same way the module already
@@ -602,7 +608,7 @@ function Invoke-LocalDiscovery {
                     $sa_sqlite_exe = $FileLocation + '\sqlite3.exe'
                     if (Test-Path $sa_sqlite_exe) { Unblock-File $sa_sqlite_exe -ErrorAction SilentlyContinue }
                 }
-                $sa_result = Invoke-ShadowAIScan -Signatures $sa_sig -InstalledProducts $product_json_array -AssetId $assetid -CheckCredentials $sa_check_credentials -CheckPackages $sa_check_packages -CheckBrowsing $sa_check_browsing
+                $sa_result = Invoke-ShadowAIScan -Signatures $sa_sig -InstalledProducts $product_json_array -AssetId $assetid -CheckCredentials $sa_check_credentials -CheckPackages $sa_check_packages -CheckBrowsing $sa_check_browsing -CheckWsl $sa_check_wsl
                 foreach ($sa_issue in $sa_result.config_issues) { $misconfigs_json_array.Add($sa_issue) }
                 foreach ($sa_product in $sa_result.products) { $product_json_array.Add($sa_product) }
                 foreach ($sa_tag in $sa_result.tags) { $tags_json_array.Add($sa_tag) }
