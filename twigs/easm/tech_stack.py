@@ -37,6 +37,12 @@ except ImportError:
 from .constants import RATING_INFO, RATING_LOW, ISSUE_TYPE_WEB_APPLICATION, HTTP_TIMEOUT, USER_AGENT
 from .util import _add_product, _new_issue, _http_get
 
+# PHP interpreter banner in X-Powered-By / Server, e.g. "PHP/8.3.10" or
+# "PHP/8.1.2-1ubuntu2.19" - group 2 is a distribution build suffix, if any.
+# \bPHP/ keeps phpMyAdmin & co. from matching.
+_PHP_BANNER_RE = re.compile(r'\bPHP/(\d+\.\d+(?:\.\d+)?)([-+~][\w.+~:-]*)?', re.I)
+PHP_BUILD_TAG = 'PHP_BUILD:'
+
 # Generic CDN URL conventions: <cdn>/.../<package>[@/]<version>/... - these
 # alone cover a large fraction of real-world sites, since they're the
 # dominant public CDNs for JS libraries, without needing per-library
@@ -348,6 +354,27 @@ def _get_favicon_hash(html, base_url):
         return None
 
 
+def _detect_php(resp, products, tags):
+    """Adds the PHP interpreter as a normalized 'PHP X.Y.Z' product from the
+    X-Powered-By / Server banners, recording any distribution build suffix
+    (backported fixes may not bump the upstream version) as a PHP_BUILD: tag.
+    Falls back to a bare 'PHP' product (for version_probe to enrich) when only
+    the default PHPSESSID session cookie gives PHP away."""
+    for hdr in ('X-Powered-By', 'Server'):
+        m = _PHP_BANNER_RE.search(resp.headers.get(hdr) or '')
+        if m:
+            _add_product(products, 'PHP ' + m.group(1))
+            if m.group(2):
+                tag = PHP_BUILD_TAG + m.group(1) + m.group(2)
+                if tag not in tags:
+                    tags.append(tag)
+            return
+    if any(p.strip().lower() == 'php' or p.lower().startswith('php ') for p in products):
+        return
+    if 'PHPSESSID' in resp.cookies or 'phpsessid=' in (resp.headers.get('Set-Cookie') or '').lower():
+        _add_product(products, 'PHP')
+
+
 def check_tech_stack(host, products, tags, asset_id):
     resp = None
     used_url = None
@@ -367,8 +394,9 @@ def check_tech_stack(host, products, tags, asset_id):
             if tok:
                 _add_product(products, tok)
     powered_by = resp.headers.get('X-Powered-By')
-    if powered_by:
+    if powered_by and not _PHP_BANNER_RE.search(powered_by):
         _add_product(products, powered_by.strip())
+    _detect_php(resp, products, tags)
     if HAVE_BS4:
         try:
             soup = BeautifulSoup(resp.text, 'html.parser')

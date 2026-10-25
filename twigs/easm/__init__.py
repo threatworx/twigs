@@ -53,7 +53,11 @@ gets host-level assessment only:
   - best-effort version recovery for any product detected without a version,
     via a curated set of version-disclosure endpoints (CHANGELOG/RELEASE-NOTES
     files, status/health APIs, generator feeds) - folded back into the product
-    list for version-accurate CVE mapping
+    list for version-accurate CVE mapping; the PHP interpreter version (from
+    X-Powered-By / Server banners or an exposed phpinfo() page) is checked
+    against the php2shell fixed releases and CVE-2026-109618 /
+    CVE-2026-109619 are reported HIGH with remediation (MEDIUM when PHP is
+    in use but its version is hidden)
   - per-host content discovery from the Wayback Machine CDX index: real
     historically-archived URLs, filtered to security-relevant paths/params,
     with a bounded live-reachability probe of the interesting ones
@@ -223,7 +227,7 @@ from .util import resolve_ips, _is_ip_address, _is_ipv6, get_registered_domain, 
 from .nmap_discovery import nmap_exists, run_nmap_scan, create_port_issues
 from .ssl_checks import check_ssl, check_ssl_vulnerabilities
 from .tech_stack import check_tech_stack
-from .version_probe import probe_product_versions
+from .version_probe import probe_product_versions, check_php2shell
 from .content_discovery import check_content_discovery
 from .reverse_ip import check_reverse_ip
 from .reverse_whois import check_reverse_whois
@@ -373,6 +377,9 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
     if not getattr(args, 'no_version_probe', False):
         _stage(hostname, "product version probing (version-disclosure endpoints)")
         asset_data['config_issues'].extend(probe_product_versions(hostname, asset_data['products'], asset_id, args))
+
+    _stage(hostname, "PHP php2shell check (CVE-2026-109618 / CVE-2026-109619)")
+    asset_data['config_issues'].extend(check_php2shell(hostname, asset_data['products'], asset_data['tags'], asset_id, args))
 
     if not getattr(args, 'no_content_discovery', False):
         _stage(hostname, "content discovery (Wayback CDX historical URLs)")
