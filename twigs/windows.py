@@ -170,8 +170,22 @@ def _ps_string_array(values):
     return '@(' + ','.join(_ps_single_quote(v) for v in values) + ')'
 
 
+def _find_shadow_ai_module():
+    # ShadowAI.psm1 lives in the top-level powershell/ folder, shared with
+    # twigs.ps1. The package build copies it into the twigs package (see
+    # setup.py); a source checkout or editable install uses powershell/ directly.
+    here = os.path.dirname(os.path.abspath(__file__))
+    for module_path in (os.path.join(here, 'ShadowAI.psm1'),
+                        os.path.join(os.path.dirname(here), 'powershell', 'ShadowAI.psm1')):
+        if os.path.isfile(module_path):
+            return module_path
+    return None
+
+
 def _load_shadow_ai_module_source():
-    module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ShadowAI.psm1')
+    module_path = _find_shadow_ai_module()
+    if module_path is None:
+        return None
     with open(module_path, 'r') as f:
         lines = f.readlines()
     # Export-ModuleMember is only valid when the file is loaded via
@@ -199,6 +213,9 @@ def _normalize_json_list(value):
 def run_shadow_ai_scan(args, winrm_session, asset_id, products):
     logging.info("Running shadow AI discovery for [%s]. This may take some time...", asset_id)
     module_source = _load_shadow_ai_module_source()
+    if module_source is None:
+        logging.error("Shadow AI discovery skipped: ShadowAI.psm1 not found")
+        return [], [], []
     signatures_json = _load_shadow_ai_signatures_json()
     check_credentials = 'true' if getattr(args, 'shadow_ai_check_credentials', False) else 'false'
     check_packages = 'true' if getattr(args, 'shadow_ai_check_packages', False) else 'false'

@@ -6,8 +6,7 @@ include README.rst
 include twigs/gd-ca-bundle.crt
 include twigs/gcp_cis_tool/recommendations.json
 include twigs/shadow_ai_signatures.json
-include twigs/ShadowAI.psm1
-include twigs/sqlite3.exe
+include powershell/ShadowAI.psm1
 
 recursive-include tests *
 recursive-exclude * __pycache__

@@ -4,8 +4,24 @@
 """The setup script."""
 
 from setuptools import setup, find_packages
+from setuptools.command.build_py import build_py
+import os
 import sys
 import re
+
+
+class build_py_with_powershell(build_py):
+    """Also packages powershell/ShadowAI.psm1, which twigs/windows.py sends to
+    Windows hosts over WinRM. It lives outside the twigs package because
+    twigs.ps1 shares it, so it is copied in at build time."""
+
+    def run(self):
+        build_py.run(self)
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'powershell', 'ShadowAI.psm1')
+        dest_dir = os.path.join(self.build_lib, 'twigs')
+        self.mkpath(dest_dir)
+        self.copy_file(src, os.path.join(dest_dir, 'ShadowAI.psm1'))
+
 
 with open('twigs/__init__.py') as version_file:
     version = re.search(r"^__version__ = ['\"]([^'\"]+)['\"]",
@@ -55,6 +71,7 @@ setup(
     url='https://github.com/threatworx/twigs',
     version=version,
     zip_safe=False,
+    cmdclass={'build_py': build_py_with_powershell},
     entry_points={
         'console_scripts': [
             'twigs=twigs.twigs:main',
