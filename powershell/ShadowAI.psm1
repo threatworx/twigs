@@ -185,11 +185,37 @@ function Get-ShadowAIHfModelName {
 }
 
 function ConvertTo-ShadowAIBrowsingCaseSql {
+    # Anchors each domain match to the URL's actual host - immediately after
+    # "://" (optionally "www."), and immediately followed by one of /:?# or
+    # end-of-string - rather than a bare "appears anywhere in the URL"
+    # substring match. The previous "url LIKE '%domain%'" form false-
+    # positived on any page whose URL merely *references* the domain
+    # elsewhere, most commonly a ?utm_source=chatgpt.com style referral-
+    # tracking parameter on a completely unrelated site that the user never
+    # navigated to chatgpt.com from. It also would have matched a lookalike
+    # host like chatgpt.com.evil.com, which this anchored form correctly
+    # rejects too (the character after "chatgpt.com" there is "." - not a
+    # valid terminator).
+    #
+    # GLOB (not LIKE) is used for its [...] character class, needed to
+    # express the terminator set - LIKE has no equivalent. LOWER(url) with
+    # lowercased domain literals keeps the match case-insensitive despite
+    # GLOB itself being case-sensitive; browsers normalize the host
+    # component to lowercase on store, but this is cheap insurance against
+    # anything that slipped in unnormalized.
     param($AiChatDomains)
     $parts = @()
     foreach ($entry in $AiChatDomains) {
         $name = $entry.name -replace "'", "''"
-        $conds = ($entry.domains | ForEach-Object { "url LIKE '%" + ($_ -replace "'", "''") + "%'" }) -join ' OR '
+        $hostConds = @()
+        foreach ($d in $entry.domains) {
+            $dl = ($d.ToLower()) -replace "'", "''"
+            foreach ($h in @($dl, "www.$dl")) {
+                $hostConds += "LOWER(url) GLOB '*://${h}[/:?#]*'"
+                $hostConds += "LOWER(url) GLOB '*://${h}'"
+            }
+        }
+        $conds = $hostConds -join ' OR '
         $parts += "WHEN $conds THEN '$name'"
     }
     return "CASE " + ($parts -join ' ') + " ELSE '' END"
@@ -208,6 +234,29 @@ function Get-ShadowAIBrowsingSql {
     return "SELECT tag, cnt, ts FROM ($inner) WHERE tag <> '';"
 }
 
+function Get-ShadowAIBrowsingDetailSql {
+    # Per-URL detail: the top N most-visited distinct pages per matched
+    # domain (tie-broken by recency), via a window function so a user with
+    # hundreds of distinct conversation URLs under one domain doesn't blow
+    # up the result set or the eventual finding text. url is selected LAST
+    # so a literal separator-like character inside it (rare, but URLs are
+    # arbitrary user data, not ours) is handled by the caller reassembling
+    # "everything from the 4th field onward" rather than trusting a plain
+    # fixed-position split.
+    param([string]$Family, [string]$CaseExpr, [int]$TopN = 10)
+    if ($Family -eq 'chromium') {
+        $table = 'urls'; $cntCol = 'visit_count'; $tsCol = 'last_visit_time'
+    } else {
+        $table = 'moz_places'; $cntCol = 'visit_count'; $tsCol = 'last_visit_date'
+    }
+    $inner = "SELECT $CaseExpr AS tag, $cntCol AS cnt, $tsCol AS ts, url AS u FROM $table"
+    return (
+        "SELECT tag, cnt, ts, u FROM (SELECT tag, cnt, ts, u, " +
+        "ROW_NUMBER() OVER (PARTITION BY tag ORDER BY cnt DESC, ts DESC) AS rn FROM ($inner) WHERE tag <> '') " +
+        "WHERE rn <= $TopN;"
+    )
+}
+
 function ConvertFrom-ShadowAIBrowsingTimestamp {
     param([int64]$Value, [string]$Family)
     try {
@@ -223,6 +272,28 @@ function ConvertFrom-ShadowAIBrowsingTimestamp {
     } catch {
         return $null
     }
+}
+
+function Format-ShadowAIBrowsingUrls {
+    # Entries: list of [PSCustomObject]@{ Url; Count; Ts; Family }, possibly
+    # merged across multiple profiles/users of the same browser (each
+    # profile's own SQL query already caps to its own top N, so a heavy
+    # multi-profile/multi-user host could have more than N here) - re-sort
+    # and cap to the final top N here rather than trust any single
+    # profile's independent ordering.
+    param($Entries, [int]$MaxShown = 10, [int]$MaxUrlLen = 300)
+    $top = $Entries | Sort-Object -Property @{Expression='Count';Descending=$true}, @{Expression='Ts';Descending=$true} | Select-Object -First $MaxShown
+    $parts = @()
+    foreach ($e in $top) {
+        $shown = if ($e.Url.Length -gt $MaxUrlLen) { $e.Url.Substring(0, $MaxUrlLen) + '...' } else { $e.Url }
+        $dateStr = ConvertFrom-ShadowAIBrowsingTimestamp -Value $e.Ts -Family $e.Family
+        if ($dateStr) {
+            $parts += "$shown ($($e.Count) visit(s), last $dateStr)"
+        } else {
+            $parts += "$shown ($($e.Count) visit(s))"
+        }
+    }
+    return $parts
 }
 
 function Test-ShadowAIElevated {
@@ -950,8 +1021,9 @@ function Invoke-ShadowAIScan {
     }
 
     # --- Browser history (opt-in, separate from credentials/packages given
-    # its sensitivity). Domain + visit count + last-visit date only - never
-    # full URLs, search queries, or page content.
+    # its sensitivity). Domain-scoped: only pages actually hosted on a known
+    # AI chat domain are read (and reported, including the specific pages
+    # visited there) - never a user's other browsing/search queries.
     #
     # Requires a working sqlite3: if it's unavailable, or a query fails for
     # ANY reason (launch failure, timeout, non-zero exit, corrupted/locked
@@ -971,10 +1043,13 @@ function Invoke-ShadowAIScan {
             $caseExpr = ConvertTo-ShadowAIBrowsingCaseSql -AiChatDomains $aiChatDomains
             $sqlChromium = Get-ShadowAIBrowsingSql -Family 'chromium' -CaseExpr $caseExpr
             $sqlFirefox = Get-ShadowAIBrowsingSql -Family 'firefox' -CaseExpr $caseExpr
+            $sqlChromiumDetail = Get-ShadowAIBrowsingDetailSql -Family 'chromium' -CaseExpr $caseExpr
+            $sqlFirefoxDetail = Get-ShadowAIBrowsingDetailSql -Family 'firefox' -CaseExpr $caseExpr
 
             $browseTmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("sa_browse_" + [Guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $browseTmpDir -Force -ErrorAction SilentlyContinue | Out-Null
             $browsingReported = @{}
+            $browsingUrls = @{}
 
             $historyBases = New-Object System.Collections.Generic.List[object]
             foreach ($bp in $sig.browser_profiles) {
@@ -1025,6 +1100,30 @@ function Invoke-ShadowAIScan {
                     # $rows -eq $null means the query failed for any reason -
                     # silently skip this profile, no fallback is reported.
 
+                    # Separate second query (same copied db) for the per-page
+                    # detail the user asked for. url is split off as "every
+                    # field from index 3 onward, rejoined" rather than a
+                    # fixed $fields[3], so a literal '|' inside the URL
+                    # itself (arbitrary user data, not ours) doesn't
+                    # truncate it.
+                    $detailSql = if ($bp.family -eq 'chromium') { $sqlChromiumDetail } else { $sqlFirefoxDetail }
+                    $detailRows = Invoke-ShadowAISqliteQuery -SqliteExePath $sqliteCmd.Source -DbPath $copyPath -Sql $detailSql
+                    if ($null -ne $detailRows) {
+                        foreach ($row in $detailRows) {
+                            $fields = $row -split '\|'
+                            if ($fields.Count -ge 4 -and $fields[0]) {
+                                $dcnt = [int64]0; [void][int64]::TryParse($fields[1], [ref]$dcnt)
+                                $dts = [int64]0; [void][int64]::TryParse($fields[2], [ref]$dts)
+                                $durl = ($fields[3..($fields.Count - 1)] -join '|')
+                                $key = "$($bp.browser)|$($fields[0])"
+                                if (-not $browsingUrls.ContainsKey($key)) {
+                                    $browsingUrls[$key] = New-Object System.Collections.Generic.List[object]
+                                }
+                                $browsingUrls[$key].Add([PSCustomObject]@{ Url = $durl; Count = $dcnt; Ts = $dts; Family = $bp.family })
+                            }
+                        }
+                    }
+
                     Remove-Item -Path $copyPath, "$copyPath-wal" -ErrorAction SilentlyContinue
                 }
             }
@@ -1037,7 +1136,16 @@ function Invoke-ShadowAIScan {
                 $dateStr = ConvertFrom-ShadowAIBrowsingTimestamp -Value $entry.Ts -Family $entry.Family
                 $details = "Detected via $($entry.Browser) browsing history$(Format-ShadowAIUsers $entry.Users): $($entry.Count) visit(s)"
                 if ($dateStr) { $details += ", last visit $dateStr" }
-                $details += '. Only the domain and visit metadata were read - no URLs, search queries, or page content.'
+                $details += '.'
+                $urlKey = "$($entry.Browser)|$($entry.Name)"
+                if ($browsingUrls.ContainsKey($urlKey) -and $browsingUrls[$urlKey].Count -gt 0) {
+                    $allUrls = $browsingUrls[$urlKey]
+                    $formatted = Format-ShadowAIBrowsingUrls -Entries $allUrls
+                    $details += ' Pages visited: ' + ($formatted -join '; ') + '.'
+                    if ($allUrls.Count -gt $formatted.Count) {
+                        $details += " ($($allUrls.Count - $formatted.Count) more distinct page(s) not shown.)"
+                    }
+                }
                 $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: browsing activity to $($entry.Name) detected ($($entry.Browser))" $details '3' $entry.Name $AssetId))
             }
         }

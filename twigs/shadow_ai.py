@@ -375,43 +375,86 @@ SAFARI_EPOCH = datetime.datetime(2001, 1, 1)
 
 
 def _chromium_case_sql(ai_chat_domains):
+    # Anchors each domain match to the URL's actual host - immediately after
+    # "://" (optionally "www."), and immediately followed by one of /:?# or
+    # end-of-string - rather than a bare "appears anywhere in the URL"
+    # substring match. The previous "url LIKE '%domain%'" form false-
+    # positived on any page whose URL merely *references* the domain
+    # elsewhere, most commonly a ?utm_source=chatgpt.com style referral-
+    # tracking parameter on a completely unrelated site that the user never
+    # navigated to chatgpt.com from. It also would have matched a lookalike
+    # host like chatgpt.com.evil.com, which this anchored form correctly
+    # rejects too (the character after "chatgpt.com" there is "." - not a
+    # valid terminator).
+    #
+    # GLOB (not LIKE) is used for its [...] character class, needed to
+    # express the terminator set - LIKE has no equivalent. LOWER(url) with
+    # lowercased domain literals keeps the match case-insensitive despite
+    # GLOB itself being case-sensitive; browsers normalize the host
+    # component to lowercase on store, but this is cheap insurance against
+    # anything that slipped in unnormalized.
     parts = []
     for entry in ai_chat_domains:
         name = entry['name'].replace("'", "''")
-        conds = ' OR '.join(
-            "url LIKE '%%" + d.replace("'", "''") + "%%'" for d in entry['domains']
-        )
+        host_conds = []
+        for d in entry['domains']:
+            dl = d.lower().replace("'", "''")
+            for h in (dl, 'www.' + dl):
+                host_conds.append("LOWER(url) GLOB '*://" + h + "[/:?#]*'")
+                host_conds.append("LOWER(url) GLOB '*://" + h + "'")
+        conds = ' OR '.join(host_conds)
         parts.append("WHEN " + conds + " THEN '" + name + "'")
     return "CASE " + " ".join(parts) + " ELSE '' END"
 
 
-def _browsing_sql(family, case_expr):
-    # Per-row (per-URL) tag/cnt/ts in the inner query, regardless of family's
-    # native schema; a single aggregation (SUM/MAX grouped by tag) in the
-    # outer query. This uniform shape is what lets Safari slot in: unlike
-    # Chromium/Firefox (one flat table with both a running visit_count and
-    # a last-visit timestamp column), Safari splits a URL's aggregate visit
-    # count (history_items.visit_count) from its individual visit timestamps
-    # (history_visits.visit_time, one row per visit) across two tables. A
-    # plain JOIN between them would multiply visit_count once per matching
-    # visit row and wildly overcount, so the per-visit max is instead pulled
-    # via an uncorrelated-looking but per-row-correlated subquery, keeping
-    # history_items.visit_count (already correct per URL) as the only count
-    # source.
+def _browsing_inner_sql(family, case_expr, with_url=False):
+    # Per-row (per-URL) tag/cnt/ts (optionally +url) in the inner query,
+    # regardless of family's native schema. This uniform shape is what lets
+    # Safari slot in: unlike Chromium/Firefox (one flat table with both a
+    # running visit_count and a last-visit timestamp column), Safari splits
+    # a URL's aggregate visit count (history_items.visit_count) from its
+    # individual visit timestamps (history_visits.visit_time, one row per
+    # visit) across two tables. A plain JOIN between them would multiply
+    # visit_count once per matching visit row and wildly overcount, so the
+    # per-visit max is instead pulled via an uncorrelated-looking but
+    # per-row-correlated subquery, keeping history_items.visit_count
+    # (already correct per URL) as the only count source.
+    url_col = ', url AS u' if with_url else ''
     if family == 'chromium':
-        inner = "SELECT " + case_expr + " AS tag, visit_count AS cnt, last_visit_time AS ts FROM urls"
+        return "SELECT " + case_expr + " AS tag, visit_count AS cnt, last_visit_time AS ts" + url_col + " FROM urls"
     elif family == 'firefox':
-        inner = "SELECT " + case_expr + " AS tag, visit_count AS cnt, last_visit_date AS ts FROM moz_places"
+        return "SELECT " + case_expr + " AS tag, visit_count AS cnt, last_visit_date AS ts" + url_col + " FROM moz_places"
     else:  # safari
-        inner = (
+        url_col = ', hi.url AS u' if with_url else ''
+        return (
             "SELECT " + case_expr + " AS tag, hi.visit_count AS cnt, "
-            "(SELECT MAX(hv.visit_time) FROM history_visits hv WHERE hv.history_item = hi.id) AS ts "
+            "(SELECT MAX(hv.visit_time) FROM history_visits hv WHERE hv.history_item = hi.id) AS ts" + url_col + " "
             "FROM history_items hi"
         )
+
+
+def _browsing_sql(family, case_expr):
+    inner = _browsing_inner_sql(family, case_expr, with_url=False)
     # Dropping the no-match ('') bucket in SQL itself (rather than relying
     # solely on the shell/Python side to skip it) means a genuinely empty
     # leading field is never on the wire in the first place.
     return "SELECT tag, SUM(cnt), MAX(ts) FROM (" + inner + ") WHERE tag <> '' GROUP BY tag;"
+
+
+def _browsing_detail_sql(family, case_expr, top_n=10):
+    # Per-URL detail: the top N most-visited distinct pages per matched
+    # domain (tie-broken by recency), via a window function so a user with
+    # hundreds of distinct conversation URLs under one domain doesn't blow
+    # up the result set or the eventual finding text. url is selected LAST
+    # so a shell `read` with a fixed set of named variables absorbs any
+    # (encoded) separator-like character inside it into the final variable
+    # rather than misaligning the other columns.
+    inner = _browsing_inner_sql(family, case_expr, with_url=True)
+    return (
+        "SELECT tag, cnt, ts, u FROM (SELECT tag, cnt, ts, u, "
+        "ROW_NUMBER() OVER (PARTITION BY tag ORDER BY cnt DESC, ts DESC) AS rn FROM (" + inner + ") WHERE tag <> '') "
+        "WHERE rn <= " + str(int(top_n)) + ";"
+    )
 
 
 def _build_browsing_probe_script(sig_all, sig):
@@ -425,6 +468,11 @@ def _build_browsing_probe_script(sig_all, sig):
         'chromium': _browsing_sql('chromium', case_expr).replace('"', '\\"'),
         'firefox': _browsing_sql('firefox', case_expr).replace('"', '\\"'),
         'safari': _browsing_sql('safari', case_expr).replace('"', '\\"'),
+    }
+    detail_sql_by_family = {
+        'chromium': _browsing_detail_sql('chromium', case_expr).replace('"', '\\"'),
+        'firefox': _browsing_detail_sql('firefox', case_expr).replace('"', '\\"'),
+        'safari': _browsing_detail_sql('safari', case_expr).replace('"', '\\"'),
     }
 
     lines = [
@@ -457,6 +505,7 @@ def _build_browsing_probe_script(sig_all, sig):
         browser = bp['browser']
         family = bp['family']
         sql = sql_by_family[family]
+        detail_sql = detail_sql_by_family[family]
 
         lines.append('  if [ -d "' + base + '" ]; then')
         lines.append(
@@ -469,6 +518,7 @@ def _build_browsing_probe_script(sig_all, sig):
         lines.append('      cp "$__bf" "$__bc" 2>/dev/null || continue')
         lines.append('      [ -e "$__bf-wal" ] && cp "$__bf-wal" "$__bc-wal" 2>/dev/null')
         lines.append('      __sa_out="$__sa_tmpdir/out_$$_$(basename "$__pd" | tr -c "A-Za-z0-9" "_")"')
+        lines.append('      __sa_out2="$__sa_tmpdir/outu_$$_$(basename "$__pd" | tr -c "A-Za-z0-9" "_")"')
         # Query failure for ANY reason (missing/corrupted copy, schema
         # mismatch, still locked despite the copy, or a hang bounded by
         # `timeout` when available) must result in nothing being read back -
@@ -485,7 +535,24 @@ def _build_browsing_probe_script(sig_all, sig):
         )
         lines.append('        done <"$__sa_out"')
         lines.append('      fi')
-        lines.append('      rm -f "$__bc" "$__bc-wal" "$__sa_out" 2>/dev/null')
+        # Separate second query (same copied db) for the per-page detail
+        # the user asked for. url is the last `read` field so any stray
+        # separator-like byte inside it is absorbed into that one variable
+        # rather than misaligning tag/cnt/ts; tr additionally strips any
+        # embedded tab/CR/LF before it is folded into the final printf line,
+        # since those are the Python-side line/field delimiters.
+        lines.append('      $__sa_sqlite_cmd -separator "$__sa_sep" "$__bc" "' + detail_sql + '" >"$__sa_out2" 2>/dev/null')
+        lines.append('      __sa_rc2=$?')
+        lines.append('      if [ "$__sa_rc2" = "0" ]; then')
+        lines.append('        while IFS="$__sa_sep" read -r __tag __cnt __ts __url; do')
+        lines.append('          __url=$(printf "%s" "$__url" | tr -d "\\t\\r\\n")')
+        lines.append(
+            '          [ -n "$__tag" ] && printf "BROWSEURL\\t' + browser + '\\t%s\\t%s\\t%s\\t%s\\t' + family + '\\n"'
+            ' "$__tag" "$__cnt" "$__ts" "$__url"'
+        )
+        lines.append('        done <"$__sa_out2"')
+        lines.append('      fi')
+        lines.append('      rm -f "$__bc" "$__bc-wal" "$__sa_out" "$__sa_out2" 2>/dev/null')
         lines.append('    done')
         lines.append('  fi')
 
@@ -497,8 +564,9 @@ def _build_browsing_probe_script(sig_all, sig):
 
 def _parse_browsing_probe(output):
     precise = {}
+    detail_urls = {}
     if not output:
-        return precise
+        return precise, detail_urls
     for line in output.splitlines():
         if line.startswith('BROWSE\t'):
             parts = line.split('\t')
@@ -522,7 +590,43 @@ def _parse_browsing_probe(output):
                 precise[key][0] += cnt_i
                 if ts_i > precise[key][1]:
                     precise[key][1] = ts_i
-    return precise
+        elif line.startswith('BROWSEURL\t'):
+            parts = line.split('\t')
+            if len(parts) >= 7:
+                browser, name, cnt, ts, url, family = parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]
+                try:
+                    cnt_i = int(float(cnt))
+                except ValueError:
+                    cnt_i = 0
+                try:
+                    ts_i = int(float(ts))
+                except ValueError:
+                    ts_i = 0
+                key = (browser, name)
+                detail_urls.setdefault(key, []).append((url, cnt_i, ts_i, family))
+    return precise, detail_urls
+
+
+MAX_BROWSING_URLS_SHOWN = 10
+MAX_BROWSING_URL_LEN = 300
+
+
+def _format_browsing_urls(entries):
+    # entries: list of (url, cnt, ts, family) tuples, possibly merged across
+    # multiple profiles of the same browser (each profile's own SQL query
+    # already caps to its own top 10, so a heavy multi-profile user could
+    # have more than 10 here) - re-sort and cap to the final top N here
+    # rather than trust any single profile's independent ordering.
+    entries_sorted = sorted(entries, key=lambda e: (-e[1], -e[2]))[:MAX_BROWSING_URLS_SHOWN]
+    parts = []
+    for url, cnt, ts, fam in entries_sorted:
+        shown = url if len(url) <= MAX_BROWSING_URL_LEN else url[:MAX_BROWSING_URL_LEN] + '...'
+        date_str = _timestamp_to_date_str(ts, fam)
+        if date_str:
+            parts.append('%s (%d visit(s), last %s)' % (shown, cnt, date_str))
+        else:
+            parts.append('%s (%d visit(s))' % (shown, cnt))
+    return parts
 
 
 def _timestamp_to_date_str(ts_micro, family):
@@ -779,15 +883,16 @@ def run_scan(args, host, asset_id, atype):
             ))
 
     # Browser history (opt-in, separate from credentials/packages given its
-    # sensitivity). Domain + visit count + last-visit date only.
+    # sensitivity). Domain-scoped: only pages actually hosted on a known AI
+    # chat domain are read, never a user's other browsing/search queries.
     if getattr(args, 'shadow_ai_check_browsing', False):
         logging.info(
             "Scanning browser history on [%s] for visits to known AI chat sites "
-            "(domain-level only - no URLs or page content are read)", host['hostname']
+            "(includes the specific pages visited on those sites)", host['hostname']
         )
         sig_all = _load_signatures()
         browse_out = utils.run_cmd_on_host(args, host, [_build_browsing_probe_script(sig_all, sig)], False)
-        precise = _parse_browsing_probe(browse_out)
+        precise, detail_urls = _parse_browsing_probe(browse_out)
         for (browser, name), (total_cnt, max_ts, family) in precise.items():
             found_any = True
             tags.append('SHADOW_AI:' + name)
@@ -795,7 +900,13 @@ def run_scan(args, host, asset_id, atype):
             details = 'Detected via %s browsing history: %d visit(s)' % (browser, total_cnt)
             if date_str:
                 details += ', last visit %s' % date_str
-            details += '. Only the domain and visit metadata were read - no URLs, search queries, or page content.'
+            details += '.'
+            url_entries = detail_urls.get((browser, name), [])
+            if url_entries:
+                formatted = _format_browsing_urls(url_entries)
+                details += ' Pages visited: ' + '; '.join(formatted) + '.'
+                if len(url_entries) > MAX_BROWSING_URLS_SHOWN:
+                    details += ' (%d more distinct page(s) not shown.)' % (len(url_entries) - MAX_BROWSING_URLS_SHOWN)
             config_issues.append(_issue(
                 asset_id, _slug('browse', browser, name),
                 'Shadow AI: browsing activity to %s detected (%s)' % (name, browser),
