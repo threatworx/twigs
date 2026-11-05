@@ -8,6 +8,8 @@ This folder holds the Windows version of twigs (`twigs.ps1` and
 | [`build.sh`](#buildsh--zip-artifacts) | `twigs-powershell-<version>.zip`, `twigs-exe-<version>.zip`, `SHA256SUMS` |
 | [`build_msi.sh`](#build_msish--windows-installer) | runs `build.sh`, then `twigs-<version>-x64.msi` from the exe zip |
 | [`ps2exe.sh`](#ps2exesh--script-to-exe) | `twigs.exe` from `twigs.ps1` (called by `build.sh`) |
+| [`install_osslsigncode.sh`](#install_osslsigncodesh--signing-tool) | builds and installs `osslsigncode` (Authenticode signing on Linux) |
+| [`make_signing_cert.sh`](#make_signing_certsh--self-signed-certificate) | a self-signed code signing certificate for `build.sh` |
 
 Everything builds on Linux with no Windows machine or Wine. A full release:
 
@@ -28,7 +30,7 @@ package at build time. Keep this folder as the only copy.
 ## build.sh — zip artifacts
 
 ```
-./build.sh [-v version] [-k hk_version] [-o output_dir] [-a]
+./build.sh [-v version] [-k hk_version] [-o output_dir] [-a] [-s]
 ```
 
 | Option | Default | Meaning |
@@ -37,6 +39,7 @@ package at build time. Keep this folder as the only copy.
 | `-k hk_version` | latest HardeningKitty release | HardeningKitty tag, branch or commit to download, e.g. `v.0.9.4`, `master`, `da0976073caa` |
 | `-o output_dir` | `powershell/dist` | Where the zips and `SHA256SUMS` are written |
 | `-a` | off | Build twigs.exe to ask for administrator rights (UAC) when it starts |
+| `-s` | off | Require code signing: fail if no signing certificate is configured (see [Code signing](#code-signing)) |
 | `-h` | | Show help |
 
 `GITHUB_TOKEN`, if set (as on GitHub Actions), is used for the GitHub API calls
@@ -49,6 +52,7 @@ that find the latest HardeningKitty release.
    finding list, the signed list manifest and the licence. The list and manifest
    names are read from the module, so a release that renames them still builds.
 2. Sets `$twigs_version` in a copy of `twigs.ps1`. The source copy stays `'dev'`.
+   If a signing certificate is configured, signs that copy and `ShadowAI.psm1`.
 3. Stages `twigs-powershell-<version>/` and builds twigs.exe with `ps2exe.sh`
    (embedding `ShadowAI.psm1` and HardeningKitty) into `twigs-exe-<version>/`.
 4. Writes `run_twigs.bat` and `BUILD-INFO.txt` into both, zips them and writes
@@ -64,7 +68,7 @@ that find the latest HardeningKitty release.
 | `lists\` (HardeningKitty finding list and signed manifest) | ✓ | ✓ |
 | `hk_metadata.json`, `shadow_ai_signatures.json`, `sqlite3.exe` | ✓ | ✓ |
 | `run_twigs.bat` | ✓ | ✓ |
-| `BUILD-INFO.txt` (twigs version, HardeningKitty version, commit and file SHA-256s) | ✓ | ✓ |
+| `BUILD-INFO.txt` (twigs version, signing certificate, HardeningKitty version, commit and file SHA-256s) | ✓ | ✓ |
 | `LICENSE-HardeningKitty.txt` | ✓ | ✓ |
 
 `shadow_ai_signatures.json` comes from `../twigs/`; it is shared with the
@@ -90,12 +94,80 @@ Extra twigs options can follow the file name, for example
   what to fill in.
 - Its exit code is twigs' exit code.
 
+### Code signing
+
+Signing is optional. It is turned on by pointing `build.sh` at a PKCS#12
+(`.p12`) file holding the code signing certificate and its private key. Without
+one, the build is unsigned (or fails, with `-s`).
+
+| Variable | Meaning |
+|---|---|
+| `TW_SIGN_P12` | The `.p12` (or `.pfx`) file with the certificate and private key |
+| `TW_SIGN_PASS` | Its passphrase. If not set, `build.sh` asks for it when run from a terminal, and fails otherwise |
+| `OSSLSIGNCODE` | osslsigncode binary. Default: from `PATH`, then `~/.local/bin/osslsigncode` |
+
+```bash
+./install_osslsigncode.sh                  # once per build machine
+
+TW_SIGN_P12=/path/to/twigs-signing.p12 ./build.sh -s       # asks for the passphrase
+TW_SIGN_P12=/path/to/twigs-signing.p12 TW_SIGN_PASS='...' ./build_msi.sh   # passes the variables on to build.sh
+```
+
+The passphrase is handed to `openssl` and `osslsigncode` in a temporary file
+(mode 600, deleted at the end of the build), not on their command lines. Both
+current (AES) and older (RC2 / 3DES) `.p12` encryption are accepted.
+
+What is signed (Authenticode, SHA-256, with "ThreatWorx twigs" as the
+description):
+
+| File | Signed by the build |
+|---|---|
+| `twigs.ps1` | yes, after the version is set. This replaces the signature block in the source copy |
+| `ShadowAI.psm1` | yes |
+| `twigs.exe` | no. It embeds the signed `twigs.ps1` and `ShadowAI.psm1`, but the exe itself is unsigned |
+| `HardeningKitty.psm1` / `.psd1` | no, they keep the HardeningKitty authors' own signature (scip ag), which stays valid because the files ship unchanged |
+| the MSI and `schedule_task.ps1` | no (see the MSI limitations) |
+
+After signing, each file's signature is checked against its contents and the
+build fails if they don't match. The build also reports whether the
+certificate chain is trusted on the build machine, but doesn't fail on that:
+trust is decided on each Windows machine. The certificate's subject,
+thumbprint and expiry date are written to `BUILD-INFO.txt`.
+
+**No timestamp.** Signatures are not timestamped, so signing needs no network
+access. A signature is valid only while the certificate is: when the
+certificate expires, Windows treats files signed with it as having an invalid
+signature, and they need to be rebuilt with a new certificate. `build.sh`
+refuses an expired certificate and warns when it expires within 30 days.
+
+**Trust on Windows.** A signature only helps where Windows trusts the
+certificate:
+
+- A certificate from a public CA is trusted everywhere.
+- A self-signed certificate (from `make_signing_cert.sh`) is trusted only where
+  its `.cer` file is imported into both **Trusted Root Certification
+  Authorities** and **Trusted Publishers** for the machine. Use Group Policy or
+  Intune, or run as administrator:
+  `Import-Certificate -FilePath twigs-signing.cer -CertStoreLocation Cert:\LocalMachine\Root`
+  and the same with `Cert:\LocalMachine\TrustedPublisher`. Elsewhere the
+  signature shows as untrusted and `AllSigned` still refuses the scripts.
+
+With the certificate trusted, `twigs.ps1` runs under the `AllSigned` and
+`RemoteSigned` policies without `-ExecutionPolicy Bypass`. `run_twigs.bat`
+uses `Bypass` either way.
+
+**Keep the private key secret.** Anyone with the `.pfx` and its password can
+sign code that machines trusting the certificate will run. Keep it outside the
+repo, for example as a CI secret, and don't install a self-signed certificate
+anywhere except the machines that need it.
+
 ### Requirements (build machine)
 
 - Linux (tested on Ubuntu 20.04) with `bash`, `curl`, `tar`, `sha256sum`, and
   `zip` or `python3`
 - dotnet SDK 6 or newer (for `ps2exe.sh`)
 - Network access to GitHub (HardeningKitty) and nuget.org (first exe build only)
+- For signing: osslsigncode 2.8 or newer (`install_osslsigncode.sh`) and `openssl`
 
 ### Requirements (Windows, running the zips)
 
@@ -120,12 +192,18 @@ on the host; otherwise it covers the current user only.
   only one twigs uses. Other lists from the HardeningKitty repo are left out.
 - **Version format.** Windows file versions are numbers only, so `-v 2.0.0-rc1`
   gives twigs.exe a file version of `2.0.0.0` (the product version keeps `2.0.0-rc1`).
-- **twigs.ps1's Authenticode signature becomes invalid** in the built zip,
-  because the version is written into the file. `run_twigs.bat` runs twigs.ps1
-  with `-ExecutionPolicy Bypass`, so it is unaffected; running twigs.ps1 directly
-  under an `AllSigned` or `RemoteSigned` policy needs a re-signed copy.
-- **twigs.exe is not code-signed**, so Windows SmartScreen and some endpoint
-  security tools may warn about or block it.
+- **Unsigned builds.** Without a signing certificate, the signature block kept
+  in the source `twigs.ps1` becomes invalid in the zip, because the version is
+  written into the file, and `ShadowAI.psm1` is unsigned. Running `twigs.ps1`
+  directly under `AllSigned` or `RemoteSigned` then fails (`run_twigs.bat` uses
+  `Bypass` and is unaffected). See [Code signing](#code-signing).
+- **twigs.exe is never code-signed**, even when signing is configured, so
+  Windows SmartScreen and some endpoint security tools may warn about or block it.
+- **Signing needs a trusted certificate to be useful.** A self-signed signature
+  is only trusted on machines that have its certificate installed.
+- **Signed files expire with the certificate**, because they are not
+  timestamped. Releases built before a certificate expires must be rebuilt
+  after it is replaced.
 - **run_twigs.bat values** must not contain the characters `& | < > ^ % "`, which
   the Windows command prompt treats specially.
 - **run_twigs.bat does not pause** at the end, so it can run unattended. When
@@ -325,8 +403,7 @@ In practice: Windows 10, Windows 11, and Windows Server 2016, 2019, 2022 and
   It is hidden from MSI logs, but the `msiexec` command line itself may be
   visible to other processes and recorded by deployment tools.
 - **The MSI is not code-signed**, so SmartScreen warns when it is downloaded and
-  run interactively. `osslsigncode` can sign it on Linux with a code-signing
-  certificate.
+  run interactively. twigs.exe inside it is not signed either.
 - **How it is built.** `wixl` 0.100 cannot write PATH entries, component
   conditions, custom actions or permissions, so `build_msi.sh` adds those tables
   to the MSI with `msibuild` after compiling.
@@ -369,3 +446,98 @@ is empty and the exe's folder is used for files next to it.
   supported.
 - `twigs.exe -?` prints the help comment at the top of the script instead of
   running it.
+
+---
+
+## install_osslsigncode.sh — signing tool
+
+Downloads, builds and installs [osslsigncode](https://github.com/mtrojnar/osslsigncode),
+which signs PowerShell scripts, `.exe` and `.msi` files with Authenticode on
+Linux. Signing PowerShell scripts needs osslsigncode 2.8 or newer. Ubuntu's own
+package is older than that, so the script builds it from the upstream release.
+
+```
+./install_osslsigncode.sh [-v version] [-p prefix] [-f] [-t]
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `-v version` | latest release | osslsigncode release tag to build, e.g. `2.14` |
+| `-p prefix` | `/usr/local` as root, otherwise `~/.local` | Install prefix; the binary goes to `<prefix>/bin` |
+| `-f` | off | Rebuild even if that version is already installed at the prefix |
+| `-t` | off | Run the upstream test suite before installing |
+
+Steps:
+
+1. Installs any missing build packages with `apt-get`, using `sudo` when not
+   root: `build-essential pkg-config libssl-dev libcurl4-openssl-dev
+   zlib1g-dev curl ca-certificates python3`.
+2. Uses the system `cmake` if it is 3.17 or newer. Otherwise (Ubuntu 20.04 has
+   3.16), it installs a current cmake with pip into the temporary build
+   directory only. The system cmake is not changed.
+3. Downloads the release tarball and builds it in a temporary directory. It
+   installs the binary, docs and bash completion under the prefix, then
+   deletes the temporary directory.
+
+Running it again with the same version does nothing. Use `-f` to rebuild.
+
+### Requirements
+
+- Ubuntu 20.04 or newer, or another Debian-based system
+- Network access to github.com, and on Ubuntu 20.04 also to pypi.org (for cmake)
+- `sudo` rights if build packages are missing or the prefix is not writable
+- `GITHUB_TOKEN` (optional) is used for the GitHub API call that finds the latest release
+
+### Limitations
+
+- apt-based systems only.
+- It doesn't add the prefix to `PATH`. `~/.local/bin` usually is on `PATH`
+  already; the script prints a note if it isn't.
+- It doesn't uninstall. To remove osslsigncode, delete `<prefix>/bin/osslsigncode`,
+  `<prefix>/share/doc/osslsigncode` and
+  `<prefix>/share/bash-completion/completions/osslsigncode.bash`.
+- It only installs the tool. `build.sh` uses it when signing is configured
+  (see [Code signing](#code-signing)).
+
+---
+
+## make_signing_cert.sh — self-signed certificate
+
+Creates a self-signed code signing certificate for `build.sh`'s
+`TW_SIGN_P12`. It is enough for machines you manage, where you can install the
+certificate. For anything else, use a certificate from a public CA instead
+(see [Code signing](#code-signing)).
+
+```
+./make_signing_cert.sh [-n common_name] [-d days] [-o output_dir] [-b basename] [-f]
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `-n common_name` | `ThreatWorx twigs code signing` | Certificate subject (shown as the publisher on Windows) |
+| `-d days` | `1095` (three years) | Validity |
+| `-o output_dir` | current directory | Where the files are written |
+| `-b basename` | `twigs-signing` | Output file name, without extension |
+| `-f` | off | Overwrite existing files |
+
+The `.pfx` password comes from `TW_SIGN_PASS`, or the script asks for it.
+
+| File | Contents |
+|---|---|
+| `<basename>.pfx` | Certificate and private key, password protected, mode 600. **Keep secret.** Used as `TW_SIGN_P12` |
+| `<basename>.cer` | Public certificate (DER), to import on Windows into Trusted Root and Trusted Publishers |
+| `<basename>.pem` | The same public certificate in PEM form |
+
+The certificate is RSA 3072 / SHA-256, with code signing usage. It is marked
+as its own CA, which Windows needs to accept it from the Trusted Root store.
+
+### Limitations
+
+- A new certificate has a new thumbprint, so machines need the new `.cer` when
+  it is replaced. `build.sh` doesn't timestamp, so files signed with the old
+  certificate stop being valid when it expires.
+- No revocation. If the key leaks, remove the certificate from every machine
+  that trusts it.
+- The `.pfx` uses AES-256 encryption, which Windows 10 1709 / Server 2019 and
+  later can import. That only matters for signing on Windows: build.sh only
+  needs it on Linux, and Windows machines only need the `.cer`.

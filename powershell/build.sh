@@ -15,15 +15,26 @@
 # file checksums that went into it. For a reproducible build, pass -k <commit>.
 #
 # Usage:
-#   ./build.sh [-v version] [-k hk_version] [-o output_dir] [-a]
+#   ./build.sh [-v version] [-k hk_version] [-o output_dir] [-a] [-s]
 #
 #   -v  version for the zip names and twigs.exe   (default: twigs/__init__.py __version__)
 #   -k  HardeningKitty tag, branch or commit      (default: latest release)
 #       e.g. v.0.9.4, master, da0976073caa...
 #   -o  output directory                          (default: powershell/dist)
 #   -a  build twigs.exe to require administrator (UAC prompt on start)
+#   -s  require code signing: fail if TW_SIGN_P12 is not set
 #
-# Requirements: bash, curl, tar, sha256sum, zip (or python3), dotnet SDK 6+ (for ps2exe.sh).
+# Code signing (optional): when TW_SIGN_P12 is set, twigs.ps1 and ShadowAI.psm1
+# are Authenticode-signed with osslsigncode 2.8+ (see install_osslsigncode.sh).
+# twigs.exe is not signed. HardeningKitty keeps its upstream signature.
+# Signatures are not timestamped. Without TW_SIGN_P12 the build is unsigned,
+# unless -s is given.
+#   TW_SIGN_P12        PKCS#12 file (.p12 / .pfx) with the certificate and private key
+#   TW_SIGN_PASS       its passphrase (asked for when not set and run from a terminal)
+#   OSSLSIGNCODE       osslsigncode binary (default: from PATH, then ~/.local/bin)
+#
+# Requirements: bash, curl, tar, sha256sum, zip (or python3), dotnet SDK 6+ (for ps2exe.sh),
+# osslsigncode 2.8+ and openssl when signing.
 # GITHUB_TOKEN, if set, is used for GitHub API calls (avoids anonymous rate limits).
 
 set -euo pipefail
@@ -44,15 +55,17 @@ COMMON_FILES=(
 VERSION=""
 OUT_DIR="$PS_DIR/dist"
 ADMIN_FLAG=()
+REQUIRE_SIGN=false
 
 usage() { awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "$0"; exit "${1:-0}"; }
 
-while getopts ":v:k:o:ah" opt; do
+while getopts ":v:k:o:ash" opt; do
     case "$opt" in
         v) VERSION="$OPTARG" ;;
         k) HK_REF="$OPTARG" ;;
         o) OUT_DIR="$OPTARG" ;;
         a) ADMIN_FLAG=(-a) ;;
+        s) REQUIRE_SIGN=true ;;
         h) usage 0 ;;
         :) echo "Option -$OPTARG needs a value" >&2; usage 1 ;;
         *) echo "Unknown option -$OPTARG" >&2; usage 1 ;;
@@ -89,6 +102,83 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 echo "==> twigs PowerShell build $VERSION"
+
+# ---------------------------------------------------------------- code signing
+SIGN=false
+SIGN_ARGS=()
+SIGN_INFO="no"
+if [[ -n "${TW_SIGN_P12:-}" ]]; then
+    SIGN=true
+    [[ -f "$TW_SIGN_P12" ]] || die "TW_SIGN_P12: file not found: $TW_SIGN_P12"
+    OSSL="${OSSLSIGNCODE:-$(command -v osslsigncode || true)}"
+    [[ -z "$OSSL" && -x "$HOME/.local/bin/osslsigncode" ]] && OSSL="$HOME/.local/bin/osslsigncode"
+    [[ -n "$OSSL" && -x "$OSSL" ]] || die "osslsigncode not found; run ./install_osslsigncode.sh or set OSSLSIGNCODE"
+    ossl_ver="$("$OSSL" --version 2>/dev/null | sed -n 's/^osslsigncode \([0-9][0-9.]*\).*/\1/p' | head -1 || true)"
+    [[ -n "$ossl_ver" && "$(printf '%s\n2.8\n' "$ossl_ver" | sort -V | head -1)" == "2.8" ]] \
+        || die "osslsigncode ${ossl_ver:-of unknown version} at $OSSL cannot sign PowerShell scripts; 2.8 or newer is needed (./install_osslsigncode.sh)"
+    command -v openssl >/dev/null || die "openssl not found (needed to read the signing certificate)"
+
+    SIGN_PASS="${TW_SIGN_PASS:-}"
+    if [[ -z "$SIGN_PASS" && -t 0 ]]; then
+        read -r -s -p "Passphrase for $(basename "$TW_SIGN_P12"): " SIGN_PASS; echo
+    fi
+    [[ -n "$SIGN_PASS" ]] || die "TW_SIGN_PASS is not set (the passphrase of $TW_SIGN_P12)"
+    # Passed in a file, so the passphrase is not visible in the process list
+    (umask 077 && printf '%s' "$SIGN_PASS" > "$WORK/sign.pass")
+    unset SIGN_PASS
+
+    # The certificate in PEM, for the build log, BUILD-INFO and verification.
+    # -legacy is for older .p12 files (RC2 / 3DES) read with OpenSSL 3.
+    openssl pkcs12 -in "$TW_SIGN_P12" -nokeys -clcerts -passin "file:$WORK/sign.pass" -out "$WORK/sign-certs.pem" 2>/dev/null \
+        || openssl pkcs12 -legacy -in "$TW_SIGN_P12" -nokeys -clcerts -passin "file:$WORK/sign.pass" -out "$WORK/sign-certs.pem" 2>/dev/null \
+        || die "could not open $TW_SIGN_P12 (wrong TW_SIGN_PASS?)"
+    SIGN_SUBJECT="$(openssl x509 -in "$WORK/sign-certs.pem" -noout -subject -nameopt RFC2253 2>/dev/null | sed 's/^subject=//' || true)"
+    SIGN_THUMB="$(openssl x509 -in "$WORK/sign-certs.pem" -noout -fingerprint -sha1 2>/dev/null | sed 's/.*=//; s/://g' || true)"
+    SIGN_EXPIRES="$(openssl x509 -in "$WORK/sign-certs.pem" -noout -enddate 2>/dev/null | sed 's/^notAfter=//' || true)"
+    [[ -n "$SIGN_THUMB" ]] || die "no certificate found in $TW_SIGN_P12"
+    # Without a timestamp, signatures are only valid while the certificate is valid
+    openssl x509 -in "$WORK/sign-certs.pem" -noout -checkend 0 >/dev/null || die "signing certificate expired on $SIGN_EXPIRES"
+    openssl x509 -in "$WORK/sign-certs.pem" -noout -checkend $((30 * 86400)) >/dev/null \
+        || echo "    WARNING: the signing certificate expires on $SIGN_EXPIRES; signatures stop being valid then"
+
+    SIGN_ARGS=(-pkcs12 "$TW_SIGN_P12" -readpass "$WORK/sign.pass" -h sha256 -n "ThreatWorx twigs" -i "https://threatworx.io")
+    SIGN_INFO="yes, by $SIGN_SUBJECT (SHA-1 thumbprint $SIGN_THUMB, valid until $SIGN_EXPIRES), not timestamped"
+    echo "==> Signing with $SIGN_SUBJECT ($SIGN_THUMB), osslsigncode $ossl_ver"
+elif [[ "$REQUIRE_SIGN" == true ]]; then
+    die "-s given but TW_SIGN_P12 is not set"
+else
+    echo "==> Not signing (TW_SIGN_P12 not set)"
+fi
+
+# Signs a file in place, replacing any signature it already has (such as the
+# signature block kept in the source twigs.ps1), then checks the result.
+sign_file() {
+    local f="$1" log="$WORK/sign.log"
+    [[ "$SIGN" == true ]] || return 0
+    rm -f "$f.signed"
+    "$OSSL" sign "${SIGN_ARGS[@]}" -in "$f" -out "$f.signed" >"$log" 2>&1 \
+        || { cat "$log" >&2; die "signing $(basename "$f") failed"; }
+    mv -f "$f.signed" "$f"
+
+    # The signature must match the file. Whether the certificate chain is
+    # trusted depends on the machine, so that part is only reported.
+    "$OSSL" verify -CAfile "$WORK/sign-ca.pem" -in "$f" >"$log" 2>&1 || true
+    local cur calc
+    cur="$(sed -n 's/^Current message digest *: *\([0-9A-F]*\).*/\1/p' "$log" | head -1)"
+    calc="$(sed -n 's/^Calculated message digest *: *\([0-9A-F]*\).*/\1/p' "$log" | head -1)"
+    [[ -n "$cur" && "$cur" == "$calc" ]] || { cat "$log" >&2; die "signature check of $(basename "$f") failed"; }
+    if grep -q '^Succeeded' "$log"; then
+        echo "    signed $(basename "$f")"
+    else
+        echo "    signed $(basename "$f") (certificate chain not trusted on this build machine)"
+    fi
+}
+if [[ "$SIGN" == true ]]; then
+    # Trust store for the check: system CAs plus the signing certificates, so
+    # both public and self-signed certificates can be checked.
+    cat /etc/ssl/certs/ca-certificates.crt "$WORK/sign-certs.pem" > "$WORK/sign-ca.pem" 2>/dev/null \
+        || cp "$WORK/sign-certs.pem" "$WORK/sign-ca.pem"
+fi
 
 # ---------------------------------------------------------------- HardeningKitty
 gh_api() {
@@ -137,6 +227,7 @@ write_build_info() {
     {
         echo "twigs version:          $VERSION"
         echo "built:                  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "code signed:            $SIGN_INFO"
         echo "HardeningKitty version: $HK_REF"
         echo "HardeningKitty commit:  $HK_COMMIT"
         echo "HardeningKitty source:  https://github.com/$HK_REPO"
@@ -167,6 +258,10 @@ mkdir "$WORK/src"
 sed "s/^\$twigs_version = 'dev'\(\r\?\)\$/\$twigs_version = '$VERSION'\1/" "$PS_DIR/twigs.ps1" > "$WORK/src/twigs.ps1"
 grep -qF "\$twigs_version = '$VERSION'" "$WORK/src/twigs.ps1" \
     || die "could not set the version in twigs.ps1 (expected a line: \$twigs_version = 'dev')"
+cp "$PS_DIR/ShadowAI.psm1" "$WORK/src/ShadowAI.psm1"
+# Signed after the version is set; twigs.exe embeds these signed copies too.
+sign_file "$WORK/src/twigs.ps1"
+sign_file "$WORK/src/ShadowAI.psm1"
 
 # ---------------------------------------------------------------- run_twigs.bat
 # Writes a launcher with every discovery option on and placeholders for the
@@ -237,7 +332,7 @@ PS_NAME="twigs-powershell-$VERSION"
 PS_STAGE="$WORK/stage-ps/$PS_NAME"
 echo "==> Staging $PS_NAME"
 mkdir -p "$PS_STAGE"
-cp "$WORK/src/twigs.ps1" "$PS_DIR/ShadowAI.psm1" "${COMMON_FILES[@]}" "$PS_STAGE/"
+cp "$WORK/src/twigs.ps1" "$WORK/src/ShadowAI.psm1" "${COMMON_FILES[@]}" "$PS_STAGE/"
 stage_hk "$PS_STAGE" true
 write_bat "$PS_STAGE" 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0twigs.ps1"'
 
@@ -258,7 +353,7 @@ mkdir -p "$EXE_STAGE"
 "$PS_DIR/ps2exe.sh" \
     -i "$WORK/src/twigs.ps1" \
     -o "$EXE_STAGE/twigs.exe" \
-    -m "$PS_DIR/ShadowAI.psm1" \
+    -m "$WORK/src/ShadowAI.psm1" \
     -m "$WORK/exe-src/HardeningKitty.psm1" \
     -v "$VERSION" \
     "${ICON_FLAG[@]}" "${ADMIN_FLAG[@]}"
