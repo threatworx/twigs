@@ -29,14 +29,13 @@
 # Usage:
 #   ./build_msi.sh [-v version] [-z twigs-exe.zip] [-o output_dir]
 #
-#   -v  version                 (default: twigs/__init__.py __version__)
+#   -v  version                 (default: powershell/VERSION)
 #   -z  package this existing twigs.exe zip instead of running build.sh
 #   -o  output directory        (default: powershell/dist)
 
 set -euo pipefail
 
 PS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$PS_DIR")"
 
 # Never change: this is how Windows recognises new versions as upgrades
 UPGRADE_CODE="FD0B4A27-BE34-466B-B516-54CBD5C0E9D3"
@@ -68,8 +67,9 @@ for tool in wixl msibuild msiinfo unzip; do
 done
 
 if [[ -z "$VERSION" ]]; then
-    VERSION="$(sed -n "s/^__version__ = ['\"]\([^'\"]*\)['\"].*/\1/p" "$REPO_DIR/twigs/__init__.py")"
-    [[ -n "$VERSION" ]] || die "could not read __version__ from twigs/__init__.py; pass -v"
+    VERSION="$(tr -d '[:space:]' < "$PS_DIR/VERSION" 2>/dev/null || true)"
+    [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$ ]] \
+        || die "could not read a version from $PS_DIR/VERSION (expected e.g. 1.3.25); pass -v"
 fi
 # MSI versions are numbers only (major.minor.build), e.g. 2.0.0-rc1 -> 2.0.0
 MSI_VERSION="$(grep -oE '^[0-9]+(\.[0-9]+){0,2}' <<<"$VERSION")" || die "version $VERSION does not start with a number"

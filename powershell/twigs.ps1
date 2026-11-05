@@ -138,7 +138,7 @@ param(
     $shadow_ai_check_wsl='false'
 )
 
-# Set to the twigs release version (twigs/__init__.py) by build.sh
+# Set to the twigs PowerShell release version (powershell/VERSION) by build.sh
 $twigs_version = 'dev'
 Write-Host "twigs-ps version $twigs_version"
 

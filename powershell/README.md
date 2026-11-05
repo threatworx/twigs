@@ -21,6 +21,33 @@ ls dist/
 
 Run `./build.sh` on its own when only the zips are needed.
 
+### Versioning
+
+twigs for Windows has its own version, separate from Python twigs
+(`twigs/__init__.py`). It is kept in [`VERSION`](VERSION), a one-line file in
+this folder, and covers everything built here: `twigs.ps1`, `ShadowAI.psm1`,
+twigs.exe, both zips and the MSI.
+
+To release a new version, edit `VERSION` (e.g. `1.3.25` → `1.3.26`) and run
+`./build_msi.sh`. The build uses it for:
+
+- the zip and MSI file names
+- `$twigs_version` in the shipped `twigs.ps1`. It is printed at startup as
+  `twigs-ps version <version>` and reported as the tool version with `-out`.
+  The source copy says `'dev'`.
+- twigs.exe's file and product version
+- the MSI's version
+- `BUILD-INFO.txt`
+
+`-v` on `build.sh` or `build_msi.sh` overrides it for one build. The version
+must start with numbers, like `1.3.26`, `2.0` or `1.4.0-rc1`, and each new MSI
+release needs a higher number than the last (see the
+[MSI limitations](#limitations-1)). It started at `1.3.25`, the twigs version
+at the time of the split, so MSIs built before it upgrade normally.
+
+`ShadowAI.psm1` is also sent to Windows hosts by Python twigs (see below);
+that copy is shipped with Python twigs' own version.
+
 `ShadowAI.psm1` is also used by Python twigs: `twigs/windows.py` sends it to
 remote Windows hosts over WinRM, and `setup.py` copies it into the Python
 package at build time. Keep this folder as the only copy.
@@ -35,22 +62,25 @@ package at build time. Keep this folder as the only copy.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `-v version` | `__version__` in `twigs/__init__.py` | Version used in the zip names, set in `twigs.ps1` (`$twigs_version`) and as twigs.exe's file/product version |
-| `-k hk_version` | latest HardeningKitty release | HardeningKitty tag, branch or commit to download, e.g. `v.0.9.4`, `master`, `da0976073caa` |
+| `-v version` | [`VERSION`](#versioning) | Version used in the zip names, set in `twigs.ps1` (`$twigs_version`) and as twigs.exe's file/product version |
+| `-k hk_version` | `v.0.9.3` | HardeningKitty version to download: `latest` (newest release), a release number (`0.9.4` or `v.0.9.4`), a branch (`master`) or a commit (`da0976073caa`) |
 | `-o output_dir` | `powershell/dist` | Where the zips and `SHA256SUMS` are written |
 | `-a` | off | Build twigs.exe to ask for administrator rights (UAC) when it starts |
 | `-s` | off | Require code signing: fail if no signing certificate is configured (see [Code signing](#code-signing)) |
 | `-h` | | Show help |
 
 `GITHUB_TOKEN`, if set (as on GitHub Actions), is used for the GitHub API calls
-that find the latest HardeningKitty release.
+that find the latest HardeningKitty release (`-k latest`) and the commit of the
+version used. The default HardeningKitty version is `HK_DEFAULT` near the top of
+`build.sh`.
 
 ### What it does
 
 1. Downloads [HardeningKitty](https://github.com/scipag/HardeningKitty) at the
    chosen version and keeps only what twigs uses: the module, its default
-   finding list, the signed list manifest and the licence. The list and manifest
-   names are read from the module, so a release that renames them still builds.
+   finding list, the signed list manifest (HardeningKitty 0.9.4 and later) and
+   the licence. The list and manifest names are read from the module, so a
+   release that renames them still builds.
 2. Sets `$twigs_version` in a copy of `twigs.ps1`. The source copy stays `'dev'`.
    If a signing certificate is configured, signs that copy and `ShadowAI.psm1`.
 3. Stages `twigs-powershell-<version>/` and builds twigs.exe with `ps2exe.sh`
@@ -65,10 +95,10 @@ that find the latest HardeningKitty release.
 | `twigs.ps1`, `ShadowAI.psm1` | ✓ | embedded in twigs.exe |
 | `HardeningKitty.psm1`, `HardeningKitty.psd1` | ✓ | embedded in twigs.exe |
 | `twigs.exe` | | ✓ |
-| `lists\` (HardeningKitty finding list and signed manifest) | ✓ | ✓ |
+| `lists\` (HardeningKitty finding list, plus its signed manifest from 0.9.4 on) | ✓ | ✓ |
 | `hk_metadata.json`, `shadow_ai_signatures.json`, `sqlite3.exe` | ✓ | ✓ |
 | `run_twigs.bat` | ✓ | ✓ |
-| `BUILD-INFO.txt` (twigs version, signing certificate, HardeningKitty version, commit and file SHA-256s) | ✓ | ✓ |
+| `BUILD-INFO.txt` (twigs-ps version, signing certificate, HardeningKitty version, commit and file SHA-256s) | ✓ | ✓ |
 | `LICENSE-HardeningKitty.txt` | ✓ | ✓ |
 
 `shadow_ai_signatures.json` comes from `../twigs/`; it is shared with the
@@ -185,9 +215,10 @@ on the host; otherwise it covers the current user only.
 ### Limitations
 
 - **Network at build time.** Every build downloads HardeningKitty from GitHub.
-- **Not reproducible by default.** Without `-k`, the HardeningKitty version is
-  whatever the latest release is at build time. Pass `-k <commit>` to repeat a
-  build exactly; `BUILD-INFO.txt` records the commit used.
+- **HardeningKitty version.** By default every build uses release `v.0.9.3`.
+  With `-k latest`, the version is whatever the newest release is at build
+  time. A release tag could in principle be moved upstream; pass `-k <commit>` to
+  repeat a build exactly. `BUILD-INFO.txt` records the commit used.
 - **Only the default HardeningKitty finding list is shipped**, since that is the
   only one twigs uses. Other lists from the HardeningKitty repo are left out.
 - **Version format.** Windows file versions are numbers only, so `-v 2.0.0-rc1`
@@ -220,7 +251,7 @@ on the host; otherwise it covers the current user only.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `-v version` | `__version__` in `twigs/__init__.py` | Version of the MSI. Only the leading numbers are used (`2.0.0-rc1` → `2.0.0`) |
+| `-v version` | [`VERSION`](#versioning) | Version of the MSI. Only the leading numbers are used (`2.0.0-rc1` → `2.0.0`) |
 | `-z zip` | | Package this existing exe zip instead of running `build.sh` |
 | `-o output_dir` | `powershell/dist` | Where `twigs-<version>-x64.msi` is written |
 | `-h` | | Show help |
@@ -389,8 +420,10 @@ In practice: Windows 10, Windows 11, and Windows Server 2016, 2019, 2022 and
   `%ProgramData%\ThreatWorx\twigs\install.log`.
 - **Fixed schedule details.** Weekly runs are on Sundays, the random delay is one
   hour and the time limit four hours.
-- **Every release needs a higher version.** Two different MSI builds of the same
-  version are treated as separate products and are not upgraded over each other.
+- **Every release needs a higher version.** Bump [`VERSION`](#versioning) for
+  each release. Two different MSI builds of the same version are treated as
+  separate products and are not upgraded over each other. Only the first three
+  numbers count for upgrades, so `1.3.25.1` doesn't upgrade `1.3.25`.
   Never change `UPGRADE_CODE` in `build_msi.sh`: it is how Windows recognises
   new versions as upgrades.
 - **Changing saved settings without an upgrade.** Running the same version's MSI

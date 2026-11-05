@@ -10,16 +10,17 @@
 #   SHA256SUMS
 #
 # HardeningKitty is not kept in the repo. It is downloaded from GitHub at build
-# time: the latest release by default, or the tag / branch / commit given with
-# -k. Each zip gets a BUILD-INFO.txt recording the HardeningKitty commit and
-# file checksums that went into it. For a reproducible build, pass -k <commit>.
+# time: release v.0.9.3 by default (HK_DEFAULT below), the latest release with
+# -k latest, or the tag / branch / commit given with -k. Each zip gets a
+# BUILD-INFO.txt recording the HardeningKitty commit and file checksums that
+# went into it.
 #
 # Usage:
 #   ./build.sh [-v version] [-k hk_version] [-o output_dir] [-a] [-s]
 #
-#   -v  version for the zip names and twigs.exe   (default: twigs/__init__.py __version__)
-#   -k  HardeningKitty tag, branch or commit      (default: latest release)
-#       e.g. v.0.9.4, master, da0976073caa...
+#   -v  version for the zip names and twigs.exe   (default: powershell/VERSION)
+#   -k  HardeningKitty version: latest, a release number, tag, branch or commit
+#       (default: v.0.9.3) e.g. latest, 0.9.4, v.0.9.4, master, da0976073caa...
 #   -o  output directory                          (default: powershell/dist)
 #   -a  build twigs.exe to require administrator (UAC prompt on start)
 #   -s  require code signing: fail if TW_SIGN_P12 is not set
@@ -43,7 +44,9 @@ PS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$PS_DIR")"
 
 HK_REPO="scipag/HardeningKitty"
-HK_REF="latest"
+# HardeningKitty release used when -k is not given
+HK_DEFAULT="v.0.9.3"
+HK_REF="$HK_DEFAULT"
 
 # twigs files shipped in both zips, besides HardeningKitty
 COMMON_FILES=(
@@ -86,8 +89,9 @@ else
 fi
 
 if [[ -z "$VERSION" ]]; then
-    VERSION="$(sed -n "s/^__version__ = ['\"]\([^'\"]*\)['\"].*/\1/p" "$REPO_DIR/twigs/__init__.py")"
-    [[ -n "$VERSION" ]] || die "could not read __version__ from twigs/__init__.py; pass -v"
+    VERSION="$(tr -d '[:space:]' < "$PS_DIR/VERSION" 2>/dev/null || true)"
+    [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$ ]] \
+        || die "could not read a version from $PS_DIR/VERSION (expected e.g. 1.3.25); pass -v"
 fi
 
 for f in "$PS_DIR/twigs.ps1" "$PS_DIR/ShadowAI.psm1" "$PS_DIR/ps2exe.sh" "${COMMON_FILES[@]}"; do
@@ -187,6 +191,10 @@ gh_api() {
     curl -fsSL --retry 3 "${auth[@]}" -H "Accept: $1" "https://api.github.com/repos/$HK_REPO/$2"
 }
 
+# HardeningKitty tags are "v.<version>": accept 0.9.3 or v0.9.3 for v.0.9.3
+if [[ "$HK_REF" =~ ^v?([0-9]+(\.[0-9]+)+)$ ]]; then
+    HK_REF="v.${BASH_REMATCH[1]}"
+fi
 if [[ "$HK_REF" == "latest" ]]; then
     HK_REF="$(gh_api application/vnd.github+json releases/latest 2>/dev/null \
         | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)" || true
@@ -225,7 +233,7 @@ done
 # Records exactly what went into a release folder
 write_build_info() {
     {
-        echo "twigs version:          $VERSION"
+        echo "twigs-ps version:       $VERSION"
         echo "built:                  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
         echo "code signed:            $SIGN_INFO"
         echo "HardeningKitty version: $HK_REF"
