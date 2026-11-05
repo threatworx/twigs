@@ -10,7 +10,10 @@ def check4_1():
     compute_instances_by_projects = gcp_cis_utils.get_compute_instances_by_projects()
     for p in compute_instances_by_projects.keys():
         out_json = gcp_cis_utils.run_gcloud_cmd("projects describe %s" % p)
-        project_no = out_json['projectNumber']
+        project_no = out_json.get('projectNumber')
+        if project_no is None:
+            logging.warning("Unable to get projectNumber for []" % p)
+            continue
         default_service_account = project_no + "-compute@developer.gserviceaccount.com"
         out_json = compute_instances_by_projects[p]
         for entry in out_json:
