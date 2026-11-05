@@ -897,16 +897,20 @@ def run_scan(args, host, asset_id, atype):
             found_any = True
             tags.append('SHADOW_AI:' + name)
             date_str = _timestamp_to_date_str(max_ts, family)
-            details = 'Detected via %s browsing history: %d visit(s)' % (browser, total_cnt)
+            summary = 'Detected via %s browsing history: %d visit(s)' % (browser, total_cnt)
             if date_str:
-                details += ', last visit %s' % date_str
-            details += '.'
+                summary += ', last visit %s' % date_str
+            summary += '.'
+            details_lines = [summary]
             url_entries = detail_urls.get((browser, name), [])
             if url_entries:
                 formatted = _format_browsing_urls(url_entries)
-                details += ' Pages visited: ' + '; '.join(formatted) + '.'
+                details_lines.append('')
+                details_lines.append('Pages visited:')
+                details_lines.extend('  %s' % line for line in formatted)
                 if len(url_entries) > MAX_BROWSING_URLS_SHOWN:
-                    details += ' (%d more distinct page(s) not shown.)' % (len(url_entries) - MAX_BROWSING_URLS_SHOWN)
+                    details_lines.append('(%d more distinct page(s) not shown.)' % (len(url_entries) - MAX_BROWSING_URLS_SHOWN))
+            details = '\n'.join(details_lines)
             config_issues.append(_issue(
                 asset_id, _slug('browse', browser, name),
                 'Shadow AI: browsing activity to %s detected (%s)' % (name, browser),

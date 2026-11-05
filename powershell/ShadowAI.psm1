@@ -1134,18 +1134,22 @@ function Invoke-ShadowAIScan {
                 $tagsList.Add("SHADOW_AI:$($entry.Name)")
                 $slug = ConvertTo-ShadowAISlug @('browse', $entry.Browser, $entry.Name)
                 $dateStr = ConvertFrom-ShadowAIBrowsingTimestamp -Value $entry.Ts -Family $entry.Family
-                $details = "Detected via $($entry.Browser) browsing history$(Format-ShadowAIUsers $entry.Users): $($entry.Count) visit(s)"
-                if ($dateStr) { $details += ", last visit $dateStr" }
-                $details += '.'
+                $summary = "Detected via $($entry.Browser) browsing history$(Format-ShadowAIUsers $entry.Users): $($entry.Count) visit(s)"
+                if ($dateStr) { $summary += ", last visit $dateStr" }
+                $summary += '.'
+                $detailsLines = @($summary)
                 $urlKey = "$($entry.Browser)|$($entry.Name)"
                 if ($browsingUrls.ContainsKey($urlKey) -and $browsingUrls[$urlKey].Count -gt 0) {
                     $allUrls = $browsingUrls[$urlKey]
                     $formatted = Format-ShadowAIBrowsingUrls -Entries $allUrls
-                    $details += ' Pages visited: ' + ($formatted -join '; ') + '.'
+                    $detailsLines += ''
+                    $detailsLines += 'Pages visited:'
+                    $detailsLines += ($formatted | ForEach-Object { "  $_" })
                     if ($allUrls.Count -gt $formatted.Count) {
-                        $details += " ($($allUrls.Count - $formatted.Count) more distinct page(s) not shown.)"
+                        $detailsLines += "($($allUrls.Count - $formatted.Count) more distinct page(s) not shown.)"
                     }
                 }
+                $details = $detailsLines -join "`n"
                 $configIssues.Add((New-ShadowAIIssue $slug "Shadow AI: browsing activity to $($entry.Name) detected ($($entry.Browser))" $details '3' $entry.Name $AssetId))
             }
         }
