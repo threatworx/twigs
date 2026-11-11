@@ -1130,6 +1130,13 @@ function Invoke-ShadowAIScan {
             Remove-Item -Path $browseTmpDir -Recurse -Force -ErrorAction SilentlyContinue
 
             foreach ($entry in $browsingReported.Values) {
+                if ($entry.Count -le 0) {
+                    # Count is 0 for rows the browser never counted as a real
+                    # user visit (redirects, downloads, prefetches, iframe
+                    # loads) - the domain shows up in history but the user
+                    # never actually navigated there themselves, so it's noise.
+                    continue
+                }
                 $foundAny = $true
                 $tagsList.Add("SHADOW_AI:$($entry.Name)")
                 $slug = ConvertTo-ShadowAISlug @('browse', $entry.Browser, $entry.Name)

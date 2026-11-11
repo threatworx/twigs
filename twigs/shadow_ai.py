@@ -894,6 +894,12 @@ def run_scan(args, host, asset_id, atype):
         browse_out = utils.run_cmd_on_host(args, host, [_build_browsing_probe_script(sig_all, sig)], False)
         precise, detail_urls = _parse_browsing_probe(browse_out)
         for (browser, name), (total_cnt, max_ts, family) in precise.items():
+            if total_cnt <= 0:
+                # visit_count is 0 for rows the browser never counted as a
+                # real user visit (redirects, downloads, prefetches, iframe
+                # loads) - the domain shows up in history but the user never
+                # actually navigated there themselves, so it's noise.
+                continue
             found_any = True
             tags.append('SHADOW_AI:' + name)
             date_str = _timestamp_to_date_str(max_ts, family)
