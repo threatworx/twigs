@@ -19,7 +19,12 @@ import toml
 import re
 import ast
 import textwrap
-import distutils.core
+try:
+    # distutils was removed from the standard library in Python 3.12; it is
+    # still provided by setuptools. Without it only setup.py parsing is skipped.
+    import distutils.core
+except ImportError:
+    distutils = None
 from urllib.parse import urlparse, urlunparse
 
 from . import utils as lib_utils
@@ -645,7 +650,7 @@ def discover_python(args, localpath):
             logging.error("Unable to parse python dependencies")
             continue
 
-    files = lib_utils.find_files(localpath, 'setup.py')
+    files = lib_utils.find_files(localpath, 'setup.py') if distutils is not None else []
     for file_path in files:
         try:
             setup = distutils.core.run_setup(file_path, stop_after="config")

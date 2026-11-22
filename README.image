@@ -14,7 +14,7 @@ https://youtu.be/TkMe7VL3bvA
 
 About this image
 
-This image is compact linux distribution (currently based on Ubuntu 20.04 LTS) which contains 'twigs' and all its dependencies. It also contains all the plugins required by twigs in order to discover different asset classes. It will be available on all major cloud provider marketplaces in the form of server and container images. Details on how to deploy this image within various cloud providers are given below
+This image is compact linux distribution (currently based on Ubuntu 24.04 LTS) which contains 'twigs' and all its dependencies. It also contains all the plugins required by twigs in order to discover different asset classes. It will be available on all major cloud provider marketplaces in the form of server and container images. Details on how to deploy this image within various cloud providers are given below
 
 Deploying on AWS
 

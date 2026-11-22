@@ -9,7 +9,7 @@ import tarfile
 import re
 import traceback
 import json
-import pkg_resources
+import importlib.metadata
 import importlib
 import io
 
@@ -299,8 +299,8 @@ def discover_rh_from_container_image(container_fs):
     # Load rpm module programmatically to avoid display warning message if distro package
     # is not installed in other discovery modes
     try:
-        pkg_resources.get_distribution('rpm')
-    except pkg_resources.DistributionNotFound as err:
+        importlib.metadata.version('rpm')
+    except importlib.metadata.PackageNotFoundError as err:
         logging.warning("%s", err)
         logging.warning("python-rpm module not found. Please install [python3-rpm] from your distro package manager")
         return []

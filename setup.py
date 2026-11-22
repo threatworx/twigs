@@ -33,9 +33,21 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow', 'ipaddress==1.0.22', 'pefile==2019.4.18', 'paramiko==2.6.0', 'cryptography==3.3.2', 'toml==0.10.2', 'pyvmomi==7.0.3', 'scp==0.13.3', 'pyyaml>5.1', 'psutil', 'ipaddress', 'oci-cli==3.43.1', 'pytz', 'pywinrm==0.5.0', 'trustmodel', 'dnspython', 'dnstwist', 'tldextract', 'builtwith', 'beautifulsoup4', 'mmh3']
+# Dependencies are deliberately unpinned so that pip resolves the newest
+# versions compatible with the running Python. Only add a bound with a comment
+# explaining which release it works around.
+requirements = [
+    'boto3', 'setuptools', 'requests', 'requirements_parser', 'pysnow',
+    'pefile', 'paramiko', 'cryptography', 'toml', 'scp', 'pyyaml', 'psutil',
+    'oci-cli', 'pytz', 'pywinrm', 'trustmodel', 'dnspython', 'dnstwist',
+    'tldextract', 'builtwith', 'beautifulsoup4', 'mmh3',
+    # pyvmomi 9.x requires Python 3.10+ but does not declare it, so pip would
+    # install it on older Pythons where it fails to import.
+    'pyvmomi<9; python_version<"3.10"',
+    'pyvmomi; python_version>="3.10"',
+]
 if sys.platform != 'win32':
-    requirements.append('python-crontab==2.5.1')
+    requirements.append('python-crontab')
 
 setup_requirements = [ ]
 
@@ -51,13 +63,15 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Natural Language :: English',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
     description="ThreatWorx Information Gathering Script",
     install_requires=requirements,
+    python_requires='>=3.8',
     license="GNU General Public License v3",
     long_description=readme + '\n\n' + history,
     include_package_data=True,

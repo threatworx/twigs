@@ -5,9 +5,19 @@ import json
 import traceback
 import ssl
 import json
-from pyVim.connect import SmartConnectNoSSL
-from pyVmomi import vim
 from . import utils
+
+# pyvmomi is imported optionally so that a pyvmomi which cannot load on this
+# Python (e.g. pyvmomi 9.x requires Python 3.10+, pyvmomi 7.x fails on 3.12)
+# only disables vmware discovery instead of breaking every twigs command.
+try:
+    from pyVim.connect import SmartConnect
+    from pyVmomi import vim
+    PYVMOMI_IMPORT_ERROR = None
+except Exception as e:
+    SmartConnect = None
+    vim = None
+    PYVMOMI_IMPORT_ERROR = e
 
 # Method that populates objects of type vimtype
 def get_all_objs(content, vimtype):
@@ -18,6 +28,13 @@ def get_all_objs(content, vimtype):
     return obj
 
 def discover(args):
+    if PYVMOMI_IMPORT_ERROR is not None:
+        logging.error("VMware discovery is unavailable because pyvmomi could not be loaded: %s", PYVMOMI_IMPORT_ERROR)
+        if sys.version_info < (3, 10):
+            logging.error("On Python %d.%d install a compatible pyvmomi with: python3 -m pip install 'pyvmomi>=8,<9'", sys.version_info[0], sys.version_info[1])
+        else:
+            logging.error("Install a compatible pyvmomi with: python3 -m pip install -U pyvmomi")
+        utils.tw_exit(1)
     si = None
     try:
         pwd = os.environ.get('VCENTER_PASSWD')
@@ -26,7 +43,7 @@ def discover(args):
                 logging.error("vCenter password not found")
                 return None
             pwd = args.password
-        si = SmartConnectNoSSL(host=args.host, user=args.user, pwd=pwd)
+        si = SmartConnect(host=args.host, user=args.user, pwd=pwd, disableSslCertValidation=True)
     except:
          logging.error("Failed to connect to vCenter host "+args.host)
          utils.tw_exit(1)

@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # Build script for twigs docker image
-# Tested only on Ubuntu 20.04 LTS
+# Targets Ubuntu 24.04 LTS (Python 3.12). Also runs on Ubuntu 20.04 LTS (Python 3.8).
+#
+# Set TWIGS_PIP_SPEC to install twigs from somewhere other than PyPI, e.g. a
+# locally built wheel (TWIGS_PIP_SPEC=/tmp/twigs-1.3.25-py3-none-any.whl).
 # Install all components required by twigs including dependencies and most plugins except
 # ones for DAST support
 
@@ -77,10 +80,24 @@ ln -fs /usr/bin/python3 /usr/bin/python
 # Get pip for python3
 apt_install python3-pip
 
-# Link pip
-ln -fs /usr/bin/pip3 /usr/bin/pip
+# This image is dedicated to twigs, so install Python packages system-wide
+# instead of in a virtualenv. Ubuntu 23.04+ blocks system-wide pip installs
+# (PEP 668); removing the marker lifts that for pip run from anywhere,
+# including twigs-update.sh under cron.
+rm -f /usr/lib/python3*/EXTERNALLY-MANAGED
 
-rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
+# pip 20.0 shipped with Ubuntu 20.04 has the legacy resolver, which leaves
+# conflicting dependency versions behind. Newer Ubuntu releases ship a recent pip.
+if python3 -c 'import sys; sys.exit(0 if sys.version_info < (3, 10) else 1)'; then
+    retry python3 -m pip install --upgrade pip
+fi
+
+# Link pip to whichever pip python3 now uses
+cat > /usr/bin/pip <<'EOF'
+#!/bin/sh
+exec /usr/bin/python3 -m pip "$@"
+EOF
+chmod 755 /usr/bin/pip
 
 # Install git
 apt_install git
@@ -89,16 +106,8 @@ apt_install git
 retry wget -O /usr/local/bin/opengrep https://github.com/opengrep/opengrep/releases/download/v1.22.0/opengrep_manylinux_x86
 chmod +x /usr/local/bin/opengrep
 
-# Install checkov
-retry pip install checkov
-
 # Install docker
 apt_install docker.io
-
-# Install prereqs for prowler
-retry pip install awscli detect-secrets
-# Prowler launches AWS CLI and this could be from cron
-ln -fs /usr/local/bin/aws /usr/bin/aws
 
 # Clone prowler repo
 rm -rf /usr/share/prowler
@@ -178,15 +187,25 @@ rm -rf /tmp/nuclei /tmp/nuclei.zip
 # (non-fatal - templates are also fetched on first real run)
 /usr/local/bin/nuclei -update-templates || true
 
-# Install twigs and related packages
-retry pip install twigs
-rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
-retry pip install twigs_host_benchmark
-retry pip install twigs_ssl_audit
-rm -rf /usr/local/lib/python3.8/dist-packages/OpenSSL
+# Install twigs together with the Python tools it drives (checkov for IaC,
+# awscli and detect-secrets for prowler) in a single pip run, so that pip
+# resolves one consistent set of dependency versions. Installing them in
+# separate runs lets a later install silently break an earlier one.
+TWIGS_PIP_SPEC=${TWIGS_PIP_SPEC:-twigs}
+retry python3 -m pip install "$TWIGS_PIP_SPEC" checkov awscli detect-secrets
+python3 -m pip check
+# Prowler launches AWS CLI and this could be from cron
+ln -fs /usr/local/bin/aws /usr/bin/aws
+
+# Record the resolved Python package versions shipped in this image
+mkdir -p /usr/local/share/twigs
+python3 -m pip freeze > /usr/local/share/twigs/pip-freeze.txt
 
 # Setup twigs update script
-printf "#!/bin/bash\n/usr/bin/pip install --upgrade twigs\n/usr/bin/pip install --upgrade twigs_host_benchmark\n/usr/bin/pip install twigs_ssl_audit --upgrade\n" > /usr/local/bin/twigs-update.sh
+cat > /usr/local/bin/twigs-update.sh <<'EOF'
+#!/bin/bash
+/usr/bin/python3 -m pip install --upgrade twigs
+EOF
 
 chmod 755 /usr/local/bin/twigs-update.sh
 
@@ -210,7 +229,30 @@ require_bin zaproxy
 require_bin go
 require_bin nuclei
 require_bin twigs
+if [ ! -x /usr/share/prowler/prowler ]; then
+    echo "ERROR: prowler not found at /usr/share/prowler/prowler" >&2
+    exit 1
+fi
 echo "--- all required tooling present ---"
+
+# Smoke test: every twigs module must import and the CLI must start
+echo "--- twigs smoke test ---"
+python3 - <<'EOF'
+import importlib, pkgutil, sys
+import twigs
+failed = []
+for m in pkgutil.walk_packages(twigs.__path__, 'twigs.'):
+    try:
+        importlib.import_module(m.name)
+    except Exception as e:
+        failed.append("%s: %r" % (m.name, e))
+for f in failed:
+    print("FAILED to import " + f)
+sys.exit(1 if failed else 0)
+EOF
+twigs --version
+twigs --help > /dev/null
+echo "--- twigs smoke test passed ---"
 
 # Cleanup /tmp
 rm -rf /tmp/*

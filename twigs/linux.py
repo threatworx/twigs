@@ -12,7 +12,6 @@ import ipaddress
 import getpass
 import base64
 import json
-import pkg_resources
 import importlib
 import traceback
 import warnings

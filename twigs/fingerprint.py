@@ -11,7 +11,6 @@ import json
 import re
 import requests
 from xml.dom.minidom import parse, parseString
-from distutils.version import LooseVersion
 import csv
 from . import linux
 import shutil
