@@ -1,0 +1,123 @@
+# IoT signatures (cameras, printers, AV, displays, gateways).
+
+category: iot
+
+rules:
+  - id: axis-camera
+    vendor: Axis
+    model: Network Camera
+    device_class: IP Camera
+    match:
+      mac_vendor: 'Axis Communications'
+      http_server: '\bAXIS\b'
+      mdns: '\baxis\b'
+      ssdp: 'AXIS'
+      hostname: '^AXIS-'
+
+  - id: hikvision-camera
+    vendor: Hikvision
+    model: Network Camera
+    device_class: IP Camera
+    match:
+      mac_vendor: 'Hikvision'
+      http_server: 'Hikvision|DNVRS-Webs|App-webs'
+      ssdp: 'Hikvision|HIKVISION'
+      hostname: 'HIKVISION|DS-[0-9]'
+
+  - id: dahua-camera
+    vendor: Dahua
+    model: Network Camera
+    device_class: IP Camera
+    match:
+      mac_vendor: 'Dahua'
+      ssdp: 'DAHUA|Dahua'
+      hostname: 'DAHUA|IPC-HDW|IPC-HFW'
+
+  - id: hanwha-camera
+    vendor: Hanwha Vision
+    model: Network Camera
+    device_class: IP Camera
+    match:
+      mac_vendor: 'Samsung Techwin|Hanwha'
+      hostname: 'WISENET|XNO-|XND-|QNO-|PNM-'
+
+  - id: bosch-camera
+    vendor: Bosch
+    model: Network Camera
+    device_class: IP Camera
+    match:
+      mac_vendor: 'Bosch Security'
+      http_server: 'Bosch|VCS-VideoJet'
+
+  - id: avigilon-vivotek
+    vendor: Avigilon / Vivotek
+    model: Network Camera
+    device_class: IP Camera
+    match:
+      mac_vendor: 'Avigilon|Vivotek'
+      http_server: 'Avigilon|VIVOTEK|Boa/0'
+
+  - id: onvif-camera
+    vendor: ''
+    model: ONVIF Network Video Device
+    device_class: IP Camera
+    match:
+      wsd: 'NetworkVideoTransmitter|onvif'
+      ssdp: 'onvif'
+
+  - id: wsd-printer
+    vendor: ''
+    model: Network Printer
+    device_class: Printer
+    match:
+      wsd: 'PrintDeviceType|wprt:|PrintBasic'
+      mdns: '_ipp\._tcp|_pdl-datastream\._tcp|_printer\._tcp'
+
+  - id: polycom
+    vendor: Poly
+    model: Conference / VoIP Device
+    device_class: VoIP / Conferencing
+    match:
+      mac_vendor: 'Polycom'
+      http_user_agent: 'Polycom|PolycomVVX|Poly'
+      http_server: 'Polycom'
+
+  - id: spectralink
+    vendor: Spectralink
+    model: Wireless Handset
+    device_class: VoIP / Conferencing
+    match:
+      mac_vendor: 'Spectralink'
+
+  - id: crestron-extron
+    vendor: Crestron / Extron
+    model: AV Controller
+    device_class: AV Controller
+    match:
+      mac_vendor: 'Crestron|Extron'
+      hostname: 'CRESTRON|EXTRON'
+      mdns: 'crestron'
+
+  - id: dial-display
+    vendor: ''
+    model: Smart Display / Media Device
+    device_class: Smart Display
+    match:
+      ssdp: 'urn:dial-multiscreen|DIAL/2'
+      mdns: '_googlecast\._tcp|_airplay\._tcp'
+
+  - id: mqtt-topic-classes
+    vendor: ''
+    model: MQTT Device
+    device_class: IoT Sensor
+    weight_scale: 0.5
+    match:
+      mqtt_client_id: 'sensor|thermostat|meter|gateway'
+
+  - id: raspberry-pi
+    vendor: Raspberry Pi
+    model: Raspberry Pi
+    device_class: Embedded Computer
+    weight_scale: 0.5
+    match:
+      mac_vendor: 'Raspberry Pi'

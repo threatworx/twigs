@@ -1,0 +1,24 @@
+# HL7 v2 over MLLP (minimal lower layer protocol).
+#
+# Each message is framed as <VT> message <FS><CR>. Only the MSH (message
+# header) segment is captured: it identifies the sending/receiving
+# application and facility. All other segments, which carry patient data,
+# are skipped without being stored.
+
+module TwigsHL7;
+
+import spicy;
+
+public type Messages = unit {
+    messages: Message[] &eod;
+};
+
+public type Message = unit {
+    : b"\x0b";
+    msh: bytes &until=b"\r" &max-size=4096 &requires=(|$$| > 8 && $$.starts_with(b"MSH"));
+    : skip bytes &until=b"\x1c\r";
+
+    on %done {
+        spicy::accept_input();
+    }
+};

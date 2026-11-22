@@ -1,0 +1,26 @@
+# Passive TCP/IP stack fingerprints from SYN / SYN-ACK packets.
+#
+# initial_ttl is the TTL the stack starts with (the observed TTL rounded up
+# to 32, 64, 128 or 255). window is the TCP window in the SYN; mss and
+# win_scale are optional extra constraints. These only produce an OS hint -
+# they never decide the device category on their own.
+
+profiles:
+  - {os: VxWorks, initial_ttl: 64, window: 4096, win_scale: -1}
+  - {os: VxWorks, initial_ttl: 255, window: 4096}
+  - {os: QNX, initial_ttl: 255, window: 32768}
+  - {os: Cisco IOS, initial_ttl: 255, window: 4128}
+  - {os: Windows XP / Windows Embedded Standard 2009, initial_ttl: 128, window: 65535, win_scale: -1}
+  - {os: Windows 7 / Windows Embedded Standard 7, initial_ttl: 128, window: 8192, win_scale: 2}
+  - {os: Windows 10 / 11 / Server 2016+, initial_ttl: 128, window: 64240, win_scale: 8}
+  - {os: Windows 10 / 11 / Server 2016+, initial_ttl: 128, window: 65535, win_scale: 8}
+  - {os: Linux 3.x+, initial_ttl: 64, window: 29200}
+  - {os: Linux 3.x+, initial_ttl: 64, window: 64240}
+  - {os: Linux 3.x+, initial_ttl: 64, window: 65160}
+  - {os: Linux 2.6 / BusyBox, initial_ttl: 64, window: 5840}
+  - {os: Linux 2.6 / BusyBox, initial_ttl: 64, window: 14600}
+  - {os: lwIP (embedded), initial_ttl: 64, window: 2048}
+  - {os: lwIP (embedded), initial_ttl: 255, window: 2048}
+  - {os: Minimal embedded TCP/IP stack, initial_ttl: 64, window: 1460}
+  - {os: Minimal embedded TCP/IP stack, initial_ttl: 64, window: 1024}
+  - {os: macOS / iOS, initial_ttl: 64, window: 65535, win_scale: 6}

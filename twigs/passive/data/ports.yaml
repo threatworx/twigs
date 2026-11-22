@@ -1,0 +1,58 @@
+# Server ports that indicate a medical / OT / building protocol.
+# A host is credited with a port only when it answered on it (it is the
+# responder of an established connection, or replied to a UDP request).
+# Port evidence is weak on its own: it sets the category and protocol, and
+# adds a small score. Identity normally comes from the protocol parsers or
+# signature rules.
+
+ports:
+  # medical
+  tcp/104:    {protocol: DICOM, category: medical, device_class: DICOM Node, weight: 15}
+  tcp/11112:  {protocol: DICOM, category: medical, device_class: DICOM Node, weight: 15}
+  tcp/2762:   {protocol: DICOM TLS, category: medical, device_class: DICOM Node, weight: 10}
+  tcp/2575:   {protocol: HL7 MLLP, category: medical, device_class: Clinical Interface, weight: 15}
+  udp/24005:  {protocol: Philips IntelliVue data export, category: medical, device_class: Patient Monitor, weight: 15}
+  udp/24105:  {protocol: Philips IntelliVue data export, category: medical, device_class: Patient Monitor, weight: 15}
+  # industrial
+  tcp/502:    {protocol: Modbus/TCP, category: ot, device_class: Industrial Device, weight: 15}
+  tcp/44818:  {protocol: EtherNet/IP, category: ot, device_class: Industrial Device, weight: 15}
+  udp/44818:  {protocol: EtherNet/IP, category: ot, device_class: Industrial Device, weight: 15}
+  udp/2222:   {protocol: EtherNet/IP I/O, category: ot, device_class: Industrial Device, weight: 10}
+  tcp/102:    {protocol: S7comm / ISO-TSAP, category: ot, device_class: PLC, weight: 15}
+  tcp/20000:  {protocol: DNP3, category: ot, device_class: RTU / Outstation, weight: 15}
+  udp/20000:  {protocol: DNP3, category: ot, device_class: RTU / Outstation, weight: 15}
+  tcp/2404:   {protocol: IEC 60870-5-104, category: ot, device_class: RTU / Outstation, weight: 15}
+  tcp/4840:   {protocol: OPC UA, category: ot, device_class: Industrial Server, weight: 10}
+  tcp/34962:  {protocol: PROFINET, category: ot, device_class: Industrial Device, weight: 10}
+  tcp/34964:  {protocol: PROFINET, category: ot, device_class: Industrial Device, weight: 10}
+  udp/34964:  {protocol: PROFINET, category: ot, device_class: Industrial Device, weight: 10}
+  tcp/1911:   {protocol: Niagara Fox, category: building, device_class: Building Controller, weight: 15}
+  tcp/4911:   {protocol: Niagara Fox (TLS), category: building, device_class: Building Controller, weight: 15}
+  tcp/9600:   {protocol: OMRON FINS, category: ot, device_class: PLC, weight: 15}
+  udp/9600:   {protocol: OMRON FINS, category: ot, device_class: PLC, weight: 15}
+  tcp/18245:  {protocol: GE SRTP, category: ot, device_class: PLC, weight: 15}
+  tcp/48898:  {protocol: Beckhoff ADS, category: ot, device_class: PLC, weight: 15}
+  tcp/5007:   {protocol: Mitsubishi MELSEC, category: ot, device_class: PLC, weight: 10}
+  tcp/789:    {protocol: Red Lion Crimson, category: ot, device_class: HMI, weight: 10}
+  tcp/2455:   {protocol: CODESYS, category: ot, device_class: PLC, weight: 10}
+  tcp/1217:   {protocol: CODESYS, category: ot, device_class: PLC, weight: 10}
+  tcp/20547:  {protocol: ProConOS, category: ot, device_class: PLC, weight: 10}
+  # building automation
+  udp/47808:  {protocol: BACnet/IP, category: building, device_class: Building Controller, weight: 15}
+  # IoT
+  tcp/554:    {protocol: RTSP, category: iot, device_class: IP Camera, weight: 10}
+  tcp/1883:   {protocol: MQTT, category: iot, device_class: MQTT Broker, weight: 10}
+  tcp/8883:   {protocol: MQTT TLS, category: iot, device_class: MQTT Broker, weight: 10}
+  tcp/37777:  {protocol: Dahua DVR, category: iot, device_class: IP Camera, weight: 10}
+  tcp/8000:   {protocol: Hikvision SDK, category: iot, device_class: IP Camera, weight: 5}
+
+# Ports whose presence on a medical/OT/IoT device is a security finding.
+insecure_ports:
+  tcp/23:  {protocol: Telnet, rating: '3', details: 'Cleartext remote administration (Telnet) is in use'}
+  tcp/21:  {protocol: FTP, rating: '2', details: 'Cleartext file transfer (FTP) is in use'}
+  tcp/69:  {protocol: TFTP, rating: '2', details: 'Unauthenticated file transfer (TFTP) is in use'}
+  udp/69:  {protocol: TFTP, rating: '2', details: 'Unauthenticated file transfer (TFTP) is in use'}
+  tcp/5900: {protocol: VNC, rating: '2', details: 'Remote desktop (VNC) is exposed'}
+  tcp/104: {protocol: DICOM, rating: '2', details: 'DICOM is used without TLS; images and patient data cross the network in cleartext'}
+  tcp/11112: {protocol: DICOM, rating: '2', details: 'DICOM is used without TLS; images and patient data cross the network in cleartext'}
+  tcp/2575: {protocol: HL7 MLLP, rating: '2', details: 'HL7 over MLLP is used without TLS; clinical messages cross the network in cleartext'}

@@ -1,0 +1,4 @@
+{"ts":1795000000.735997,"uid":"CciSv44zhkAScv0swl","id.orig_h":"10.10.6.5","id.orig_p":50502,"id.resp_h":"10.10.6.10","id.resp_p":502,"tid":1,"unit":1,"func":"ENCAP_INTERFACE_TRANSPORT","pdu_type":"REQ"}
+{"ts":1795000000.755997,"uid":"CciSv44zhkAScv0swl","id.orig_h":"10.10.6.5","id.orig_p":50502,"id.resp_h":"10.10.6.10","id.resp_p":502,"tid":1,"unit":1,"func":"ENCAP_INTERFACE_TRANSPORT","pdu_type":"RESP"}
+{"ts":1795000000.775997,"uid":"CciSv44zhkAScv0swl","id.orig_h":"10.10.6.5","id.orig_p":50502,"id.resp_h":"10.10.6.10","id.resp_p":502,"tid":2,"unit":1,"func":"READ_HOLDING_REGISTERS","pdu_type":"REQ"}
+{"ts":1795000000.795997,"uid":"CciSv44zhkAScv0swl","id.orig_h":"10.10.6.5","id.orig_p":50502,"id.resp_h":"10.10.6.10","id.resp_p":502,"tid":2,"unit":1,"func":"READ_HOLDING_REGISTERS","pdu_type":"RESP"}

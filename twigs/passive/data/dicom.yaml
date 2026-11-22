@@ -1,0 +1,60 @@
+# DICOM reference data.
+
+# Storage / service SOP classes requested in A-ASSOCIATE-RQ, mapped to the
+# device class of the *requester* (the SCU). A modality pushing CT images to
+# a PACS requests CT Image Storage.
+requester_sop_classes:
+  1.2.840.10008.5.1.4.1.1.2:      CT Scanner
+  1.2.840.10008.5.1.4.1.1.2.1:    CT Scanner
+  1.2.840.10008.5.1.4.1.1.4:      MRI Scanner
+  1.2.840.10008.5.1.4.1.1.4.1:    MRI Scanner
+  1.2.840.10008.5.1.4.1.1.6.1:    Ultrasound
+  1.2.840.10008.5.1.4.1.1.3.1:    Ultrasound
+  1.2.840.10008.5.1.4.1.1.1:      Computed Radiography
+  1.2.840.10008.5.1.4.1.1.1.1:    Digital Radiography
+  1.2.840.10008.5.1.4.1.1.1.1.1:  Digital Radiography
+  1.2.840.10008.5.1.4.1.1.1.2:    Mammography
+  1.2.840.10008.5.1.4.1.1.1.2.1:  Mammography
+  1.2.840.10008.5.1.4.1.1.13.1.3: Mammography
+  1.2.840.10008.5.1.4.1.1.20:     Nuclear Medicine
+  1.2.840.10008.5.1.4.1.1.128:    PET Scanner
+  1.2.840.10008.5.1.4.1.1.12.1:   Angiography
+  1.2.840.10008.5.1.4.1.1.12.2:   Fluoroscopy
+  1.2.840.10008.5.1.4.1.1.481.1:  Radiation Therapy
+  1.2.840.10008.5.1.4.1.1.77.1.1: Endoscopy
+  1.2.840.10008.5.1.4.1.1.77.1.4: Visible Light Imaging
+  1.2.840.10008.5.1.4.1.1.77.1.5.1: Ophthalmic Imaging
+  1.2.840.10008.5.1.4.1.1.77.1.5.4: Ophthalmic Imaging
+  1.2.840.10008.5.1.4.1.1.9.1.1:  ECG
+  1.2.840.10008.5.1.4.1.1.9.1.2:  ECG
+  # Modality Worklist and MPPS are used by acquisition devices.
+  1.2.840.10008.5.1.4.31:         Imaging Modality
+  1.2.840.10008.3.1.2.3.3:        Imaging Modality
+
+# SOP classes whose *acceptor* (SCP) has a recognisable role.
+acceptor_sop_classes:
+  1.2.840.10008.5.1.1.9:          DICOM Printer       # Basic Grayscale Print Management Meta
+  1.2.840.10008.5.1.1.18:         DICOM Printer       # Basic Color Print Management Meta
+  1.2.840.10008.5.1.4.31:         Worklist Server (RIS)
+  1.2.840.10008.5.1.4.1.2.1.1:    PACS / DICOM Archive # Patient Root Q/R FIND
+  1.2.840.10008.5.1.4.1.2.2.1:    PACS / DICOM Archive # Study Root Q/R FIND
+  1.2.840.10008.5.1.4.1.2.2.2:    PACS / DICOM Archive # Study Root Q/R MOVE
+
+# Implementation Class UID roots (A-ASSOCIATE user information item 0x52).
+impl_uid_roots:
+  1.2.840.113619:        {vendor: GE Healthcare}
+  1.3.12.2.1107.5:       {vendor: Siemens Healthineers}
+  1.3.46.670589:         {vendor: Philips}
+  1.2.392.200036.9116:   {vendor: Canon Medical}
+  1.2.392.200036.9125:   {vendor: Fujifilm}
+  1.2.124.113532:        {vendor: Agfa}
+  1.2.840.113681:        {vendor: Hologic}
+  1.2.276.0.7230010.3:   {software: dcmtk}
+  1.2.826.0.1.3680043.9.3811: {software: pynetdicom}
+  1.2.40.0.13.1:         {software: dcm4che}
+
+# Implementation Version Name (item 0x55) -> software product and version.
+impl_version_names:
+  - {pattern: '^OFFIS_DCMTK_([0-9])([0-9])([0-9])', software: dcmtk, version: '\1.\2.\3'}
+  - {pattern: '^PYNETDICOM_([0-9]+)', software: pynetdicom, version: '\1'}
+  - {pattern: '^dcm4che-?([0-9][\w.]*)', software: dcm4che, version: '\1'}

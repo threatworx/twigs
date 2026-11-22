@@ -1,0 +1,90 @@
+# DICOM upper layer (PS3.8) - association negotiation only.
+#
+# Only the first PDU in each direction is parsed: A-ASSOCIATE-RQ from the
+# requester and A-ASSOCIATE-AC / -RJ from the acceptor. Everything after it
+# (P-DATA carrying images and patient data) is skipped without being parsed
+# or stored.
+
+module TwigsDICOM;
+
+import spicy;
+
+public type Messages = unit {
+    pdu: PDU;
+    : skip bytes &eod;
+};
+
+type PDU = unit {
+    pdu_type: uint8 &requires=($$ == 0x01 || $$ == 0x02 || $$ == 0x03);
+    : skip bytes &size=1;
+    length: uint32 &requires=($$ >= 4 && $$ < 0x100000);
+    switch ( self.pdu_type ) {
+        0x01, 0x02 -> assoc: Associate(self.pdu_type == 0x01) &size=self.length;
+        *          -> : skip bytes &size=self.length;
+    };
+};
+
+public type Associate = unit(is_request: bool) {
+    protocol_version: uint16 &requires=($$ == 1);
+    : skip bytes &size=2;
+    called_ae: bytes &size=16;
+    calling_ae: bytes &size=16;
+    : skip bytes &size=32;
+    items: Item[] &eod;
+
+    var request: bool;
+    var impl_class_uid: bytes;
+    var impl_version: bytes;
+    var abstract_syntaxes: vector<bytes>;
+
+    on %init {
+        self.request = is_request;
+    }
+
+    on %done {
+        for ( item in self.items ) {
+            if ( item.item_type == 0x50 && item?.user_info ) {
+                for ( sub in item.user_info.subs ) {
+                    if ( sub.item_type == 0x52 )
+                        self.impl_class_uid = sub.value;
+                    else if ( sub.item_type == 0x55 )
+                        self.impl_version = sub.value;
+                }
+            }
+            if ( item.item_type == 0x20 && item?.context ) {
+                for ( sub in item.context.subs ) {
+                    if ( sub.item_type == 0x30 )
+                        self.abstract_syntaxes.push_back(sub.value);
+                }
+            }
+        }
+        spicy::accept_input();
+    }
+};
+
+type Item = unit {
+    item_type: uint8;
+    : skip bytes &size=1;
+    length: uint16;
+    switch ( self.item_type ) {
+        0x20, 0x21 -> context: PresentationContext &size=self.length;
+        0x50       -> user_info: SubItems &size=self.length;
+        *          -> : skip bytes &size=self.length;
+    };
+};
+
+type PresentationContext = unit {
+    : skip bytes &size=4;      # context id, reserved, result/reason, reserved
+    subs: SubItem[] &eod;
+};
+
+type SubItems = unit {
+    subs: SubItem[] &eod;
+};
+
+type SubItem = unit {
+    item_type: uint8;
+    : skip bytes &size=1;
+    length: uint16;
+    value: bytes &size=self.length;
+};

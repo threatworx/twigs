@@ -1,0 +1,2 @@
+{"ts":1795000000.01,"mac":"00:b0:94:00:20:31","hostname":"ALARIS-PC-0042","vendor_class":"AlarisPump/9.33.1","param_req_list":"1,3,6,15,28,43","msg_type":1}
+{"ts":1795000000.05,"mac":"00:09:5c:00:20:40","hostname":"MX800-BED12","vendor_class":"PHILIPS IntelliVue MX800","param_req_list":"1,3,6,12,15,28,43,60","msg_type":1}

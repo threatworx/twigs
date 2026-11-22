@@ -1,0 +1,258 @@
+# Industrial control system (OT) signatures for twigs passive discovery.
+# Protocol-level identities (EtherNet/IP List Identity, Modbus Read Device
+# Identification, S7comm, DNP3...) are handled in code; these rules add
+# vendor / model identification from other identity strings.
+
+category: ot
+
+rules:
+  - id: rockwell
+    vendor: Rockwell Automation
+    model: Allen-Bradley Controller
+    device_class: PLC
+    match:
+      mac_vendor: 'Rockwell|Allen.?Bradley'
+      enip: 'Rockwell|Allen.?Bradley|Logix'
+      hostname: 'CONTROLLOGIX|COMPACTLOGIX|MICROLOGIX'
+      http_server: 'Rockwell|Allen.?Bradley'
+      mqtt_client_id: 'rockwell|allen.?bradley|logix'
+      snmp_sysdescr: 'Rockwell|Allen.?Bradley|1756-|1769-'
+    firmware: ['Revision[: ]+([0-9]+\.[0-9]+)']
+
+  - id: siemens-simatic
+    vendor: Siemens
+    model: SIMATIC
+    device_class: PLC
+    match:
+      mac_vendor: 'Siemens AG, (Digital|Automation)|Siemens Industr|Siemens AG I IA'
+      hostname: 'SIMATIC|S7-[0-9]{3,4}|ET200'
+      http_server: 'SIMATIC|S7-[0-9]{3,4}'
+      snmp_sysdescr: 'SIMATIC|S7-[0-9]{3,4}|6ES7'
+      mqtt_client_id: '\bsiemens\b|s7.1[25]00|wincc'
+      s7: '.'
+    firmware: ['\bV([0-9]+\.[0-9]+(\.[0-9]+)?)\b']
+
+  - id: siemens-network
+    vendor: Siemens
+    model: SCALANCE / RUGGEDCOM
+    device_class: Industrial Network Device
+    match:
+      mac_vendor: 'RuggedCom'
+      hostname: 'SCALANCE|RUGGEDCOM'
+      snmp_sysdescr: 'SCALANCE|RUGGEDCOM|ROS\s+v'
+
+  - id: schneider-modicon
+    vendor: Schneider Electric
+    model: Modicon
+    device_class: PLC
+    match:
+      mac_vendor: 'Schneider Electric|Telemecanique|Modicon'
+      modbus_ident: 'Schneider|Telemecanique|Modicon|BMX|TSX|M[0-9]{3}'
+      enip: 'Schneider'
+      http_server: 'Schneider|Modicon'
+      snmp_sysdescr: 'Modicon|BMX|TSX|Quantum|M340|M580'
+      mqtt_client_id: 'schneider|modicon|m340|m580'
+
+  - id: schneider-powerlogic
+    vendor: Schneider Electric
+    model: PowerLogic
+    device_class: Power Meter
+    match:
+      modbus_ident: 'PowerLogic|ION[0-9]{4}|PM[0-9]{4}'
+      http_server: 'ION7330|PowerLogic'
+      snmp_sysdescr: 'PowerLogic|ION[0-9]{4}'
+      ssdp: 'PowerLogic|power.?logic'
+    firmware: ['ION[0-9]{4}\s+FW\s*([0-9.]+)', 'PowerLogic\s+([0-9.]+)']
+
+  - id: phoenix-contact
+    vendor: Phoenix Contact
+    model: PLCnext / FL Switch
+    device_class: PLC
+    match:
+      mac_vendor: 'Phoenix Contact'
+      enip: 'Phoenix'
+      hostname: 'PLCNEXT|AXC[-_ ]?[0-9]|FL[-_ ]SWITCH'
+      snmp_sysdescr: 'Phoenix\s*Contact|FL\s*SWITCH|PLCnext|AXC\s'
+
+  - id: wago
+    vendor: WAGO
+    model: PFC / 750 Controller
+    device_class: PLC
+    match:
+      mac_vendor: 'Wago'
+      enip: 'WAGO'
+      modbus_ident: 'WAGO|750-'
+      hostname: 'PFC[0-9]{3}|WAGO'
+      snmp_sysdescr: 'WAGO|750-8'
+      mqtt_client_id: 'wago|750.?8[0-9]{2}'
+
+  - id: beckhoff
+    vendor: Beckhoff
+    model: TwinCAT / CX
+    device_class: PLC
+    match:
+      mac_vendor: 'Beckhoff'
+      dhcp_vendor_class: 'TwinCAT|Beckhoff'
+      hostname: 'BECKHOFF|TWINCAT|CX[0-9]{4}'
+      http_server: 'TwinCAT|Beckhoff'
+      snmp_sysdescr: 'TwinCAT|Beckhoff'
+      mdns: 'beckhoff|twincat'
+      ssdp: 'urn:schemas-beckhoff|TwinCAT'
+      mqtt_client_id: 'beckhoff|twincat'
+    firmware: ['TwinCAT/?\w*\s+V?([0-9]+\.[0-9]+(\.[0-9]+)*)']
+
+  - id: omron
+    vendor: OMRON
+    model: Sysmac
+    device_class: PLC
+    match:
+      mac_vendor: 'Omron Tateisi|OMRON Corp'
+      enip: 'OMRON'
+      hostname: 'NJ[0-9]{3}|NX[0-9]{3}|SYSMAC'
+      mqtt_client_id: '\bomron\b|nx[12]|cj2|cp1'
+
+  - id: mitsubishi
+    vendor: Mitsubishi Electric
+    model: MELSEC
+    device_class: PLC
+    match:
+      mac_vendor: 'Mitsubishi Electric'
+      enip: 'Mitsubishi'
+      hostname: 'MELSEC|IQ-R|IQ-F'
+
+  - id: yokogawa
+    vendor: Yokogawa
+    model: CENTUM / STARDOM
+    device_class: DCS
+    match:
+      mac_vendor: 'Yokogawa'
+      hostname: 'CENTUM|STARDOM|PROSAFE'
+
+  - id: emerson
+    vendor: Emerson
+    model: DeltaV / ROC
+    device_class: DCS
+    match:
+      mac_vendor: 'Emerson|Fisher-Rosemount'
+      enip: 'Emerson|Fisher'
+      hostname: 'DELTAV|ROC[0-9]{3}'
+
+  - id: abb
+    vendor: ABB
+    model: AC500 / 800xA
+    device_class: PLC
+    match:
+      mac_vendor: '\bABB\b'
+      enip: '\bABB\b'
+      hostname: 'AC500|800XA'
+
+  - id: ge-automation
+    vendor: GE Vernova / Emerson
+    model: PACSystems
+    device_class: PLC
+    match:
+      mac_vendor: 'GE Fanuc|GE Intelligent|GE Grid'
+      enip: 'GE Fanuc|GE Intelligent'
+      hostname: 'PACSYSTEMS|RX3I|VERSAMAX'
+
+  - id: honeywell-process
+    vendor: Honeywell
+    model: Experion / ControlEdge
+    device_class: DCS
+    match:
+      enip: 'Honeywell'
+      hostname: 'EXPERION|CONTROLEDGE'
+
+  - id: sel
+    vendor: Schweitzer Engineering
+    model: SEL Relay / RTAC
+    device_class: Protection Relay
+    match:
+      mac_vendor: 'Schweitzer'
+      hostname: '^SEL-?[0-9]{3,4}|RTAC'
+      snmp_sysdescr: '^SEL-|Schweitzer'
+
+  - id: moxa
+    vendor: Moxa
+    model: NPort / EDS
+    device_class: Industrial Gateway
+    match:
+      mac_vendor: 'Moxa'
+      enip: 'Moxa'
+      hostname: 'NPORT|MGATE|EDS-[0-9]'
+      http_server: 'Moxa|MoxaHttp'
+      snmp_sysdescr: 'Moxa|NPort|MGate|EDS-[0-9]'
+      modbus_ident: 'Moxa|MGate'
+
+  - id: hirschmann
+    vendor: Belden (Hirschmann)
+    model: Industrial Switch
+    device_class: Industrial Network Device
+    match:
+      mac_vendor: 'Hirschmann'
+      snmp_sysdescr: 'Hirschmann|HiOS|RSP|MACH[0-9]'
+
+  - id: westermo
+    vendor: Westermo
+    model: Industrial Router / Switch
+    device_class: Industrial Network Device
+    match:
+      mac_vendor: 'Westermo'
+      snmp_sysdescr: 'Westermo|WeOS'
+
+  - id: cisco-industrial
+    vendor: Cisco
+    model: Industrial Ethernet Switch
+    device_class: Industrial Network Device
+    match:
+      snmp_sysdescr: 'Cisco\s*(IE|Industrial)|\bIE-?[0-9]{4}'
+
+  - id: red-lion
+    vendor: Red Lion
+    model: Crimson / N-Tron
+    device_class: HMI
+    match:
+      mac_vendor: 'Red Lion'
+      enip: 'Red Lion'
+      hostname: 'REDLION|GRAPHITE|DA[0-9]{2}'
+
+  - id: prosoft
+    vendor: ProSoft Technology
+    model: Protocol Gateway
+    device_class: Industrial Gateway
+    match:
+      mac_vendor: 'Prosoft Technology'
+      enip: 'ProSoft'
+
+  - id: lantronix-digi
+    vendor: Lantronix / Digi
+    model: Device Server
+    device_class: Industrial Gateway
+    match:
+      mac_vendor: 'Lantronix|Digi International'
+      http_server: 'Lantronix|Digi'
+      snmp_sysdescr: 'Lantronix|Digi\s*(Connect|One|PortServer)'
+
+  - id: sick-turck-pilz
+    vendor: Industrial Automation
+    model: Sensor / Safety Controller
+    device_class: Industrial Sensor
+    match:
+      mac_vendor: 'Sick AG|Turck|Pilz|Ifm electronic|Balluff|Pepperl'
+      enip: 'SICK|Turck|Pilz|ifm|Balluff|Pepperl'
+
+  - id: keyence-cognex
+    vendor: Machine Vision
+    model: Vision System
+    device_class: Machine Vision
+    match:
+      enip: 'Keyence|Cognex'
+      hostname: 'COGNEX|IN-SIGHT'
+
+  - id: fanuc-yaskawa
+    vendor: Robotics
+    model: Robot Controller
+    device_class: Robot Controller
+    match:
+      enip: 'FANUC|Yaskawa|KUKA|Motoman'
+      hostname: 'FANUC|MOTOMAN|KUKA'

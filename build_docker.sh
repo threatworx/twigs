@@ -152,6 +152,27 @@ retry wget https://github.com/zaproxy/zaproxy/releases/download/v2.16.0/ZAP_2.16
 tar -xzf /tmp/ZAP_2.16.0_Linux.tar.gz -C /usr/share
 ln -fs /usr/share/ZAP_2.16.0/zap.sh /usr/bin/zaproxy
 
+# install Zeek (LTS) and the CISA ICSNPP protocol packages for passive
+# discovery of medical / OT / building / IoT devices (twigs passive). The
+# compiler tools are needed to build the ICSNPP plugins and the twigs DICOM /
+# HL7 Spicy parsers. The Zeek project publishes packages for Ubuntu 22.04+.
+. /etc/os-release
+ZEEK_REPO="https://download.opensuse.org/repositories/security:/zeek/xUbuntu_${VERSION_ID}"
+if curl -fsI "${ZEEK_REPO}/Release.key" > /dev/null 2>&1; then
+    echo "deb ${ZEEK_REPO}/ /" > /etc/apt/sources.list.d/security:zeek.list
+    retry curl -fsSL "${ZEEK_REPO}/Release.key" | gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/security_zeek.gpg
+    apt_get update
+    apt_install zeek-lts g++ cmake make libpcap-dev
+    ln -fs /opt/zeek/bin/zeek /usr/local/bin/zeek
+    ln -fs /opt/zeek/bin/zkg /usr/local/bin/zkg
+    /opt/zeek/bin/zkg autoconfig --force
+    retry /opt/zeek/bin/zkg install --force --skiptests icsnpp-bacnet icsnpp-modbus icsnpp-enip icsnpp-s7comm
+    ZEEK_INSTALLED=1
+else
+    echo "WARN: no Zeek packages for Ubuntu ${VERSION_ID}; twigs passive will not be available in this image" >&2
+    ZEEK_INSTALLED=0
+fi
+
 # install unzip (needed to unpack the nuclei release archive)
 apt_install unzip
 
@@ -228,6 +249,16 @@ require_bin java
 require_bin zaproxy
 require_bin go
 require_bin nuclei
+if [ "$ZEEK_INSTALLED" = 1 ]; then
+    require_bin zeek
+    require_bin zkg
+    for p in icsnpp-bacnet icsnpp-modbus icsnpp-enip icsnpp-s7comm; do
+        if ! /opt/zeek/bin/zkg list installed | grep -q "/$p "; then
+            echo "ERROR: Zeek package $p is not installed" >&2
+            exit 1
+        fi
+    done
+fi
 require_bin twigs
 if [ ! -x /usr/share/prowler/prowler ]; then
     echo "ERROR: prowler not found at /usr/share/prowler/prowler" >&2
@@ -253,6 +284,33 @@ EOF
 twigs --version
 twigs --help > /dev/null
 echo "--- twigs smoke test passed ---"
+
+# Bundle the current IEEE MAC address registry (MA-L, MA-M and MA-S) for
+# passive discovery's MAC vendor lookups; nmap's copy can be years old.
+# twigs uses /usr/local/share/twigs/oui.txt before any other OUI database.
+echo "--- building IEEE OUI database ---"
+OUI_TMP=$(mktemp -d)
+for reg in oui/oui.csv oui28/mam.csv oui36/oui36.csv; do
+    retry curl -fsSL -A "twigs-build" -o "$OUI_TMP/$(basename $reg)" "https://standards-oui.ieee.org/$reg"
+done
+mkdir -p /usr/local/share/twigs
+python3 -m twigs.passive.oui build /usr/local/share/twigs/oui.txt "$OUI_TMP/oui.csv" "$OUI_TMP/mam.csv" "$OUI_TMP/oui36.csv"
+rm -rf "$OUI_TMP"
+python3 - <<'EOF'
+import sys
+from twigs.passive.oui import OUILookup, BUNDLED_OUI_FILE
+lookup = OUILookup()
+if lookup.source != BUNDLED_OUI_FILE:
+    sys.exit("ERROR: twigs is not using the bundled IEEE OUI database (using %s)" % lookup.source)
+print("OK: twigs uses %s (%d prefixes)" % (BUNDLED_OUI_FILE, sum(len(t) for t in lookup.prefixes.values())))
+EOF
+
+# Precompile the twigs DICOM / HL7 Zeek parsers so containers do not have to
+# (twigs looks in /var/cache/twigs/passive before compiling its own copy).
+if [ "$ZEEK_INSTALLED" = 1 ]; then
+    echo "--- compiling twigs passive DICOM / HL7 parsers ---"
+    python3 -c 'import sys; from twigs.passive.zeek_runner import Zeek, SYSTEM_CACHE_DIR; sys.exit(0 if Zeek(cache_dir=SYSTEM_CACHE_DIR).medical_analyzers() else 1)'
+fi
 
 # Cleanup /tmp
 rm -rf /tmp/*

@@ -20,3 +20,4 @@ recursive-include twigs/host_benchmark *
 recursive-include twigs/nse *
 recursive-include twigs/easm *
 recursive-include twigs/easm/data *.txt
+recursive-include twigs/passive *.md *.yaml *.zeek *.spicy *.evt *.sig

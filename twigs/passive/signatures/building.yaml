@@ -1,0 +1,243 @@
+# Building automation (BMS / HVAC / power / life safety) signatures.
+# BACnet identity (vendor, model-name, firmware) is handled in code; these
+# rules add vendor identification from other identity strings.
+
+category: building
+
+rules:
+  - id: johnson-controls-metasys
+    vendor: Johnson Controls
+    model: Metasys NAE / NCE
+    device_class: Building Controller
+    match:
+      mac_vendor: 'Johnson Controls'
+      bacnet: 'Johnson\s*Controls|Metasys|NAE|NCE|FEC'
+      dhcp_vendor_class: 'Metasys'
+      hostname: 'METASYS|NAE[-_ ]?[0-9]|NCE[-_ ]?[0-9]|JCI'
+      http_server: 'Metasys|JCI\s*NAE|JCI\s*NCE'
+      snmp_sysdescr: 'Metasys'
+      mdns: 'metasys'
+      ssdp: 'Metasys'
+    firmware: ['Metasys\s+([0-9]+\.[0-9]+)']
+
+  - id: tridium-niagara
+    vendor: Tridium
+    model: Niagara
+    device_class: Building Controller
+    match:
+      mac_vendor: 'Tridium'
+      bacnet: 'Tridium|Niagara|JACE'
+      hostname: 'JACE|NIAGARA'
+      http_server: 'Niagara|Tridium|JACE'
+    firmware: ['Niagara[^0-9]*([0-9]+\.[0-9]+[\w.]*)']
+
+  - id: honeywell-buildings
+    vendor: Honeywell
+    model: WEBs / Spyder
+    device_class: Building Controller
+    match:
+      mac_vendor: 'Honeywell'
+      bacnet: 'Honeywell|Alerton|Spyder|WEBs'
+      hostname: 'WEBS-?(AX|N4)|SPYDER'
+      snmp_sysdescr: 'Honeywell|WEBs-[AN][X4]'
+      ssdp: 'Honeywell|WEBs-AX|WEBs-N4'
+
+  - id: automated-logic
+    vendor: Automated Logic
+    model: WebCTRL
+    device_class: Building Controller
+    match:
+      bacnet: 'Automated\s*Logic|WebCTRL'
+      hostname: 'WEBCTRL|ALC[-_]'
+      http_server: 'WebCTRL|Automated\s*Logic'
+      snmp_sysdescr: 'WebCTRL'
+
+  - id: siemens-building
+    vendor: Siemens
+    model: Desigo / APOGEE
+    device_class: Building Controller
+    match:
+      mac_vendor: 'Siemens Building|Siemens Switzerland'
+      bacnet: 'Siemens|Desigo|APOGEE|PXC'
+      hostname: 'DESIGO|APOGEE|PXC[0-9]'
+
+  - id: schneider-ecostruxure-building
+    vendor: Schneider Electric
+    model: EcoStruxure Building / Andover
+    device_class: Building Controller
+    match:
+      bacnet: 'Schneider|TAC|Andover|SmartX|Continuum'
+      hostname: 'SMARTX|AS-P|ANDOVER'
+
+  - id: trane
+    vendor: Trane
+    model: Tracer
+    device_class: HVAC Controller
+    match:
+      mac_vendor: 'Trane'
+      bacnet: 'Trane|Tracer'
+      hostname: 'TRACER|SYMBIO'
+
+  - id: carrier
+    vendor: Carrier
+    model: i-Vu
+    device_class: HVAC Controller
+    match:
+      bacnet: 'Carrier|i-Vu'
+      hostname: 'I-VU|CARRIER'
+
+  - id: delta-controls
+    vendor: Delta Controls
+    model: enteliBUS / O3
+    device_class: Building Controller
+    match:
+      bacnet: 'Delta\s*Controls|enteli'
+      hostname: 'ENTELI'
+
+  - id: distech
+    vendor: Distech Controls
+    model: ECLYPSE
+    device_class: Building Controller
+    match:
+      bacnet: 'Distech|ECLYPSE'
+      hostname: 'ECLYPSE'
+
+  - id: kmc
+    vendor: KMC Controls
+    model: BACnet Controller
+    device_class: Building Controller
+    match:
+      bacnet: 'KMC'
+
+  - id: reliable-controls
+    vendor: Reliable Controls
+    model: MACH-ProSys
+    device_class: Building Controller
+    match:
+      mac_vendor: 'Reliable Controls'
+      bacnet: 'Reliable\s*Controls|MACH-?Pro'
+
+  - id: contemporary-controls
+    vendor: Contemporary Controls
+    model: BASrouter
+    device_class: Building Controller
+    match:
+      bacnet: 'Contemporary\s*Controls|BAS'
+
+  - id: sierra-monitor
+    vendor: MSA (Sierra Monitor)
+    model: FieldServer
+    device_class: Building Gateway
+    match:
+      mac_vendor: 'Sierra Monitor'
+      bacnet: 'FieldServer|Sierra\s*Monitor'
+
+  - id: lutron
+    vendor: Lutron
+    model: Lighting Controller
+    device_class: Lighting Controller
+    match:
+      mac_vendor: 'Lutron'
+      mdns: 'lutron'
+
+  - id: apc-power
+    vendor: APC (Schneider Electric)
+    model: UPS / PDU
+    device_class: UPS / PDU
+    match:
+      mac_vendor: 'American Power Conversion'
+      dhcp_vendor_class: '^APC|MasterSwitch|NetBotz'
+      http_server: 'APC\s*Web|apcsetup|PowerNet|NetBotz|AP7811'
+      snmp_sysobjectid: '^1\.3\.6\.1\.4\.1\.318\.'
+      snmp_sysdescr: 'APC\s+Web/SNMP|NetBotz|AP78[0-9]{2}|Smart-UPS|Symmetra'
+      ssdp: 'apc-ups|urn.*APC'
+      mdns: 'netbotz'
+    firmware: ['AOS\s+v([0-9.]+)', 'PF:v([0-9.]+)', 'APC\s+Web/([0-9.]+)']
+
+  - id: eaton-power
+    vendor: Eaton
+    model: UPS / ePDU
+    device_class: UPS / PDU
+    match:
+      mac_vendor: 'Eaton'
+      dhcp_vendor_class: 'Eaton|PowerXpert'
+      http_server: 'Eaton|PowerXpert|PXGX'
+      snmp_sysobjectid: '^1\.3\.6\.1\.4\.1\.534\.'
+      snmp_sysdescr: 'Eaton|Powerware|PowerXpert'
+      ssdp: 'urn.*Eaton'
+      mdns: '_eaton\.|eaton-ups'
+    firmware: ['FW:?\s*([0-9][\w.]+)', 'PXGX\s+([0-9.]+)']
+
+  - id: vertiv-power
+    vendor: Vertiv
+    model: Liebert UPS / PDU
+    device_class: UPS / PDU
+    match:
+      mac_vendor: 'Liebert|Vertiv|Avocent'
+      snmp_sysobjectid: '^1\.3\.6\.1\.4\.1\.476\.'
+      snmp_sysdescr: 'Liebert|Vertiv'
+      http_server: 'Liebert|Vertiv'
+
+  - id: cyberpower
+    vendor: CyberPower
+    model: UPS / PDU
+    device_class: UPS / PDU
+    match:
+      mac_vendor: 'Cyber Power'
+      snmp_sysobjectid: '^1\.3\.6\.1\.4\.1\.3808\.'
+      snmp_sysdescr: 'CyberPower'
+
+  - id: raritan
+    vendor: Raritan
+    model: PX PDU
+    device_class: UPS / PDU
+    match:
+      mac_vendor: 'Raritan'
+      snmp_sysobjectid: '^1\.3\.6\.1\.4\.1\.13742\.'
+      snmp_sysdescr: 'Raritan|Dominion\s*PX'
+
+  - id: servertech
+    vendor: Server Technology
+    model: Sentry PDU
+    device_class: UPS / PDU
+    match:
+      mac_vendor: 'Server Technology'
+      snmp_sysobjectid: '^1\.3\.6\.1\.4\.1\.1718\.'
+      snmp_sysdescr: 'Sentry'
+
+  - id: chatsworth
+    vendor: Chatsworth Products
+    model: eConnect PDU
+    device_class: UPS / PDU
+    match:
+      dhcp_vendor_class: 'Chatsworth'
+      http_server: 'Chatsworth|CPI\s*PDU'
+      snmp_sysdescr: 'Chatsworth|CPI\s+\w*\s*PDU'
+
+  - id: cooper-atkins-temptrak
+    vendor: Cooper-Atkins
+    model: TempTrak
+    device_class: Environmental Monitor
+    match:
+      dhcp_vendor_class: 'TempTrak'
+      hostname: 'TEMPTRAK'
+      http_user_agent: 'TempTrak|Cooper-?Atkins'
+      snmp_sysdescr: 'TempTrak'
+      mdns: 'TempTrak|Cooper-Atkins'
+
+  - id: fire-life-safety
+    vendor: Fire Alarm
+    model: Fire Alarm Panel
+    device_class: Fire Alarm Panel
+    match:
+      mac_vendor: 'Notifier|Simplex|Edwards Fire|Kidde'
+      bacnet: 'Notifier|Simplex|Edwards|Gamewell'
+      hostname: 'NOTIFIER|SIMPLEX|ONYXWORKS'
+
+  - id: access-control
+    vendor: Access Control
+    model: Access Control Panel
+    device_class: Physical Access Control
+    match:
+      mac_vendor: 'HID Global|Lenel|Software House|Mercury Security|Genetec'
+      hostname: 'ISTAR|LNL-[0-9]|MERCURY'

@@ -1,0 +1,20 @@
+# Zeek interface for the twigs medical protocol parsers.
+
+protocol analyzer TwigsDICOM over TCP:
+    parse originator with TwigsDICOM::Messages,
+    parse responder with TwigsDICOM::Messages;
+
+import TwigsDICOM;
+
+on TwigsDICOM::Associate -> event TwigsDICOM::associate($conn, $is_orig, self.request,
+                                                       self.called_ae, self.calling_ae,
+                                                       self.impl_class_uid, self.impl_version,
+                                                       self.abstract_syntaxes);
+
+protocol analyzer TwigsHL7 over TCP:
+    parse originator with TwigsHL7::Messages,
+    parse responder with TwigsHL7::Messages;
+
+import TwigsHL7;
+
+on TwigsHL7::Message -> event TwigsHL7::message($conn, $is_orig, self.msh);

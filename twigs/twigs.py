@@ -72,6 +72,7 @@ try:
     from . import policy as policy_lib
     from . import trustmodel_eval
     from . import easm
+    from .passive import discovery as passive_discovery
     from .__init__ import __version__
 except (ImportError,ValueError):
     from twigs import aws
@@ -108,6 +109,7 @@ except (ImportError,ValueError):
     from twigs import policy as policy_lib
     from twigs import trustmodel_eval
     from twigs import easm
+    from twigs.passive import discovery as passive_discovery
     from twigs.__init__ import __version__
 
 csv.field_size_limit(sys.maxsize)
@@ -576,6 +578,52 @@ def add_attack_surface_label(args, assets):
 
         if as_label is not None:
             asset['attack_surface_label'] = as_label
+
+def report_assets(args, assets):
+    """Label, tag, export and upload discovered assets. Returns the policy exit code (or None).
+
+    Called once per run, and once per reporting interval by continuous passive discovery.
+    """
+    exit_code = None
+    """
+    if args.asset_criticality is not None:
+        add_asset_criticiality_tag(assets, args.asset_criticality)
+    """
+
+    add_attack_surface_label(args, assets)
+
+    if args.no_auto_tags:
+        remove_standard_tags(assets)
+
+    if args.tag_critical:
+        add_asset_criticality_tag(assets, '5')
+
+    if args.tag_public:
+        add_asset_exposure_tag(assets, '5')
+
+    if args.tag:
+        add_asset_tags(assets, args.tag)
+
+    if args.owner:
+        add_asset_owners(assets, args.owner)
+
+    if args.location:
+        add_asset_location(assets, args.location)
+
+    timestamp = int(time.time())
+    if args.mode != "sbom":
+        # SBOM assets will have their own timestamp
+        add_asset_timestamp(assets, timestamp)
+
+    if args.sbom is not None:
+        export_assets_to_sbom_file(assets, timestamp, args)
+
+    if args.token is not None and len(args.token) > 0:
+        asset_id_list, quick_scan_asset_id_list, full_scan_asset_id_list = push_assets_to_TW(assets, args)
+        exit_code, pj_json = check_and_run_policy_job(args, asset_id_list)
+        run_va_lic_eol_scan(quick_scan_asset_id_list, full_scan_asset_id_list, pj_json, args)
+        #run_remediation_scan(asset_id_list, args)
+    return exit_code
 
 def remove_standard_tags(assets):
     for asset in assets:
@@ -1400,6 +1448,10 @@ def main(args=None):
         parser_dna_center.add_argument('--user', help='User name for basic authentication', required=True)
         parser_dna_center.add_argument('--password', help='Password for basic authentication', required=True)
 
+        # Arguments required for passive discovery (medical / OT / building / IoT devices)
+        parser_passive = subparsers.add_parser ("passive", help = "Passively discover medical, OT, building automation and IoT devices from network traffic (pcap, SPAN / TAP interface or Zeek logs) using Zeek")
+        passive_discovery.add_arguments(parser_passive)
+
         # Arguments required for TrustModel
         parser_trustmodel = subparsers.add_parser("trustmodel", help = "TrustModel AI model evaluation")
         parser_trustmodel.add_argument('--trustmodel_api_key', help='TrustModel API key', required=True)
@@ -1585,6 +1637,8 @@ def main(args=None):
             assets = meraki.get_inventory(args)
         elif args.mode == 'dna_center':
             assets = dna_center.get_inventory(args)
+        elif args.mode == 'passive':
+            assets = passive_discovery.get_inventory(args, lambda a: report_assets(args, a))
         elif args.mode == 'sbom':
             ret_code, asset_ids_list = sbom.upload_sbom(args)
             if ret_code and asset_ids_list is not None:
@@ -1636,44 +1690,7 @@ def main(args=None):
                 logging.info("No assets found!")
                 run_status = 'WARNING'
             else:
-                """
-                if args.asset_criticality is not None:
-                    add_asset_criticiality_tag(assets, args.asset_criticality)
-                """
-
-                add_attack_surface_label(args, assets)
-
-                if args.no_auto_tags:
-                    remove_standard_tags(assets)
-
-                if args.tag_critical:
-                    add_asset_criticality_tag(assets, '5')
-
-                if args.tag_public:
-                    add_asset_exposure_tag(assets, '5')
-
-                if args.tag:
-                    add_asset_tags(assets, args.tag)
-
-                if args.owner:
-                    add_asset_owners(assets, args.owner)
-
-                if args.location:
-                    add_asset_location(assets, args.location)
-
-                timestamp = int(time.time())
-                if args.mode != "sbom":
-                    # SBOM assets will have their own timestamp
-                    add_asset_timestamp(assets, timestamp)
-
-                if args.sbom is not None:
-                    export_assets_to_sbom_file(assets, timestamp, args)
-
-                if args.token is not None and len(args.token) > 0:
-                    asset_id_list, quick_scan_asset_id_list, full_scan_asset_id_list = push_assets_to_TW(assets, args)
-                    exit_code, pj_json = check_and_run_policy_job(args, asset_id_list)
-                    run_va_lic_eol_scan(quick_scan_asset_id_list, full_scan_asset_id_list, pj_json, args)
-                    #run_remediation_scan(asset_id_list, args)
+                exit_code = report_assets(args, assets)
             
                 if args.schedule is not None and sys.platform != 'win32':
                     from crontab import CronTab

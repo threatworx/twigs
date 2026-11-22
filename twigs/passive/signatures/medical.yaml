@@ -1,0 +1,700 @@
+# Medical device signatures for twigs passive discovery.
+#
+# Each rule identifies a vendor / model / device class from passively
+# observed identity strings. A rule matches when ANY of its "match" fields
+# matches (case-insensitive regular expression). Every distinct field that
+# matches adds that field's weight to the device's confidence score.
+# See twigs/passive/README.md for the list of fields and their weights.
+#
+# "firmware" (optional) is a list of regexes with one capture group, tried
+# against every string that matched the rule.
+
+category: medical
+
+rules:
+  # ---------------------------------------------------------------- infusion
+  - id: bd-alaris
+    vendor: BD
+    model: Alaris
+    device_class: Infusion Pump
+    match:
+      mac_vendor: 'Alaris|CareFusion|Becton'
+      dhcp_vendor_class: 'Alaris'
+      hostname: '^ALARIS|ALARIS[-_ ]?(PC|8015|PUMP)'
+      http_server: 'Alaris'
+      http_user_agent: 'Alaris'
+      snmp_sysdescr: 'Alaris'
+      hl7_app: 'Alaris'
+      mdns: 'alaris'
+    firmware: ['Alaris\w*[/ ]v?([0-9][\w.\-]+)']
+
+  - id: baxter-sigma-spectrum
+    vendor: Baxter
+    model: Sigma Spectrum
+    device_class: Infusion Pump
+    match:
+      mac_vendor: 'Baxter'
+      dhcp_vendor_class: 'Sigma\s*Spectrum|Baxter'
+      hostname: 'SIGMA-?SPECTRUM|SPECTRUM-?IQ'
+      hl7_app: 'Spectrum\s*IQ|Baxter'
+      http_server: 'Baxter|Sigma'
+
+  - id: icu-medical-plum
+    vendor: ICU Medical
+    model: Plum / LifeCare
+    device_class: Infusion Pump
+    match:
+      mac_vendor: 'Hospira|ICU Medical'
+      dhcp_vendor_class: 'Hospira|Plum|LifeCare'
+      hostname: 'PLUM[-_ ]?(A|360)|HOSPIRA|LIFECARE'
+      http_server: 'Hospira|MedNet'
+      hl7_app: 'MedNet|Hospira|ICU\s*Medical'
+
+  - id: bbraun-space
+    vendor: B. Braun
+    model: Space
+    device_class: Infusion Pump
+    match:
+      mac_vendor: 'B\.? ?Braun'
+      dhcp_vendor_class: 'B\.? ?Braun|SpaceStation'
+      hostname: 'SPACESTATION|BBRAUN'
+      hl7_app: 'DoseTrac|OnlineSuite|B\.? ?Braun'
+
+  - id: fresenius-agilia
+    vendor: Fresenius Kabi
+    model: Agilia
+    device_class: Infusion Pump
+    match:
+      mac_vendor: 'Fresenius'
+      dhcp_vendor_class: 'Agilia|Fresenius'
+      hostname: 'AGILIA|FRESENIUS'
+      hl7_app: 'Vigilant|Agilia'
+
+  - id: smiths-medical
+    vendor: Smiths Medical
+    model: Medfusion / CADD
+    device_class: Infusion Pump
+    match:
+      mac_vendor: 'Smiths Medical'
+      dhcp_vendor_class: 'Medfusion|CADD'
+      hostname: 'MEDFUSION|CADD-'
+      hl7_app: 'PharmGuard'
+
+  # ------------------------------------------------- patient monitoring
+  - id: philips-intellivue
+    vendor: Philips
+    model: IntelliVue
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Philips Medical Systems - Cardiac and Monitoring'
+      dhcp_vendor_class: 'IntelliVue|PHILIPS'
+      hostname: 'INTELLIVUE|^IVUE|MX[ -]?(40|450|500|550|700|750|800|850)\b'
+      http_server: 'IntelliVue|Philips\s*HC|PHC/'
+      http_user_agent: 'IntelliVue'
+      snmp_sysdescr: 'IntelliVue'
+      mdns: 'intellivue'
+      ssdp: 'IntelliVue|Philips\s*(HC|Healthcare)'
+      wsd: 'philips|intellivue'
+      hl7_app: 'IntelliVue|PIIC|Philips'
+      nbns_name: 'INTELLIVUE|IVUE'
+    firmware: ['IntelliVue\s+\S+\s+R([0-9][\w.\-]+)', 'IntelliVue/R?([0-9][\w.\-]+)', '\bR([0-9]+\.[0-9]+(\.[0-9]+)?)\b']
+
+  - id: philips-pagewriter
+    vendor: Philips
+    model: PageWriter
+    device_class: ECG
+    match:
+      dhcp_vendor_class: 'PageWriter'
+      hostname: 'PAGEWRITER'
+      http_user_agent: 'PageWriter'
+
+  - id: philips-suresigns
+    vendor: Philips
+    model: SureSigns / EarlyVue
+    device_class: Vital Signs Monitor
+    match:
+      dhcp_vendor_class: 'SureSigns|EarlyVue|VS30|VS4\b'
+      http_user_agent: 'SureSigns|EarlyVue'
+
+  - id: ge-carescape
+    vendor: GE Healthcare
+    model: CARESCAPE / Dash
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Datex|Ohmeda'
+      dhcp_vendor_class: 'CARESCAPE|GEMS|GE\s*Medical'
+      hostname: 'CARESCAPE|^DASH[-_ ]?[0-9]'
+      http_server: 'CARESCAPE|GE\s*Healthcare'
+      hl7_app: 'CARESCAPE|Unity|GE\s*Healthcare|GEHC'
+      snmp_sysdescr: 'CARESCAPE|GE\s*Healthcare|GE\s*Medical'
+
+  - id: draeger-infinity
+    vendor: Draeger
+    model: Infinity
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Draeger|Drager|Dräger'
+      dhcp_vendor_class: 'Draeger|Infinity'
+      hostname: 'DRAEGER|INFINITY[-_]'
+      hl7_app: 'Infinity|Draeger'
+      http_server: 'Draeger|Infinity'
+
+  - id: mindray
+    vendor: Mindray
+    model: BeneVision / ePM
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Mindray'
+      dhcp_vendor_class: 'Mindray|BeneVision|BeneView'
+      hostname: 'MINDRAY|BENEVIEW|BENEVISION'
+      hl7_app: 'Mindray|eGateway|BeneVision|HyperVisor'
+
+  - id: spacelabs
+    vendor: Spacelabs
+    model: Xprezzon / Qube
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Spacelabs'
+      dhcp_vendor_class: 'Spacelabs|Xprezzon|Qube'
+      hostname: 'SPACELABS|XPREZZON|QUBE'
+      hl7_app: 'Spacelabs|XprezzNet'
+
+  - id: nihon-kohden
+    vendor: Nihon Kohden
+    model: Life Scope / Neurofax
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Nihon Kohden'
+      dhcp_vendor_class: 'Nihon\s*Kohden|NihonKohden'
+      hostname: 'NIHONKOHDEN|NKV'
+      http_user_agent: 'Nihon\s*Kohden'
+      snmp_sysdescr: 'Nihon\s*Kohden'
+      hl7_app: 'Nihon|Kohden|Prefense'
+
+  - id: masimo
+    vendor: Masimo
+    model: Root / Radical
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Masimo'
+      dhcp_vendor_class: 'Masimo'
+      hostname: 'MASIMO'
+      hl7_app: 'Masimo|Patient\s*SafetyNet|Iris'
+
+  - id: welch-allyn
+    vendor: Hillrom (Welch Allyn)
+    model: Connex
+    device_class: Vital Signs Monitor
+    match:
+      mac_vendor: 'Welch Allyn'
+      dhcp_vendor_class: 'Welch\s*Allyn|Connex'
+      hostname: 'WELCHALLYN|CVSM'
+      hl7_app: 'Connex|Welch'
+
+  - id: nonin
+    vendor: Nonin
+    model: Pulse Oximeter
+    device_class: Patient Monitor
+    match:
+      mac_vendor: 'Nonin'
+
+  - id: mortara
+    vendor: Baxter (Mortara)
+    model: ELI / Surveyor
+    device_class: ECG
+    match:
+      mac_vendor: 'Mortara'
+      hostname: 'MORTARA'
+
+  - id: ceribell
+    vendor: Ceribell
+    model: Rapid Response EEG
+    device_class: EEG
+    match:
+      dhcp_vendor_class: 'Ceribell'
+      hostname: 'CERIBELL'
+      http_user_agent: 'Ceribell|RapidResponse\s*EEG'
+      mdns: 'ceribell'
+
+  - id: cadwell
+    vendor: Cadwell
+    model: Cascade
+    device_class: EEG / EMG
+    match:
+      dhcp_vendor_class: 'Cascade|Cadwell'
+      http_user_agent: 'Cadwell|Cascade\s*Workstation'
+      snmp_sysdescr: 'Cadwell'
+
+  - id: natus
+    vendor: Natus
+    model: Xltek / NeuroWorks
+    device_class: EEG / EMG
+    match:
+      mac_vendor: 'Natus'
+      hostname: 'XLTEK|NEUROWORKS'
+
+  # ----------------------------------------------------- critical care
+  - id: zoll-defibrillator
+    vendor: Zoll
+    model: R Series / X Series
+    device_class: Defibrillator
+    match:
+      mac_vendor: 'Zoll'
+      dhcp_vendor_class: 'ZOLL'
+      hostname: '^ZOLL'
+      http_user_agent: 'ZOLL'
+      snmp_sysdescr: 'ZOLL'
+    firmware: ['ZOLL\s+\S+(?:\s+\S+)?\s+v?([0-9][\w.\-]+)', 'ZOLL/([0-9][\w.\-]+)']
+
+  - id: laerdal
+    vendor: Laerdal
+    model: Simulator / Training Device
+    device_class: Medical Training Device
+    match:
+      mac_vendor: 'Laerdal'
+
+  - id: hamilton-ventilator
+    vendor: Hamilton Medical
+    model: HAMILTON-C series
+    device_class: Ventilator
+    match:
+      mac_vendor: 'Hamilton Medical'
+      hostname: 'HAMILTON-C[0-9]'
+      hl7_app: 'Hamilton'
+
+  - id: edwards
+    vendor: Edwards Lifesciences
+    model: HemoSphere
+    device_class: Hemodynamic Monitor
+    match:
+      mac_vendor: 'Edwards Lifesciences'
+      hostname: 'HEMOSPHERE'
+
+  - id: medtronic
+    vendor: Medtronic
+    model: Medical Device
+    device_class: Medical Device
+    match:
+      mac_vendor: 'Medtronic'
+      hl7_app: 'Medtronic|CareLink'
+
+  # GE Healthcare MAC prefixes are shared by every product line (imaging,
+  # monitoring, ...), so on their own they only say "GE medical device".
+  - id: ge-healthcare
+    vendor: GE Healthcare
+    model: ''
+    device_class: Medical Device
+    match:
+      mac_vendor: 'GE Healthcare|GE Medical'
+
+  # ------------------------------------------- imaging (also see DICOM)
+  - id: ge-imaging
+    vendor: GE Healthcare
+    model: Imaging System
+    device_class: Medical Imaging
+    match:
+      dhcp_vendor_class: 'GEVenue|GE\s*Venue|LOGIQ|Vivid|Voluson'
+      hostname: 'GE[-_ ]?VENUE|LOGIQ|VIVID[-_ ]?[ESIT]|VOLUSON'
+      http_user_agent: 'GE\s*Venue|Venue\s*Ultrasound|LOGIQ|Vivid'
+      dicom_impl: '^1\.2\.840\.113619\b|GEMS|GE_'
+
+  - id: siemens-healthineers
+    vendor: Siemens Healthineers
+    model: Imaging / Diagnostics System
+    device_class: Medical Imaging
+    match:
+      mac_vendor: 'Siemens Healthcare|Siemens AG, Healthcare|Healthineers'
+      dhcp_vendor_class: 'Sequoia|Acuson|Healthineers|syngo'
+      hostname: 'SEQUOIA|ACUSON|SYNGO|SOMATOM|MAGNETOM|YSIO|MOBILETT'
+      http_server: 'Sequoia|Acuson|Siemens\s*Healthineers|syngo'
+      snmp_sysdescr: 'Sequoia|Acuson|Healthineers|syngo'
+      wsd: 'healthineers|sequoia|acuson'
+      dicom_impl: '^1\.3\.12\.2\.1107\.5\b|SIEMENS|syngo'
+      hl7_app: 'syngo|Sequoia|Acuson'
+    firmware: ['Sequoia\s+(VB[0-9]+\w*)', '\b(VB[0-9]+[A-Z]?)\b', 'syngo[ ._]?\w*[ _]?(VB\w+|[0-9][\w.]+)']
+
+  - id: philips-healthcare
+    vendor: Philips
+    model: ''
+    device_class: Medical Device
+    match:
+      mac_vendor: 'Philips Medical|Philips Healthcare'
+
+  - id: philips-imaging
+    vendor: Philips
+    model: Imaging System
+    device_class: Medical Imaging
+    match:
+      hostname: 'EPIQ[-_ ]?[0-9]|AFFINITI[-_ ]?[0-9]|INGENIA|DIGITALDIAGNOST|AZURION'
+      dicom_impl: '^1\.3\.46\.670589\b|PHILIPS'
+
+  - id: canon-medical
+    vendor: Canon Medical
+    model: Imaging System
+    device_class: Medical Imaging
+    match:
+      mac_vendor: 'Toshiba Medical|Canon Medical'
+      hostname: 'AQUILION|APLIO'
+      dicom_impl: '^1\.2\.392\.200036\.9116\b|TOSHIBA|CANON'
+
+  - id: fujifilm
+    vendor: Fujifilm
+    model: Imaging System
+    device_class: Medical Imaging
+    match:
+      hostname: 'FCR[-_]|FDR[-_]'
+      wsd: 'Fuji|FCR\b|DR.?Detector'
+      dicom_impl: '^1\.2\.392\.200036\.9125\b|FUJI'
+
+  - id: agfa
+    vendor: Agfa
+    model: Imaging System
+    device_class: Medical Imaging
+    match:
+      mac_vendor: 'Agfa'
+      hostname: 'AGFA'
+      dicom_impl: '^1\.2\.124\.113532\b|AGFA'
+
+  - id: hologic
+    vendor: Hologic
+    model: Selenia / Dimensions
+    device_class: Mammography
+    match:
+      mac_vendor: 'Hologic'
+      hostname: 'SELENIA|HOLOGIC'
+      dicom_impl: '^1\.2\.840\.113681\b|HOLOGIC'
+
+  - id: carestream
+    vendor: Carestream
+    model: DRX
+    device_class: Digital Radiography
+    match:
+      mac_vendor: 'Carestream|Eastman Kodak'
+      hostname: 'CARESTREAM|DRX-'
+      wsd: 'Carestream|CR.*System'
+      dicom_impl: 'CARESTREAM|KODAK'
+
+  - id: shimadzu
+    vendor: Shimadzu
+    model: Radspeed / MobileDaRt
+    device_class: Digital Radiography
+    match:
+      mac_vendor: 'Shimadzu'
+      dhcp_vendor_class: 'Shimadzu|Radspeed'
+      hostname: 'SHIMADZU|RADSPEED|MOBILEDART'
+      http_server: 'Shimadzu|Radspeed'
+      http_user_agent: 'Shimadzu|Radspeed'
+      snmp_sysdescr: 'Shimadzu|Radspeed'
+      mdns: 'shimadzu|radspeed'
+      hl7_app: 'Shimadzu|Radspeed'
+      dicom_impl: 'SHIMADZU'
+    firmware: ['SW\s*Ver(?:sion)?[:\s]+([0-9]+\.[0-9]+[\w.\-]*)', 'Radspeed[^0-9]*v?([0-9]+\.[0-9]+[\w.\-]*)']
+
+  - id: konica-minolta-medical
+    vendor: Konica Minolta
+    model: AeroDR
+    device_class: Digital Radiography
+    match:
+      hostname: 'AERODR'
+      dicom_impl: 'KONICA'
+
+  - id: varian
+    vendor: Varian
+    model: TrueBeam / ARIA
+    device_class: Radiation Therapy
+    match:
+      mac_vendor: 'Varian'
+      hostname: 'TRUEBEAM|HALCYON'
+      dicom_impl: 'VARIAN'
+
+  - id: elekta
+    vendor: Elekta
+    model: Linac / MOSAIQ
+    device_class: Radiation Therapy
+    match:
+      mac_vendor: 'Elekta'
+      hostname: 'ELEKTA|MOSAIQ'
+      dicom_impl: 'ELEKTA|MOSAIQ'
+
+  - id: esaote
+    vendor: Esaote
+    model: MyLab
+    device_class: Ultrasound
+    match:
+      mac_vendor: 'Esaote'
+      hostname: 'MYLAB'
+
+  - id: hitachi-aloka
+    vendor: Fujifilm (Hitachi Aloka)
+    model: ARIETTA
+    device_class: Ultrasound
+    match:
+      mac_vendor: 'Hitachi Aloka'
+      hostname: 'ARIETTA|ALOKA'
+
+  - id: samsung-medison
+    vendor: Samsung Medison
+    model: Ultrasound
+    device_class: Ultrasound
+    match:
+      mac_vendor: 'Medison'
+      hostname: 'MEDISON'
+
+  - id: olympus-medical
+    vendor: Olympus
+    model: Endoscopy System
+    device_class: Endoscopy
+    match:
+      mac_vendor: 'Olympus Medical'
+      hostname: 'EVIS[-_ ]'
+
+  - id: karl-storz
+    vendor: Karl Storz
+    model: Imaging System
+    device_class: Endoscopy
+    match:
+      mac_vendor: 'Karl Storz'
+      hostname: 'STORZ'
+
+  # ---------------------------------------------- laboratory / diagnostics
+  - id: abbott-architect
+    vendor: Abbott
+    model: Architect / Alinity
+    device_class: Laboratory Analyzer
+    match:
+      dhcp_vendor_class: 'Architect|AbbottDiag|Alinity'
+      hostname: 'ARCHITECT|ALINITY'
+      http_server: 'Architect\s*Ci|ArchitectCi|Alinity'
+      http_user_agent: 'Architect\s*Ci|ArchitectCi|Alinity'
+      snmp_sysdescr: 'Architect|Alinity'
+      mdns: 'architect.*ci|architectci|alinity'
+      hl7_app: 'Architect|Alinity|AlinIQ'
+    firmware: ['Host\s+SW\s+([0-9][\w.\-]+)', 'Architect\s+\S+\s+(?:SW\s+)?([0-9][\w.\-]+)']
+
+  - id: abbott-istat
+    vendor: Abbott
+    model: i-STAT
+    device_class: Point of Care Analyzer
+    match:
+      mac_vendor: 'Abbott'
+      dhcp_vendor_class: 'iSTAT|i-STAT'
+      hostname: 'ISTAT'
+      http_user_agent: 'i-?STAT'
+      snmp_sysdescr: 'i-?STAT'
+      hl7_app: 'i-?STAT|Info\s*HQ'
+    firmware: ['i-?STAT[^0-9]*([0-9][\w.\-]+)']
+
+  - id: abbott-freestyle
+    vendor: Abbott
+    model: FreeStyle Precision Pro
+    device_class: Point of Care Analyzer
+    match:
+      dhcp_vendor_class: 'FreeStyle'
+      http_user_agent: 'FreeStyle\s*Precision'
+
+  - id: roche-accuchek
+    vendor: Roche
+    model: Accu-Chek Inform II
+    device_class: Point of Care Analyzer
+    match:
+      mac_vendor: 'Roche'
+      dhcp_vendor_class: 'Accu-?Chek'
+      hostname: 'ACCU-?CHE?K'
+      http_user_agent: 'Accu-?Chek'
+      snmp_sysdescr: 'Accu-?Chek'
+      hl7_app: 'Accu-?Chek|cobas|Roche'
+      nbns_name: 'ACCU.?CHK|ROCHE'
+    firmware: ['SW\s+Version\s*[:\s]+([0-9][\w.\-]+)', 'SW([0-9]+\.[0-9]+\.[0-9]+)']
+
+  - id: roche-cobas
+    vendor: Roche
+    model: cobas
+    device_class: Laboratory Analyzer
+    match:
+      hostname: 'COBAS'
+      hl7_app: 'cobas'
+
+  - id: radiometer
+    vendor: Radiometer
+    model: ABL90 FLEX
+    device_class: Blood Gas Analyzer
+    match:
+      mac_vendor: 'Radiometer'
+      dhcp_vendor_class: 'Radiometer|ABL90'
+      hostname: 'ABL90|RADIOMETER'
+      http_user_agent: 'ABL90|Radiometer'
+      hl7_app: 'ABL[0-9]+|Radiometer|AQURE'
+
+  - id: sysmex
+    vendor: Sysmex
+    model: XN-Series
+    device_class: Hematology Analyzer
+    match:
+      mac_vendor: 'Sysmex'
+      dhcp_vendor_class: 'Sysmex|XN-?[0-9]{3,4}'
+      hostname: 'SYSMEX|XN-?[0-9]{3,4}'
+      http_server: 'Sysmex'
+      http_user_agent: 'Sysmex'
+      snmp_sysdescr: 'Sysmex'
+      mdns: 'sysmex'
+      hl7_app: 'Sysmex|XN-?[0-9]{3,4}'
+    firmware: ['SW\s*([0-9][\w.\-]+)']
+
+  - id: cepheid-genexpert
+    vendor: Cepheid
+    model: GeneXpert
+    device_class: Molecular Diagnostics
+    match:
+      dhcp_vendor_class: 'Cepheid|GeneXpert'
+      hostname: 'GENEXPERT|CEPHEID'
+      http_server: 'GeneXpert|Cepheid'
+      http_user_agent: 'GeneXpert'
+      snmp_sysdescr: 'GeneXpert|Cepheid'
+      mdns: 'genexpert|cepheid'
+      hl7_app: 'Cepheid|GeneXpert|Xpertise'
+    firmware: ['Xpertise\s+([0-9][\w.\-]+)', 'GeneXpert/([0-9][\w.\-]+)']
+
+  - id: beckman-coulter
+    vendor: Beckman Coulter
+    model: DxH / AU / DxI
+    device_class: Laboratory Analyzer
+    match:
+      mac_vendor: 'Beckman'
+      hostname: 'BECKMAN|DXH[-_ ]?[0-9]|DXI[-_ ]?[0-9]'
+      hl7_app: 'Beckman|DxH|DxI|REMISOL'
+
+  - id: siemens-diagnostics
+    vendor: Siemens Healthineers
+    model: Atellica / ADVIA
+    device_class: Laboratory Analyzer
+    match:
+      mac_vendor: 'Siemens Healthcare Diagnostics'
+      hostname: 'ATELLICA|ADVIA|RAPIDPOINT'
+      hl7_app: 'Atellica|ADVIA|RAPIDComm|RAPIDPoint'
+
+  - id: biomerieux
+    vendor: bioMerieux
+    model: VITEK / BacT/ALERT
+    device_class: Microbiology Analyzer
+    match:
+      mac_vendor: 'bioMerieux|Biomerieux'
+      hostname: 'VITEK|BACTALERT'
+      hl7_app: 'VITEK|MYLA|bioMerieux'
+
+  - id: ortho-clinical
+    vendor: QuidelOrtho
+    model: VITROS
+    device_class: Laboratory Analyzer
+    match:
+      mac_vendor: 'Ortho-Clinical'
+      hostname: 'VITROS'
+      hl7_app: 'VITROS'
+
+  # ------------------------------------------ medication / pharmacy / logistics
+  - id: omnicell
+    vendor: Omnicell
+    model: Automated Dispensing Cabinet
+    device_class: Medication Dispensing
+    match:
+      mac_vendor: 'Omnicell'
+      dhcp_vendor_class: 'Omnicell'
+      hostname: 'OMNICELL|OMNIRX'
+      http_user_agent: 'Omnicell|OmniRx'
+      snmp_sysdescr: 'Omnicell'
+      mdns: 'omnicell|OmniSupplier'
+      hl7_app: 'Omnicell'
+
+  - id: bd-pyxis
+    vendor: BD
+    model: Pyxis MedStation
+    device_class: Medication Dispensing
+    match:
+      hostname: 'PYXIS|MEDSTATION'
+      hl7_app: 'Pyxis'
+
+  - id: swisslog-translogic
+    vendor: Swisslog
+    model: Translogic
+    device_class: Pneumatic Tube System
+    match:
+      dhcp_vendor_class: 'Translogic|Swisslog'
+      hostname: 'TRANSLOGIC|SWISSLOG'
+      http_user_agent: 'Translogic|Swisslog'
+      snmp_sysdescr: 'Translogic'
+      mdns: 'translogic'
+
+  # ---------------------------------------- surgical / clinical environment
+  - id: stryker
+    vendor: Stryker
+    model: SDC / Surgical System
+    device_class: Surgical System
+    match:
+      mac_vendor: 'Stryker'
+      dhcp_vendor_class: 'SDC|SurgiCount'
+      hostname: 'STRYKER|SDC[0-9]|SURGICOUNT'
+      http_server: 'SDC\s*HD|Stryker\s*SDC|SurgiCount'
+      http_user_agent: 'SDC\s*HD|Stryker\s*SDC|SurgiCount'
+      snmp_sysdescr: 'SurgiCount|Stryker'
+      wsd: 'stryker|SDC\b|SurgiCount'
+
+  - id: intuitive-surgical
+    vendor: Intuitive Surgical
+    model: da Vinci
+    device_class: Surgical Robot
+    match:
+      mac_vendor: 'Intuitive Surgical'
+      hostname: 'DAVINCI|DA-VINCI'
+
+  - id: getinge-steris
+    vendor: Getinge / STERIS
+    model: Sterilizer
+    device_class: Sterilization
+    match:
+      mac_vendor: 'Getinge|Steris'
+      hostname: 'GETINGE|STERIS'
+
+  - id: hillrom-navicare
+    vendor: Hillrom
+    model: NaviCare / Centrella
+    device_class: Nurse Call / Smart Bed
+    match:
+      mac_vendor: 'Hill-?Rom'
+      dhcp_vendor_class: 'NaviCare|GRS5|GRS10|Hill-?Rom|Centrella'
+      hostname: 'HILL-?ROM|NAVICARE|CENTRELLA'
+      http_user_agent: 'NaviCare|Hill-?Rom'
+      snmp_sysdescr: 'NaviCare'
+      mdns: 'navicare'
+      hl7_app: 'NaviCare|Hill-?Rom'
+
+  - id: rauland-nurse-call
+    vendor: Rauland
+    model: Responder
+    device_class: Nurse Call
+    match:
+      mac_vendor: 'Rauland'
+      hostname: 'RAULAND'
+
+  - id: ascom-vocera
+    vendor: Ascom / Vocera
+    model: Clinical Communication
+    device_class: Clinical Communication
+    match:
+      mac_vendor: 'Vocera|Ascom'
+      hostname: 'VOCERA'
+
+  - id: capsule-medical-gateway
+    vendor: Capsule (Philips)
+    model: Medical Device Information Platform
+    device_class: Medical Device Gateway
+    match:
+      hostname: 'SMARTLINX|DATACAPTOR'
+      hl7_app: 'Capsule|SmartLinx|DataCaptor'
+
+  # ------------------------------------- generic medical-vendor MAC fallback
+  - id: generic-medical-oui
+    vendor: ''
+    model: Medical Device
+    device_class: Medical Device
+    weight_scale: 0.5
+    match:
+      mac_vendor: 'Medical|Healthcare|Medizin|Biomedical|Lifesciences|Diagnostics'

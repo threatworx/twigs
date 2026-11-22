@@ -1,0 +1,3 @@
+{"ts":1795000000.475997,"host":"10.10.2.45","port_":80,"header":"server","value":"Stryker SDC HD/2.3.1"}
+{"ts":1795000000.555997,"host":"10.10.1.100","port_":80,"header":"user-agent","value":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+{"ts":1795000000.575997,"host":"10.10.1.50","port_":80,"header":"server","value":"nginx/1.24.0"}

@@ -1,0 +1,1 @@
+{"ts":1795000000.955997,"host":"10.10.4.40","method":"NOTIFY * HTTP/1.1","st":"urn:axis-com:service:BasicService:1","usn":"uuid:Upnp-BasicDevice-1_0-B8A44F112233::urn:axis-com:service:BasicService:1","server":"Linux/4.14.0, UPnP/1.0, Axis P3245-LV","location":"http://10.10.4.40:49152/rootdesc1.xml"}
