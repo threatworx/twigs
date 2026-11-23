@@ -1330,6 +1330,7 @@ def main(args=None):
         parser_easm.add_argument('--no_subdomain_permutations', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--permutation_limit', help=argparse.SUPPRESS, default=3000, type=int)
         parser_easm.add_argument('--no_version_probe', action='store_true', help=argparse.SUPPRESS)
+        parser_easm.add_argument('--no_eol_check', action='store_true', help='Do not check discovered products / OS versions for end-of-life (vendor-unsupported) releases')
         parser_easm.add_argument('--no_content_discovery', action='store_true', help=argparse.SUPPRESS)
         parser_easm.add_argument('--content_discovery_limit', help=argparse.SUPPRESS, default=15000, type=int)
         parser_easm.add_argument('--no_reverse_ip', action='store_true', help=argparse.SUPPRESS)

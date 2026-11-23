@@ -58,6 +58,15 @@ gets host-level assessment only:
     against the php2shell fixed releases and CVE-2026-109618 /
     CVE-2026-109619 are reported HIGH with remediation (MEDIUM when PHP is
     in use but its version is hidden)
+  - end-of-life software detection (eol_check.py): discovered products,
+    service banners, NTLM-disclosed Windows builds and SMB/OS detection are
+    matched against a bundled vendor lifecycle table (Windows / IIS, SQL
+    Server, PHP, Apache httpd, nginx, Tomcat, OpenSSL, jQuery, AngularJS,
+    Bootstrap, Drupal, Joomla); a finding is raised only when every release
+    the evidence could mean is past end of support - HIGH once support and
+    paid ESU are over, MEDIUM inside an ESU window, LOW within 90 days of
+    EOL, one level lower when a distribution build marker suggests backports
+    (--no_eol_check to disable)
   - per-host content discovery from the Wayback Machine CDX index: real
     historically-archived URLs, filtered to security-relevant paths/params,
     with a bounded live-reachability probe of the interesting ones
@@ -228,6 +237,7 @@ from .nmap_discovery import nmap_exists, run_nmap_scan, create_port_issues
 from .ssl_checks import check_ssl, check_ssl_vulnerabilities
 from .tech_stack import check_tech_stack
 from .version_probe import probe_product_versions, check_php2shell
+from .eol_check import check_eol
 from .content_discovery import check_content_discovery
 from .reverse_ip import check_reverse_ip
 from .reverse_whois import check_reverse_whois
@@ -380,6 +390,12 @@ def build_host_asset(args, hostname, owner, is_primary, nmap_cache):
 
     _stage(hostname, "PHP php2shell check (CVE-2026-109618 / CVE-2026-109619)")
     asset_data['config_issues'].extend(check_php2shell(hostname, asset_data['products'], asset_data['tags'], asset_id, args))
+
+    if not getattr(args, 'no_eol_check', False):
+        # after tech_stack / version_probe / php2shell so product versions are final
+        _stage(hostname, "end-of-life software check")
+        asset_data['config_issues'].extend(check_eol(
+            hostname, asset_data['products'], asset_data['tags'], host_result, asset_id, args))
 
     if not getattr(args, 'no_content_discovery', False):
         _stage(hostname, "content discovery (Wayback CDX historical URLs)")

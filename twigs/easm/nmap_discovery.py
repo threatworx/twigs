@@ -1,6 +1,7 @@
 """Host / service discovery via an independent nmap wrapper (deliberately not
 twigs.fingerprint - see the module docstring in twigs/easm/__init__.py)."""
 import os
+import re
 import logging
 import shutil
 import subprocess
@@ -27,8 +28,11 @@ def _build_nmap_cmd(args, target, extra_ports=None):
 
     ipv6_flag = ' -6' if _is_ipv6(target) else ''
 
+    # http-ntlm-info is not in the 'default' category; it (like the default
+    # rdp/ms-sql/smtp/... -ntlm-info scripts) discloses the exact Windows
+    # build (Product_Version), used by the EOL check.
     scripts = ['default', 'ssl-cert', 'ssl-enum-ciphers', 'http-title', 'http-headers',
-               'http-server-header', 'http-generator', 'banner', 'dns-nsid']
+               'http-server-header', 'http-generator', 'banner', 'dns-nsid', 'http-ntlm-info']
 
     if getattr(args, 'full_port_scan', False):
         port_flag = ' -p-'
@@ -71,6 +75,43 @@ def _script_output(host_or_port_elem, script_id):
     return None
 
 
+# Scripts whose output carries an NTLM 'Product_Version: <major>.<minor>.<build>'
+NTLM_INFO_SCRIPTS = ('rdp-ntlm-info', 'ms-sql-ntlm-info', 'http-ntlm-info', 'smtp-ntlm-info',
+                     'imap-ntlm-info', 'pop3-ntlm-info', 'nntp-ntlm-info', 'telnet-ntlm-info')
+_PRODUCT_VERSION_RE = re.compile(r'Product_Version:\s*(\d+\.\d+\.\d+)')
+_SMB_OS_RE = re.compile(r'^\s*OS:\s*(.+?)\s*$', re.M)
+OS_GUESS_MIN_ACCURACY = 95
+
+
+def _windows_builds(port_elem, portid):
+    out = []
+    for sid in NTLM_INFO_SCRIPTS:
+        text = _script_output(port_elem, sid)
+        m = _PRODUCT_VERSION_RE.search(text or '')
+        if m:
+            out.append({'port': portid, 'source': sid, 'version': m.group(1)})
+    return out
+
+
+def _os_names(host_elem):
+    """OS names from smb-os-discovery (host script) and the best nmap OS
+    fingerprint match (flagged as a guess), for the EOL check."""
+    out = []
+    for hs in host_elem.getElementsByTagName('hostscript'):
+        text = _script_output(hs, 'smb-os-discovery')
+        m = _SMB_OS_RE.search(text or '')
+        if m:
+            out.append({'name': m.group(1), 'source': 'smb-os-discovery', 'guess': False})
+    best, best_acc = None, -1
+    for osmatch in host_elem.getElementsByTagName('osmatch'):
+        acc = osmatch.getAttribute('accuracy')
+        if acc.isdigit() and int(acc) > best_acc:
+            best, best_acc = osmatch.getAttribute('name'), int(acc)
+    if best and best_acc >= OS_GUESS_MIN_ACCURACY:
+        out.append({'name': best, 'source': 'nmap OS fingerprint (%d%%)' % best_acc, 'guess': True})
+    return out
+
+
 def _best_osfamily(host_elem):
     best = None
     best_acc = -1
@@ -87,7 +128,8 @@ def _best_osfamily(host_elem):
 
 
 def parse_nmap_xml(xml_out):
-    """Returns a dict keyed by IP address: {ip, hostname, ostype, products, ports}"""
+    """Returns a dict keyed by IP address: {ip, hostname, ostype, products, ports,
+    windows_builds, os_names}"""
     results = {}
     dom = parseString(xml_out)
     for host_elem in dom.getElementsByTagName('host'):
@@ -110,6 +152,7 @@ def parse_nmap_xml(xml_out):
 
         products = []
         ports_info = []
+        windows_builds = []
         for port_elem in host_elem.getElementsByTagName('port'):
             if not _is_port_open(port_elem):
                 continue
@@ -149,6 +192,7 @@ def parse_nmap_xml(xml_out):
                         _add_product(products, tok)
             if generator:
                 _add_product(products, generator.strip())
+            windows_builds.extend(_windows_builds(port_elem, portid))
 
             ports_info.append({
                 'port': portid, 'protocol': protocol, 'service': svc_name,
@@ -160,6 +204,7 @@ def parse_nmap_xml(xml_out):
         results[addr] = {
             'ip': addr, 'hostname': hostname, 'ostype': osfamily,
             'products': products, 'ports': ports_info,
+            'windows_builds': windows_builds, 'os_names': _os_names(host_elem),
         }
     return results
 

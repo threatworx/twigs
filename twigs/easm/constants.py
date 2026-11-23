@@ -41,6 +41,7 @@ ISSUE_TYPE_ASN = 'ASN/Netblock'
 ISSUE_TYPE_HTTP_HEADERS = 'HTTP Security Headers'
 ISSUE_TYPE_CREDENTIAL_LEAK = 'Credential Leak'
 ISSUE_TYPE_SHADOW_AI = 'Shadow AI'
+ISSUE_TYPE_EOL = 'End of Life'
 
 RATING_INFO = '1'
 RATING_LOW = '2'
