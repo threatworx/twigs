@@ -5,6 +5,7 @@ import subprocess
 from scp import SCPClient
 import logging
 import requests
+import urllib.parse
 import time
 import warnings
 with warnings.catch_warnings():
@@ -374,12 +375,12 @@ def get_requests_verify():
     global GoDaddyCABundle
     return GoDaddyCABundle
 
-def requests_get(url):
+def requests_get(url, headers=None):
     rc = 0
     st = 1
     while True:
         try:
-            resp = requests.get(url, verify=get_requests_verify())
+            resp = requests.get(url, verify=get_requests_verify(), headers=headers)
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
@@ -394,12 +395,12 @@ def requests_get(url):
                 continue
         return resp
 
-def requests_post(url, json):
+def requests_post(url, json, headers=None):
     rc = 0
     st = 1
     while True:
         try:
-            resp =  requests.post(url, json=json, verify=get_requests_verify())
+            resp =  requests.post(url, json=json, verify=get_requests_verify(), headers=headers)
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
@@ -414,12 +415,12 @@ def requests_post(url, json):
                 continue
         return resp
 
-def requests_post_files(url, files):
+def requests_post_files(url, files, headers=None):
     rc = 0
     st = 1
     while True:
         try:
-            resp =  requests.post(url, files=files, verify=get_requests_verify())
+            resp =  requests.post(url, files=files, verify=get_requests_verify(), headers=headers)
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warn("Retry count [%s] got exception: [%s]", rc, str(e))
@@ -434,12 +435,12 @@ def requests_post_files(url, files):
                 continue
         return resp
 
-def requests_put(url, json):
+def requests_put(url, json, headers=None):
     rc = 0
     st = 1
     while True:
         try:
-            resp = requests.put(url, json=json, verify=get_requests_verify())
+            resp = requests.put(url, json=json, verify=get_requests_verify(), headers=headers)
             resp_status_code = resp.status_code
         except requests.exceptions.RequestException as e:
             logging.warning("Retry count [%s] got exception: [%s]", rc, str(e))
@@ -454,11 +455,18 @@ def requests_put(url, json):
                 continue
         return resp
 
+def get_auth_headers(args):
+    # Send ThreatWorx API token as a Bearer token instead of a query parameter
+    return { "Authorization": "Bearer " + args.token }
+
+def get_auth_query(args):
+    return "?handle=" + urllib.parse.quote(args.handle) + "&format=json"
+
 def get_asset(asset_id, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    auth_data = get_auth_query(args)
 
-    resp = requests_get(asset_url + asset_id + "/" + auth_data)
+    resp = requests_get(asset_url + asset_id + "/" + auth_data, headers=get_auth_headers(args))
     if resp is not None and resp.status_code == 200:
         return resp.json()
     else:
@@ -493,9 +501,9 @@ def create_new_tool_run_record():
     tool_version = __version__
     email = args.handle
     url = "https://" + args.instance + "/api/v1/toolrun/new/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    auth_data = get_auth_query(args)
     post_payload = { "run_id": run_id, "machine_id": machine_id, "email": email, "name": tool_name, "version": tool_version }
-    response = requests_post(url + auth_data, post_payload)
+    response = requests_post(url + auth_data, post_payload, headers=get_auth_headers(args))
     if response.status_code == 200:
         args.run_record_id = response.json()['id']
     return response
@@ -506,7 +514,7 @@ def update_tool_run_record(status='RUNNING', observations=None):
         return None
     run_record_id = args.run_record_id
     url = "https://" + args.instance + "/api/v1/toolrun/" + str(run_record_id) + "/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    auth_data = get_auth_query(args)
     if status != 'RUNNING':
         logging.shutdown()
         lfn_suffix = args.run_id if args.run_id is not None else args.mode
@@ -514,7 +522,7 @@ def update_tool_run_record(status='RUNNING', observations=None):
         observations = { } if observations is None else observations
         observations['log_snippet'] = tail(logfilename, args.encoding, 100)
     put_payload = { "status": status, "observations": observations }
-    response = requests_put(url + auth_data, put_payload)
+    response = requests_put(url + auth_data, put_payload, headers=get_auth_headers(args))
     return response
 
 def tw_exit(exit_code, observations = None):

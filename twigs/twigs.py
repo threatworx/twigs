@@ -151,7 +151,8 @@ def push_sourcecode(asset, args, base_path, skip_checksum_check):
         return
 
     base_api_url = "https://%s/api/v1/assets/%s/" % (args.instance, urllib.parse.quote(asset['id']))
-    auth_data = "?handle=%s&token=%s&format=json" % (args.handle, args.token)
+    auth_data = utils.get_auth_query(args)
+    auth_headers = utils.get_auth_headers(args)
     checksum_check_api_url = base_api_url + "sourcefiles_check/"
     upload_sourcefile_api_url = base_api_url + "sourcefiles/"
     BATCH_SIZE = 5 # determine how many maximum files are uploaded in one request
@@ -173,7 +174,7 @@ def push_sourcecode(asset, args, base_path, skip_checksum_check):
 
         if not skip_checksum_check:
             # Make request to check if file is updated
-            resp = utils.requests_post(checksum_check_api_url + auth_data, json=request_payload)
+            resp = utils.requests_post(checksum_check_api_url + auth_data, json=request_payload, headers=auth_headers)
             if resp is not None and resp.status_code == 200:
                 resp_json = resp.json()
                 for sfp in resp_json.keys():
@@ -206,7 +207,7 @@ def push_sourcecode(asset, args, base_path, skip_checksum_check):
             request_files.append(this_file)
             index = index + 1
 
-        resp = utils.requests_post_files(upload_sourcefile_api_url + auth_data, request_files)
+        resp = utils.requests_post_files(upload_sourcefile_api_url + auth_data, request_files, headers=auth_headers)
         if resp is not None and resp.status_code == 200:
             logging.info("Successfully uploaded files in batch: %s", ", ".join(files_to_send))
         else:
@@ -224,7 +225,7 @@ def push_sourcecode(asset, args, base_path, skip_checksum_check):
 # F - full scan (asset OS version/release change)
 def push_asset_to_TW(asset, args):
     asset_url = "https://" + args.instance + "/api/v2/assets/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    auth_data = utils.get_auth_query(args)
     if args.email_report:
         auth_data = auth_data + "&esr=true" # email secrets report (esr)
     if asset.get('products') is not None:
@@ -238,7 +239,7 @@ def push_asset_to_TW(asset, args):
     delete_base_path = asset.pop('tw_delete_base_path', False)
 
     if not args.test:
-        resp = utils.requests_get(asset_url + urllib.parse.quote(asset_id) + "/" + auth_data)
+        resp = utils.requests_get(asset_url + urllib.parse.quote(asset_id) + "/" + auth_data, headers=utils.get_auth_headers(args))
         if resp is None:
             logging.info("Unable to check if asset exists...skipping asset [%s]", asset_id)
             ret_asset_id = None
@@ -247,7 +248,7 @@ def push_asset_to_TW(asset, args):
             if resp.status_code != 200:
                 logging.info("Creating new asset [%s] [%s] [%s]", asset_id, asset['type'], asset.get('attack_surface_label'))
                 # Asset does not exist so create one with POST
-                resp = utils.requests_post(asset_url + auth_data, json=asset)
+                resp = utils.requests_post(asset_url + auth_data, json=asset, headers=utils.get_auth_headers(args))
                 if resp is not None and resp.status_code == 200:
                     logging.info("Successfully created new asset [%s]", asset_id)
                     logging.info("Response content: %s", resp.content.decode(args.encoding))
@@ -263,7 +264,7 @@ def push_asset_to_TW(asset, args):
             else:
                 logging.info("Updating asset [%s]", asset_id)
                 # asset exists so update it with PUT
-                resp = utils.requests_put(asset_url + urllib.parse.quote(asset_id) + "/" + auth_data, json=asset)
+                resp = utils.requests_put(asset_url + urllib.parse.quote(asset_id) + "/" + auth_data, json=asset, headers=utils.get_auth_headers(args))
                 if resp is not None and resp.status_code == 200:
                     logging.info("Successfully updated asset [%s]", asset_id)
                     logging.debug("Response content: %s", resp.content.decode(args.encoding))
@@ -316,7 +317,7 @@ def check_and_run_policy_job(args, asset_ids_list):
     return None, pj_json
 
 def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
-    scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    scan_api_url = "https://" + args.instance + "/api/v1/scans/" + utils.get_auth_query(args)
     if args.no_scan is not True:
         if len(asset_id_list) == 0 and len(full_scan_asset_id_list) == 0:
             logging.debug("No asset scan required")
@@ -341,7 +342,7 @@ def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
                 #    scan_payload['mode'] = 'email-purge'
                 if args.email_report:
                     scan_payload['mode'] = 'email'
-                resp = utils.requests_post(scan_api_url, json=scan_payload)
+                resp = utils.requests_post(scan_api_url, json=scan_payload, headers=utils.get_auth_headers(args))
                 if resp is not None and resp.status_code == 200:
                     logging.info("Started incremental impact refresh")
                 else:
@@ -357,7 +358,7 @@ def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
                 #    scan_payload['mode'] = 'email-purge'
                 if args.email_report:
                     scan_payload['mode'] = 'email'
-                resp = utils.requests_post(scan_api_url, json=scan_payload)
+                resp = utils.requests_post(scan_api_url, json=scan_payload, headers=utils.get_auth_headers(args))
                 if resp is not None and resp.status_code == 200:
                     logging.info("Started full impact refresh")
                 else:
@@ -374,7 +375,7 @@ def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
             #    scan_payload['mode'] = 'email-purge'
             if args.email_report:
                 scan_payload['mode'] = 'email'
-            resp = utils.requests_post(scan_api_url, json=scan_payload)
+            resp = utils.requests_post(scan_api_url, json=scan_payload, headers=utils.get_auth_headers(args))
             if resp is not None and resp.status_code == 200:
                 logging.info("Started license compliance assessment")
             else:
@@ -390,7 +391,7 @@ def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
             scan_payload = { }
             scan_payload['assets'] = combined_asset_id_list
             scan_payload['eol_scan'] = True
-            resp = utils.requests_post(scan_api_url, json=scan_payload)
+            resp = utils.requests_post(scan_api_url, json=scan_payload, headers=utils.get_auth_headers(args))
             if resp is not None and resp.status_code == 200:
                 logging.info("Started EOL assessment")
             else:
@@ -400,7 +401,7 @@ def run_va_lic_eol_scan(asset_id_list, full_scan_asset_id_list, pj_json, args):
 
 def run_remediation_scan(asset_id_list, args):
     # Start remediation scan
-    scan_api_url = "https://" + args.instance + "/api/v1/scans/?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    scan_api_url = "https://" + args.instance + "/api/v1/scans/" + utils.get_auth_query(args)
     scan_payload = { }
     scan_payload['assets'] = asset_id_list
     scan_payload['remediation_scan'] = True
@@ -408,7 +409,7 @@ def run_remediation_scan(asset_id_list, args):
     # Note add "Impact" only if twscan is not being run i.e. no_scan is True
     if args.no_scan:
         scan_payload['issue_types'].append('Impact')
-    resp = utils.requests_post(scan_api_url, json=scan_payload)
+    resp = utils.requests_post(scan_api_url, json=scan_payload, headers=utils.get_auth_headers(args))
     if resp is not None and resp.status_code == 200:
         logging.info("Started remediation scan")
     else:

@@ -49,14 +49,14 @@ def upload_sbom(args):
         json_data['run_scan'] = True
 
     sbom_upload_url = "https://" + args.instance + "/api/v2/assets/sbom/"
-    auth_data = "?handle=" + args.handle + "&token=" + args.token + "&format=json"
+    auth_data = utils.get_auth_query(args)
 
     files = [
         ('sbom_artifact', ('sbom_artifact', open(sbom_abs_path, 'rb') )),
         ('data', ('data', json.dumps(json_data), 'application/json')),
     ]
     logging.info("Uploading SBOM artifact [%s]", sbom_abs_path)
-    resp = utils.requests_post_files(sbom_upload_url + auth_data, files)
+    resp = utils.requests_post_files(sbom_upload_url + auth_data, files, headers=utils.get_auth_headers(args))
     if resp is not None and resp.status_code == 200:
         logging.info("Successfully uploaded SBOM artifact")
         resp_json = resp.json()
