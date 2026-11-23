@@ -56,6 +56,10 @@ jobs:
           context: .
           load: true
           tags: ${{ env.TEST_TAG }}
+          # Install exactly the version just uploaded to PyPI (build_docker.sh
+          # waits for it to appear instead of picking up the previous release).
+          build-args: |
+            TWIGS_PIP_SPEC=twigs==${{ env.TAG_NAME }}
           
       - name: basic test
         run: |
@@ -68,6 +72,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: threatworx/twigs:${{ env.TAG_NAME }}, ${{ env.LATEST_TAG }}
+          build-args: |
+            TWIGS_PIP_SPEC=twigs==${{ env.TAG_NAME }}
           # amd64 only: the google-cloud-cli apt package bundles its own Python
           # interpreter for amd64, but the arm64 package hard-depends on system
           # python3 >= 3.10, which the Ubuntu 20.04 base image (python3 3.8)

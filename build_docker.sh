@@ -3,8 +3,9 @@
 # Build script for twigs docker image
 # Targets Ubuntu 24.04 LTS (Python 3.12). Also runs on Ubuntu 20.04 LTS (Python 3.8).
 #
-# Set TWIGS_PIP_SPEC to install twigs from somewhere other than PyPI, e.g. a
-# locally built wheel (TWIGS_PIP_SPEC=/tmp/twigs-1.3.25-py3-none-any.whl).
+# Set TWIGS_PIP_SPEC to pin the twigs version (TWIGS_PIP_SPEC=twigs==1.4.0, as
+# the GitHub workflow does) or to install a locally built wheel
+# (TWIGS_PIP_SPEC=/tmp/twigs-1.4.0-py2.py3-none-any.whl).
 # Install all components required by twigs including dependencies and most plugins except
 # ones for DAST support
 
@@ -213,7 +214,26 @@ rm -rf /tmp/nuclei /tmp/nuclei.zip
 # resolves one consistent set of dependency versions. Installing them in
 # separate runs lets a later install silently break an earlier one.
 TWIGS_PIP_SPEC=${TWIGS_PIP_SPEC:-twigs}
-retry python3 -m pip install "$TWIGS_PIP_SPEC" checkov awscli detect-secrets
+# A version that was just uploaded can take a few minutes to appear on all of
+# PyPI's CDN nodes, and pip then silently installs the previous release. When a
+# version is pinned, wait until PyPI serves it (up to ~10 minutes).
+case "$TWIGS_PIP_SPEC" in
+    *==*)
+        for attempt in $(seq 1 20); do
+            if python3 -m pip download --no-cache-dir --no-deps -q -d /tmp/twigs-check "$TWIGS_PIP_SPEC" >/dev/null 2>&1; then
+                break
+            fi
+            if [ "$attempt" -eq 20 ]; then
+                echo "ERROR: $TWIGS_PIP_SPEC is not available on PyPI" >&2
+                exit 1
+            fi
+            echo "WARN: $TWIGS_PIP_SPEC not on PyPI yet, retrying in 30s ($attempt/20)" >&2
+            sleep 30
+        done
+        rm -rf /tmp/twigs-check
+        ;;
+esac
+retry python3 -m pip install --no-cache-dir "$TWIGS_PIP_SPEC" checkov awscli detect-secrets
 python3 -m pip check
 # Prowler launches AWS CLI and this could be from cron
 ln -fs /usr/local/bin/aws /usr/bin/aws
